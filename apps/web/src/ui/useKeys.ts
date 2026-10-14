@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-export type GameKey = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back';
+export type GameKey =
+  | 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
+  | 'prev' | 'next' | 'filter' | 'goto' | 'tool';
 
 /** Mapa estilo GBA: setas, Z/Enter/Espaço = A, X/Esc/Backspace = B. */
 const KEYMAP: Record<string, GameKey> = {
@@ -8,6 +10,9 @@ const KEYMAP: Record<string, GameKey> = {
   w: 'up', s: 'down', a: 'left', d: 'right',
   z: 'confirm', Z: 'confirm', Enter: 'confirm', ' ': 'confirm',
   x: 'back', X: 'back', Escape: 'back', Backspace: 'back',
+  // atalhos extras: Q/E (ou PageUp/PageDown) trocam de aba/caixa; F busca; G "ir para"; T ferramenta de teste
+  q: 'prev', Q: 'prev', PageUp: 'prev', e: 'next', E: 'next', PageDown: 'next',
+  f: 'filter', F: 'filter', g: 'goto', G: 'goto', t: 'tool', T: 'tool',
 };
 
 /**

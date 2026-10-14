@@ -5,6 +5,7 @@
 import type { Gender, MoveCategory, Stats, TypeName } from './types.ts';
 import type { IvStars } from './ivs.ts';
 import type { RegionId } from './regions.ts';
+import type { PokemonLocation, SortKey } from './collection.ts';
 
 export interface SaveSummary {
   id: string;
@@ -54,7 +55,8 @@ export interface PokemonView {
   ivStars: IvStars;
   ivTotal: number;
   moves: MoveView[];
-  teamSlot: number | null;
+  generation: number;
+  location: PokemonLocation;
   favorite: boolean;
   ball: string | null;
   caughtAt: string;
@@ -87,4 +89,82 @@ export interface StarterRegion {
 
 export interface ApiError {
   error: string;
+}
+
+/** Uma caixa do PC: 30 posições, vazias como null. */
+export interface BoxView {
+  box: number;
+  slots: (PokemonView | null)[];
+  /** quantos Pokémon existem no PC inteiro */
+  totalInBoxes: number;
+  /** maior índice de caixa com algum Pokémon (-1 se o PC está vazio) */
+  highestUsedBox: number;
+}
+
+export interface MovePokemonRequest {
+  to: PokemonLocation;
+}
+
+export interface UpdatePokemonRequest {
+  /** string vazia remove o apelido */
+  nickname?: string;
+  favorite?: boolean;
+}
+
+export interface SearchPokemonQuery {
+  text?: string;
+  type?: string;
+  generation?: number;
+  shiny?: boolean;
+  minStars?: number;
+  minLevel?: number;
+  maxLevel?: number;
+  favorite?: boolean;
+  sort?: SortKey;
+  dir?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+export interface PokemonSearchResult {
+  total: number;
+  items: PokemonView[];
+}
+
+export interface PlayTimeRequest {
+  seconds: number;
+}
+
+/** Resumo estático de uma espécie, para listas e para nomear a Pokédex sem baixar a ficha inteira. */
+export interface SpeciesIndexEntry {
+  id: number;
+  name: string;
+  types: TypeName[];
+  generation: number;
+  baseStatTotal: number;
+}
+
+/** 0 = não visto, 1 = visto, 2 = capturado; índice = número da Pokédex - 1. */
+export type DexState = 0 | 1 | 2;
+
+export interface PokedexView {
+  total: number;
+  seen: number;
+  caught: number;
+  states: DexState[];
+  /** quantos exemplares do save existem por espécie (equipe + PC) */
+  owned: Record<number, number>;
+}
+
+export interface HealthInfo {
+  ok: boolean;
+  species: number;
+  /** ferramentas de teste habilitadas (apenas durante a alpha) */
+  devTools: boolean;
+}
+
+export interface DevGrantResult {
+  added: number;
+  inTeam: number;
+  inBoxes: number;
 }

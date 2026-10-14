@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useKeys } from './useKeys.ts';
+import { playSound } from '../sound.ts';
 
 export interface MenuItem<Id extends string = string> {
   id: Id;
@@ -36,6 +37,7 @@ export function Menu<Id extends string>({
   const move = (delta: number) => {
     if (items.length === 0) return;
     setIndex((i) => (Math.min(i, items.length - 1) + delta + items.length) % items.length);
+    playSound('move');
   };
 
   useKeys((key) => {
@@ -45,8 +47,14 @@ export function Menu<Id extends string>({
     else if (key === 'right' && columns > 1) move(1);
     else if (key === 'confirm') {
       const item = items[current];
-      if (item && !item.disabled) onSelect(item.id);
-    } else if (key === 'back') onBack?.();
+      if (item && !item.disabled) {
+        playSound('confirm');
+        onSelect(item.id);
+      }
+    } else if (key === 'back' && onBack) {
+      playSound('back');
+      onBack();
+    }
   }, active);
 
   return (

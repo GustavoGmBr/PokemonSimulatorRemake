@@ -49,7 +49,7 @@ export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 6
   if (failed) {
     return (
       <div className="gb-sprite-missing" style={{ width: size, height: size }} role="img" aria-label={alt}>
-        sem sprite
+        {size >= 70 ? 'sem sprite' : '?'}
       </div>
     );
   }

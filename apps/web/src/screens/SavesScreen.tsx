@@ -7,13 +7,15 @@ import { KeyHints, Sprite, formatMoney, formatPlayTime } from '../ui/bits.tsx';
 
 type Mode = 'list' | 'actions' | 'confirm-delete';
 const NEW_GAME = '__new__';
+const OPTIONS = '__options__';
 
 interface Props {
   onContinue: (saveId: string) => void;
   onNewGame: () => void;
+  onOptions: () => void;
 }
 
-export function SavesScreen({ onContinue, onNewGame }: Props) {
+export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
   const [saves, setSaves] = useState<SaveSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(NEW_GAME);
@@ -39,6 +41,7 @@ export function SavesScreen({ onContinue, onNewGame }: Props) {
       extra: `${save.badges} insígnias`,
     })),
     { id: NEW_GAME, label: 'Novo jogo' },
+    { id: OPTIONS, label: 'Opções' },
   ], [saves]);
 
   const remove = async () => {
@@ -86,7 +89,7 @@ export function SavesScreen({ onContinue, onNewGame }: Props) {
                 active={mode === 'list' && !busy}
                 initialId={selectedId}
                 onMove={setSelectedId}
-                onSelect={(id) => (id === NEW_GAME ? onNewGame() : setMode('actions'))}
+                onSelect={(id) => (id === NEW_GAME ? onNewGame() : id === OPTIONS ? onOptions() : setMode('actions'))}
               />
             ) : null}
           </section>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKeys } from './useKeys.ts';
+import { TEXT_SPEED_CPS, useSettings } from '../settings.ts';
 
 interface DialogBoxProps {
   /** cada item é uma "página" do diálogo */
@@ -7,14 +8,16 @@ interface DialogBoxProps {
   /** chamado ao avançar a última página */
   onFinish?: () => void;
   active?: boolean;
-  /** caracteres por segundo */
+  /** caracteres por segundo; padrão = velocidade escolhida nas Opções */
   speed?: number;
 }
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 /** Caixa de texto que "digita" como nos jogos; Z ou clique avança. */
-export function DialogBox({ pages, onFinish, active = true, speed = 60 }: DialogBoxProps) {
+export function DialogBox({ pages, onFinish, active = true, speed }: DialogBoxProps) {
+  const settings = useSettings();
+  const cps = speed ?? TEXT_SPEED_CPS[settings.textSpeed];
   const [page, setPage] = useState(0);
   const [shown, setShown] = useState(0);
   const text = pages[Math.min(page, pages.length - 1)] ?? '';
@@ -26,7 +29,7 @@ export function DialogBox({ pages, onFinish, active = true, speed = 60 }: Dialog
   }, [pagesKey]);
 
   useEffect(() => {
-    if (reducedMotion()) {
+    if (reducedMotion() || cps >= 10_000) {
       setShown(text.length);
       return;
     }
@@ -39,9 +42,9 @@ export function DialogBox({ pages, onFinish, active = true, speed = 60 }: Dialog
         }
         return n + 1;
       });
-    }, 1000 / speed);
+    }, 1000 / cps);
     return () => window.clearInterval(timer);
-  }, [text, speed]);
+  }, [text, cps]);
 
   const advance = () => {
     if (!done) {

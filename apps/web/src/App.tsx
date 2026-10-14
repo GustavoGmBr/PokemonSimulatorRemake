@@ -1,16 +1,28 @@
 import { useState } from 'react';
 import { SavesScreen } from './screens/SavesScreen.tsx';
 import { NewGameScreen } from './screens/NewGameScreen.tsx';
-import { MenuScreen } from './screens/MenuScreen.tsx';
+import { MenuScreen, type MenuId } from './screens/MenuScreen.tsx';
+import { PcScreen } from './screens/PcScreen.tsx';
+import { PokedexScreen } from './screens/PokedexScreen.tsx';
+import { OptionsScreen } from './screens/OptionsScreen.tsx';
+import { usePlayTime } from './usePlayTime.ts';
 
 /** Telas do jogo. Sem URLs: a navegação é como num console. */
 export type Screen =
   | { name: 'saves' }
   | { name: 'new-game' }
-  | { name: 'menu'; saveId: string; welcome?: string };
+  | { name: 'menu'; saveId: string; welcome?: string; focus?: MenuId }
+  | { name: 'pc'; saveId: string }
+  | { name: 'pokedex'; saveId: string }
+  | { name: 'options'; back: Screen };
+
+function saveIdOf(screen: Screen): string | null {
+  return 'saveId' in screen ? screen.saveId : screen.name === 'options' ? saveIdOf(screen.back) : null;
+}
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'saves' });
+  usePlayTime(saveIdOf(screen));
 
   switch (screen.name) {
     case 'saves':
@@ -19,6 +31,7 @@ export function App() {
           key="saves"
           onContinue={(saveId) => setScreen({ name: 'menu', saveId })}
           onNewGame={() => setScreen({ name: 'new-game' })}
+          onOptions={() => setScreen({ name: 'options', back: screen })}
         />
       );
     case 'new-game':
@@ -29,14 +42,26 @@ export function App() {
           onCreated={(saveId, welcome) => setScreen({ name: 'menu', saveId, welcome })}
         />
       );
-    case 'menu':
+    case 'menu': {
+      const { saveId } = screen;
       return (
         <MenuScreen
-          key={screen.saveId}
-          saveId={screen.saveId}
+          key={`menu-${saveId}-${screen.focus ?? ''}`}
+          saveId={saveId}
           welcome={screen.welcome}
+          focus={screen.focus}
           onExit={() => setScreen({ name: 'saves' })}
+          onOpenPc={() => setScreen({ name: 'pc', saveId })}
+          onOpenPokedex={() => setScreen({ name: 'pokedex', saveId })}
+          onOpenOptions={() => setScreen({ name: 'options', back: { name: 'menu', saveId, focus: 'options' } })}
         />
       );
+    }
+    case 'pc':
+      return <PcScreen key={`pc-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pc' })} />;
+    case 'pokedex':
+      return <PokedexScreen key={`dex-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pokedex' })} />;
+    case 'options':
+      return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }
 }

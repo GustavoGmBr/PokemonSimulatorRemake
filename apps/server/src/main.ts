@@ -4,7 +4,7 @@ import { openDatabase } from './db.ts';
 import { createApp } from './app.ts';
 
 const db = openDatabase(config.dbPath);
-const server = createApp({ db, assetsDir: config.assetsDir, webDist: config.webDist });
+const server = createApp({ db, assetsDir: config.assetsDir, webDist: config.webDist, devTools: config.devTools });
 
 server.listen(config.port, config.host, () => {
   console.log(`API do Pokémon Simulator em http://${config.host}:${config.port}`);

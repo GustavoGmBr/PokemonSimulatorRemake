@@ -61,6 +61,13 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (save_id, challenge_id)
   );
   `,
+  // 2 — PC com caixas ilimitadas e Pokédex com "visto"
+  `
+  ALTER TABLE pokemon ADD COLUMN box INTEGER;
+  ALTER TABLE pokemon ADD COLUMN box_slot INTEGER;
+  CREATE UNIQUE INDEX pokemon_box_position ON pokemon (save_id, box, box_slot) WHERE box IS NOT NULL;
+  ALTER TABLE pokedex ADD COLUMN seen INTEGER NOT NULL DEFAULT 1;
+  `,
 ];
 
 export type Db = DatabaseSync;

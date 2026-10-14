@@ -17,5 +17,7 @@ export const config = {
    * Por padrão usa as sprites já baixadas pela versão anterior, na pasta vizinha.
    */
   assetsDir: resolveFromRepo(process.env.ASSETS_DIR, '../PokemonSimulator Sqlite/backend/public'),
+  /** Ferramentas de teste (ex.: ganhar Pokémon aleatórios). Ligadas na alpha; POKESIM_DEV=0 desliga. */
+  devTools: process.env.POKESIM_DEV !== '0',
   webDist: path.join(repoRoot, 'apps/web/dist'),
 };

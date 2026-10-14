@@ -1,6 +1,6 @@
 {
   "name": "pokemon-simulator-remake",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0-alpha.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,8 +15,11 @@
     "build": "npm run build -w @pokesim/web",
     "start": "npm run build && npm run start -w @pokesim/server",
     "typecheck": "tsc -p packages/engine && tsc -p packages/data && tsc -p apps/server && tsc -p apps/web",
-    "test": "tsx --disable-warning=ExperimentalWarning --test \"packages/**/*.test.ts\" \"apps/server/**/*.test.ts\"",
-    "data:import": "tsx packages/data/scripts/import-legacy.ts"
+    "test": "tsx --disable-warning=ExperimentalWarning --test \"packages/**/*.test.ts\" \"apps/server/**/*.test.ts\" \"scripts/**/*.test.ts\"",
+    "data:import": "tsx packages/data/scripts/import-legacy.ts",
+    "fonts": "tsx scripts/fetch-fonts.ts",
+    "postinstall": "tsx scripts/fetch-fonts.ts",
+    "predev": "tsx scripts/fetch-fonts.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

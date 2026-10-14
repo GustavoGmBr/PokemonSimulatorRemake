@@ -1,37 +1,45 @@
 import { useEffect, useState } from 'react';
-import { STAT_KEYS, STAT_LABELS, type PokemonView, type SaveDetail } from '@pokesim/engine';
+import type { PokemonView, SaveDetail } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
-import { HpBar, KeyHints, Sprite, Stars, TypeBadge, XpBar, formatMoney, formatPlayTime } from '../ui/bits.tsx';
+import { HpBar, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../ui/bits.tsx';
+import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'bag' | 'shop' | 'casino' | 'missions' | 'trainer' | 'exit';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'battle', label: 'Batalhar', info: 'Ginásios, treinadores e campeões.', phase: 'Fase 2' },
   { id: 'wild', label: 'Selvagens', info: 'Explore rotas e capture POKÉMON.', phase: 'Fase 1' },
-  { id: 'pokedex', label: 'Pokédex', info: 'Os 1.025 POKÉMON das nove regiões.', phase: 'Fase 1' },
+  { id: 'pokedex', label: 'Pokédex', info: 'Os 1.025 POKÉMON das nove regiões.' },
   { id: 'team', label: 'Equipe', info: 'Veja os POKÉMON que viajam com você.' },
+  { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Itens guardados na sua mochila.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais.', phase: 'Fase 3' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, caça-níqueis e outros jogos.', phase: 'Fase 4' },
   { id: 'missions', label: 'Missões', info: 'Objetivos renovados com recompensas.', phase: 'Fase 3' },
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },
+  { id: 'options', label: 'Opções', info: 'Velocidade do texto e volume dos sons.' },
   { id: 'exit', label: 'Sair', info: 'Voltar para a tela de jornadas.' },
 ];
 
 interface Props {
   saveId: string;
   welcome?: string;
+  /** item do menu que começa selecionado (ao voltar do PC, da Pokédex…) */
+  focus?: MenuId;
   onExit: () => void;
+  onOpenPc: () => void;
+  onOpenPokedex: () => void;
+  onOpenOptions: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, onExit }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hovered, setHovered] = useState<MenuId>('team');
+  const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
   const [panel, setPanel] = useState<Panel>('overview');
   const [notice, setNotice] = useState<string | null>(welcome ?? null);
   const [selectedMon, setSelectedMon] = useState<PokemonView | null>(null);
@@ -68,6 +76,9 @@ export function MenuScreen({ saveId, welcome, onExit }: Props) {
     const entry = MENU.find((m) => m.id === id);
     if (id === 'exit') return onExit();
     if (id === 'team') return setPanel('team');
+    if (id === 'pc') return onOpenPc();
+    if (id === 'pokedex') return onOpenPokedex();
+    if (id === 'options') return onOpenOptions();
     if (id === 'bag') return setPanel('bag');
     if (id === 'trainer') return setPanel('trainer');
     setNotice(`${entry?.label.toUpperCase()} ainda está em construção. Chega na ${entry?.phase} do remake!`);
@@ -113,7 +124,7 @@ export function MenuScreen({ saveId, welcome, onExit }: Props) {
               />
             ) : null}
             {panel === 'summary' && selectedMon ? (
-              <Summary mon={selectedMon} onBack={() => setPanel('team')} />
+              <PokemonSummary mon={selectedMon} onBack={() => setPanel('team')} />
             ) : null}
             {panel === 'bag' ? <BagPanel save={save} onBack={() => setPanel('overview')} /> : null}
             {panel === 'trainer' ? <TrainerCard save={save} onBack={() => setPanel('overview')} /> : null}
@@ -184,7 +195,7 @@ function TeamPanel({ team, active, onOpen, onBack }: {
             <span className="gb-mon__sprite"><Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={80} /></span>
             <span className="gb-mon__body">
               <span className="gb-mon__head">
-                <span>{mon.name}{mon.shiny ? ' ✦' : ''}</span>
+                <span>{mon.favorite ? <span className="gb-fav">♥ </span> : null}{mon.name}{mon.shiny ? ' ✦' : ''}</span>
                 <span>Nv{mon.level}</span>
               </span>
               <HpBar current={mon.currentHp} max={mon.stats.hp} />
@@ -199,70 +210,6 @@ function TeamPanel({ team, active, onOpen, onBack }: {
             <span className="gb-muted">— vazio —</span>
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-function Summary({ mon, onBack }: { mon: PokemonView; onBack: () => void }) {
-  useKeys((key) => { if (key === 'back' || key === 'confirm') onBack(); });
-  return (
-    <section className="gb-window" aria-labelledby="summary-title">
-      <div className="gb-row" style={{ gap: 24 }}>
-        <div className="gb-side gb-stack" style={{ maxWidth: 260, alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ background: 'var(--sky)', border: '4px solid var(--ink)', padding: 8 }}>
-            <Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt={mon.speciesName} size={180} />
-          </div>
-          <h2 id="summary-title" className="gb-title" style={{ fontSize: 28 }}>{mon.name}{mon.shiny ? ' ✦' : ''}</h2>
-          <span className="gb-muted">Nº {String(mon.speciesId).padStart(4, '0')}{mon.nickname ? ` · ${mon.speciesName}` : ''}{mon.gender ? ` · ${mon.gender === 'M' ? '♂' : '♀'}` : ''}</span>
-          <span style={{ display: 'flex', gap: 6 }}>{mon.types.map((t) => <TypeBadge key={t} type={t} />)}</span>
-          <div style={{ width: '100%' }}>
-            <div className="gb-spread"><span className="gb-label">Nv{mon.level}</span><span>{mon.currentHp}/{mon.stats.hp}</span></div>
-            <HpBar current={mon.currentHp} max={mon.stats.hp} />
-            <div style={{ marginTop: 6 }}><XpBar progress={mon.expProgress} /></div>
-          </div>
-        </div>
-
-        <div className="gb-grow gb-stack">
-          <div className="gb-spread">
-            <h3 className="gb-title" style={{ fontSize: 22 }}>Atributos</h3>
-            <span><Stars count={mon.ivStars} /> <span className="gb-muted">IV {mon.ivTotal}/186</span></span>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 24 }}>
-            <thead>
-              <tr className="gb-muted" style={{ textAlign: 'left' }}>
-                <th scope="col" style={{ fontWeight: 400 }}>Atributo</th>
-                <th scope="col" style={{ fontWeight: 400, textAlign: 'right' }}>Valor</th>
-                <th scope="col" style={{ fontWeight: 400, textAlign: 'right' }}>IV</th>
-              </tr>
-            </thead>
-            <tbody>
-              {STAT_KEYS.map((key) => (
-                <tr key={key} style={{ borderTop: '2px solid var(--rim)' }}>
-                  <th scope="row" style={{ textAlign: 'left', fontWeight: 400 }}>{STAT_LABELS[key]}</th>
-                  <td style={{ textAlign: 'right' }}>{mon.stats[key]}</td>
-                  <td style={{ textAlign: 'right', color: mon.ivs[key] === 31 ? 'var(--ok)' : undefined }}>{mon.ivs[key]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h3 className="gb-title" style={{ fontSize: 22, marginTop: 8 }}>Golpes</h3>
-          <div className="gb-grid-2">
-            {mon.moves.map((move) => (
-              <div key={move.name} className="gb-window gb-window--tight" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="gb-label" style={{ textTransform: 'uppercase' }}>{move.displayName}</span>
-                <span className="gb-spread" style={{ fontSize: 20 }}>
-                  <TypeBadge type={move.type} />
-                  <span>PP {move.pp}/{move.maxPp}</span>
-                </span>
-                <span className="gb-muted" style={{ fontSize: 20 }}>
-                  {move.category === 'status' ? 'Status' : `Poder ${move.power}`}{move.accuracy ? ` · Precisão ${move.accuracy}` : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );

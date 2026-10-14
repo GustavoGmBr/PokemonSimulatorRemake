@@ -6,4 +6,6 @@ export * from './typechart.ts';
 export * from './experience.ts';
 export * from './pokemon.ts';
 export * from './regions.ts';
+export * from './collection.ts';
+export * from './evolution.ts';
 export type * from './contracts.ts';

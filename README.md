@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.0**, Fase 0 (fundação). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.1**, Fase 1 em andamento (PC, coleção e Pokédex prontos; captura e batalha a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -68,16 +68,38 @@ packages/
 ## Fases
 
 0. **Fundação** ✅ — estrutura, engine, catálogo, banco, kit visual, telas de jornadas, novo jogo e menu.
-1. **Núcleo** — PC/coleção, Pokédex, Pokémon selvagens e captura.
+1. **Núcleo** — em andamento:
+   - ✅ PC com caixas ilimitadas, mover entre equipe e PC, apelidos, favoritos, busca com filtros
+     (tipo, geração, brilhante, estrelas, nível, favoritos) e ordenação.
+   - ✅ Pokédex dos 1.025 (não visto / visto / capturado) com ficha: atributos, fraquezas, cadeia
+     evolutiva, golpes (nível, TM, tutor, ovos) e formas.
+   - ✅ Acabamento: tela de Opções (velocidade do texto, volume), tempo de jogo, fontes offline.
+   - ⏳ Pokémon selvagens e captura.
 2. **Batalhas** — engine de batalha com status e estágios, IA de treinador, ginásios, Elite 4 e campeões.
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
 
+## Controles
+
+| Tecla | Ação |
+| --- | --- |
+| Setas / WASD | mover o cursor |
+| Z / Enter / Espaço | confirmar |
+| X / Esc / Backspace | voltar |
+| Q / E (ou PageUp / PageDown) | trocar de caixa, aba da ficha ou geração |
+| F | buscar / filtros |
+| G | ir para uma caixa (no PC) |
+| T | **[TESTE]** adiciona 12 Pokémon aleatórios (só no PC, enquanto não existe captura) |
+
+O atalho T e a rota `POST /api/saves/:id/dev/grant` existem só na alpha. Desligue com `POKESIM_DEV=0`
+no `.env`; saem de vez quando a captura entrar.
+
 ## Pendências conhecidas
 
-- As fontes (Pixelify Sans e VT323) vêm do Google Fonts. Sem internet, o jogo usa uma
-  fonte monoespaçada no lugar. Embutir as fontes fica para a Fase 1.
-- O tempo de jogo ainda não é contado.
+- As fontes (Pixelify Sans e VT323) são baixadas pelo `npm install` / `npm run dev` (ou `npm run fonts`)
+  para `apps/web/public/fonts`. Sem internet nesse momento, o jogo usa uma fonte monoespaçada e
+  tenta de novo na próxima vez.
+- Os nomes de golpes, habilidades e itens ainda vêm do catálogo em inglês.
 
 Dados de referência obtidos via [PokéAPI](https://pokeapi.co/). Sprites e dados Pokémon
 pertencem aos respectivos titulares.

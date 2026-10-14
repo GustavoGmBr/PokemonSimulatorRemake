@@ -12,3 +12,4 @@ apps/server/data/
 *.db-journal
 *.db-wal
 *.db-shm
+apps/web/public/fonts/
