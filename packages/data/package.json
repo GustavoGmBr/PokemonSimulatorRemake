@@ -1,0 +1,13 @@
+{
+  "name": "@pokesim/data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Catálogo do jogo (espécies, golpes, tipos, itens) importado da versão anterior.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@pokesim/engine": "*"
+  }
+}

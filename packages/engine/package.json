@@ -1,0 +1,10 @@
+{
+  "name": "@pokesim/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Regras puras do jogo: atributos, IVs, tipos, experiência, criação de Pokémon. Sem banco, sem rede.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

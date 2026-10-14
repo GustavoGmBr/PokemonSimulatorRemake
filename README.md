@@ -1,0 +1,83 @@
+# Pokémon Simulator — Remake
+
+Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Retrô GBA**.
+Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
+Nintendo, Game Freak ou The Pokémon Company.
+
+> Versão atual: **2.0.0-alpha.0**, Fase 0 (fundação). Veja o [plano de fases](#fases).
+
+## Como rodar
+
+Requisitos: **Node.js 22.13 ou mais novo** (o banco usa o `node:sqlite` que já vem no Node).
+
+No Windows, dê dois cliques em **`iniciar-dev.cmd`**. Ele instala as dependências na
+primeira vez, sobe a API e a interface e abre o navegador.
+
+Ou pelo terminal, na pasta do projeto:
+
+```powershell
+npm install
+npm run dev
+```
+
+Abra http://127.0.0.1:35300.
+
+**Sprites:** o jogo usa as sprites que a versão anterior já baixou, em
+`..\PokemonSimulator Sqlite\backend\public`. Se estiverem em outro lugar, copie
+`apps/server/.env.example` para `apps/server/.env` e ajuste `ASSETS_DIR`.
+
+### Outros comandos
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | API (porta 34600) + interface com recarga automática (porta 35300) |
+| `npm start` | Compila a interface e serve tudo pela API em http://127.0.0.1:34600 |
+| `npm test` | Testes do engine, do catálogo e da API |
+| `npm run typecheck` | Checagem de tipos de todos os pacotes |
+| `npm run data:import` | Reimporta o catálogo do projeto antigo (opcional, já vem pronto) |
+
+### Controles
+
+| Tecla | Ação |
+| --- | --- |
+| Setas (ou WASD) | Mover o cursor |
+| Z, Enter ou Espaço | Confirmar / avançar texto |
+| X, Esc ou Backspace | Voltar |
+
+O mouse também funciona em tudo.
+
+## Estrutura
+
+```
+apps/
+  web/        Interface React + Vite, kit visual retrô (src/ui) e telas (src/screens)
+  server/     API local em Node (node:http + node:sqlite): saves, catálogo e sprites
+packages/
+  engine/     Regras puras do jogo: atributos, IVs, tipos, experiência, criação de Pokémon.
+              Sem banco e sem rede, tudo testável. Também define os contratos da API.
+  data/       Catálogo (1.025 espécies, 781 golpes, 145 itens, 18 tipos) em catalog/*.json
+```
+
+- **O engine não conhece banco nem tela.** A API usa o engine para calcular; a interface só exibe.
+  Na Fase 2, a batalha entra aqui como `estado + ação → novo estado + eventos`.
+- **Contratos tipados:** `packages/engine/src/contracts.ts` define o que a API devolve.
+  Mudou ali, o TypeScript aponta os dois lados.
+- **Banco:** `apps/server/src/db.ts` tem a lista de migrações. Para mudar o banco, adicione
+  uma migração no final, sem editar as anteriores.
+
+## Fases
+
+0. **Fundação** ✅ — estrutura, engine, catálogo, banco, kit visual, telas de jornadas, novo jogo e menu.
+1. **Núcleo** — PC/coleção, Pokédex, Pokémon selvagens e captura.
+2. **Batalhas** — engine de batalha com status e estágios, IA de treinador, ginásios, Elite 4 e campeões.
+3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
+4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
+
+## Pendências conhecidas
+
+- As fontes (Pixelify Sans e VT323) vêm do Google Fonts. Sem internet, o jogo usa uma
+  fonte monoespaçada no lugar. Embutir as fontes fica para a Fase 1.
+- O tempo de jogo ainda não é contado.
+
+Dados de referência obtidos via [PokéAPI](https://pokeapi.co/). Sprites e dados Pokémon
+pertencem aos respectivos titulares.
