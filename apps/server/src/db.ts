@@ -91,6 +91,10 @@ const MIGRATIONS: string[] = [
   ALTER TABLE wild_boards ADD COLUMN max_level INTEGER NOT NULL DEFAULT 12;
   DELETE FROM wild_boards;
   `,
+  // 6 — turnos do encontro (a Bola Rápida só vale no primeiro)
+  `
+  ALTER TABLE wild_boards ADD COLUMN throws INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export type Db = DatabaseSync;

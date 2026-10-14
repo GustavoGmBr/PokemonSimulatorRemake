@@ -108,7 +108,7 @@ export interface TypeInfo {
 }
 
 export type ItemCategory =
-  | 'captura' | 'cura' | 'treino' | 'buff' | 'evolucao' | 'mega' | 'primal';
+  | 'captura' | 'cura' | 'treino' | 'buff' | 'evolucao' | 'mega' | 'primal' | 'ivs';
 
 export interface Item {
   id: number;

@@ -16,28 +16,49 @@ export const SHINY_CHARM_EXTRA_ROLLS = 2;
 export const CATCHING_CHARM_MULTIPLIER = 1.5;
 
 export interface BallContext {
-  level: number;
+  /** tipos do Pokémon selvagem */
   types: readonly TypeName[];
-  baseSpeed: number;
-  /** a espécie já foi capturada neste save */
-  caughtBefore: boolean;
-  /** hora local (0–23), para a Bola Crepúsculo */
-  hour: number;
+  /** peso (kg) e altura (m) do selvagem, para a Bola Pesada */
+  weight: number;
+  height: number;
+  /** nenhuma bola foi lançada ainda neste encontro (Bola Rápida) */
+  firstTurn: boolean;
+  /** tipos do primeiro Pokémon da equipe (Bola das Fadas) */
+  leadTypes: readonly TypeName[];
+  /** selvagens nunca dormem; fica para as batalhas futuras (Bola de Sonho) */
+  asleep?: boolean;
 }
 
-/** Bolas sem multiplicador especial valem 1. A Master Ball nem chega aqui (captura garantida). */
+/** A Bola de Cura devolve o HP cheio ao Pokémon capturado. */
+export const HEAL_BALL = 'heal-ball';
+
+const hasType = (context: BallContext, ...types: TypeName[]) => context.types.some((type) => types.includes(type));
+
+/** Multiplicador de cada bola — mesma tabela do jogo antigo. A Master Ball nem chega aqui (captura garantida). */
 export function ballMultiplier(ball: string, context: BallContext): number {
   switch (ball) {
     case 'great-ball': return 1.5;
     case 'ultra-ball': return 2;
-    case 'net-ball': return context.types.includes('water') || context.types.includes('bug') ? 3.5 : 1;
-    case 'dive-ball': return context.types.includes('water') ? 3.5 : 1;
-    case 'nest-ball': return Math.max(1, (41 - context.level) / 10);
-    case 'repeat-ball': return context.caughtBefore ? 3.5 : 1;
-    case 'quick-ball': return 5; // sempre é o primeiro turno: não há batalha antes
-    case 'dusk-ball': return context.hour < 6 || context.hour >= 20 ? 3 : 1;
-    case 'fast-ball': return context.baseSpeed >= 100 ? 4 : 1;
-    default: return 1; // poke, premier, luxury, heal, timer…
+    case 'fast-ball': return context.firstTurn ? 6 : 1;
+    case 'timer-ball': return hasType(context, 'psychic') ? 3 : 1;
+    case 'dusk-ball': return hasType(context, 'dark', 'ghost') ? 4 : 1;
+    case 'dive-ball': return hasType(context, 'water') ? 3.5 : 1;
+    case 'net-ball': return hasType(context, 'water', 'bug') ? 3 : 1;
+    case 'nest-ball': return hasType(context, 'flying') ? 3 : 1;
+    case 'repeat-ball': return hasType(context, 'electric') ? 3 : 1;
+    case 'heavy-ball': {
+      const byWeight = 1 + Math.floor(context.weight / 100);
+      const byHeight = 1 + Math.floor(context.height / 1.7);
+      return Math.max(1, Math.min(4, Math.max(byWeight, byHeight)));
+    }
+    case 'moon-ball': return hasType(context, 'dragon') ? 3 : 1;
+    case 'level-ball': return hasType(context, 'ice') ? 3 : 1;
+    case 'love-ball': return hasType(context, 'fairy') ? 3.5 : hasType(context, ...context.leadTypes) ? 3 : 1;
+    case 'dream-ball': return context.asleep ? 4 : 1;
+    case 'luxury-ball': return hasType(context, 'fighting') ? 3 : 1;
+    case 'friend-ball': return hasType(context, 'grass') ? 3 : 1;
+    case 'sport-ball': return hasType(context, 'fire') ? 3 : 1;
+    default: return 1; // poke, premier, heal
   }
 }
 

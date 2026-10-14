@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { TYPE_LABELS, type TypeName } from '@pokesim/engine';
 import { spriteUrl, type SpriteView } from '../api.ts';
 
@@ -94,8 +94,23 @@ const BALL_VARIANT: Record<string, string> = {
   'poke-ball': '', 'great-ball': 'great', 'ultra-ball': 'ultra', 'master-ball': 'master',
 };
 
+/** Cor da metade de cima das bolas especiais. */
+const BALL_COLOR: Record<string, string> = {
+  'fast-ball': '#e8b020', 'timer-ball': '#c050b0', 'dusk-ball': '#403060', 'dive-ball': '#2070c0', 'net-ball': '#40a0a0',
+  'nest-ball': '#c8a060', 'repeat-ball': '#f0d020', 'heavy-ball': '#707070', 'moon-ball': '#5040c0', 'level-ball': '#70c8e8',
+  'love-ball': '#f080b0', 'dream-ball': '#a0b0e0', 'heal-ball': '#f0a0c0', 'luxury-ball': '#c04030', 'friend-ball': '#48a848',
+  'sport-ball': '#e86020', 'premier-ball': '#f4f0e0',
+};
+
 /** Poké Bola desenhada em CSS; a cor muda conforme o tipo de bola. */
 export function BallIcon({ item, small = false, className = '' }: { item: string; small?: boolean; className?: string }) {
   const variant = item in BALL_VARIANT ? BALL_VARIANT[item] : 'other';
-  return <span aria-hidden="true" className={`gb-pokeball${variant ? ` gb-pokeball--${variant}` : ''}${small ? ' gb-pokeball--small' : ''} ${className}`} />;
+  const color = BALL_COLOR[item];
+  return (
+    <span
+      aria-hidden="true"
+      className={`gb-pokeball${variant ? ` gb-pokeball--${variant}` : ''}${small ? ' gb-pokeball--small' : ''} ${className}`}
+      style={color ? ({ '--ball-top': color } as CSSProperties) : undefined}
+    />
+  );
 }

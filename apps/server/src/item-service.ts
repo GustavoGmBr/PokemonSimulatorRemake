@@ -1,5 +1,5 @@
 import {
-  MAX_STACK, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
+  MAX_STACK, PREMIER_BALL, PREMIER_EVERY, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
   type BuyResult, type DevKitResult, type DevProgressResult, type ShopEntry, type UseItemResult,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
@@ -56,11 +56,13 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
         total += (item.price as number) * quantity;
       }
       if (total > current) throw badRequest('Dinheiro insuficiente.');
+      const premier = Math.min(Math.floor((wanted.get('poke-ball') ?? 0) / PREMIER_EVERY), Math.max(0, MAX_STACK - inventory.quantity(saveId, PREMIER_BALL)));
       transaction(db, () => {
         db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(total, new Date().toISOString(), saveId);
         for (const [name, quantity] of wanted) inventory.add(saveId, name, quantity);
+        if (premier > 0) inventory.add(saveId, PREMIER_BALL, premier);
       });
-      return { spent: total, money: current - total };
+      return { spent: total, money: current - total, premier };
     },
 
     /** Usa uma poção, reviver etc. em um Pokémon (fora de batalha). */
@@ -98,7 +100,7 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
       money(saveId);
       const won = new Set((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((row) => row.challenge_id));
       const order = REGIONS.flatMap((region) => [
-        ...Array.from({ length: 8 }, (_, i) => gymId(region.id, i + 1)), eliteId(region.id), championId(region.id),
+        ...Array.from({ length: 8 }, (_, i) => gymId(region.id, i + 1)), ...[1, 2, 3, 4].map((n) => eliteId(region.id, n)), championId(region.id),
       ]);
       const pending = order.filter((id) => !won.has(id));
       const grant = all ? pending : pending.slice(0, 1);

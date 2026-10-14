@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ShopEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu } from '../ui/Menu.tsx';
@@ -10,6 +10,9 @@ const TABS = [
   { id: 'captura', label: 'Bolas' },
   { id: 'cura', label: 'Cura' },
   { id: 'evolucao', label: 'Evolução' },
+  { id: 'mega', label: 'Mega' },
+  { id: 'primal', label: 'Primal' },
+  { id: 'ivs', label: 'IVs' },
   { id: 'buff', label: 'Amuletos' },
 ] as const;
 const MAX_STACK = 99;
@@ -34,9 +37,11 @@ export function ShopScreen({ saveId, onBack }: Props) {
   const load = () => Promise.all([api.shop(saveId), api.getSave(saveId)]).then(([list, save]) => { setItems(list); setMoney(save.money); });
   useEffect(() => { load().catch((e: Error) => setError(e.message)); }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const listRef = useRef<HTMLUListElement>(null);
   const category = TABS[tab]?.id ?? 'captura';
   const visible = useMemo(() => (items ?? []).filter((item) => item.category === category), [items, category]);
   const current = visible[Math.min(index, visible.length - 1)] ?? null;
+  useEffect(() => { listRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); }, [index, tab]);
   const byName = useMemo(() => new Map((items ?? []).map((item) => [item.item, item])), [items]);
   const lines = Object.entries(cart).filter(([, qty]) => qty > 0).map(([name, qty]) => ({ entry: byName.get(name) as ShopEntry, qty }));
   const total = lines.reduce((sum, line) => sum + line.entry.price * line.qty, 0);
@@ -57,7 +62,7 @@ export function ShopScreen({ saveId, onBack }: Props) {
       setCart({});
       setMoney(result.money);
       await load();
-      setMessage(`Compra feita! Você gastou ${formatMoney(result.spent)}. Volte sempre!`);
+      setMessage(`Compra feita! Você gastou ${formatMoney(result.spent)}.${result.premier > 0 ? ` Ganhou ${result.premier} BOLA PREMIER de brinde!` : ''} Volte sempre!`);
       playSound('save');
     } catch (e) {
       setMessage((e as Error).message);
@@ -112,7 +117,7 @@ export function ShopScreen({ saveId, onBack }: Props) {
               ))}
             </div>
             {items === null ? <p className="gb-muted">Carregando…</p> : null}
-            <ul className="gb-menu" aria-label="Produtos">
+            <ul className="gb-menu" aria-label="Produtos" ref={listRef} style={{ maxHeight: '58vh', overflowY: 'auto' }}>
               {visible.map((entry, i) => (
                 <li key={entry.item}>
                   <button

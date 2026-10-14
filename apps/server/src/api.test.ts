@@ -296,7 +296,7 @@ test('procurar: mapa com 10 selvagens, 3 giros e nada sem procura', async () => 
   assert.ok(first.board?.habitat);
   for (const slot of first.board?.slots ?? []) {
     assert.ok(slot.speciesId >= 1 && slot.speciesId <= 151, 'só Kanto');
-    assert.ok(slot.level >= 3 && slot.level <= 12);
+    assert.ok(slot.level >= 2 && slot.level <= 10);
     assert.ok(slot.ivStars >= 0 && slot.ivStars <= 4);
     assert.equal(typeof slot.shiny, 'boolean');
   }
@@ -383,12 +383,14 @@ test('sem bolas não dá para lançar', async () => {
   assert.equal(empty.status, 400);
 });
 
+const reg = (state: WildState, id: string) => state.regions.find((r) => r.id === id);
+
 test('regiões: só Kanto no início; progresso libera regiões, giros, lendários e busca específica', async () => {
   const save = await newSave();
   const base = `/api/saves/${save.id}`;
   const initial = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.deepEqual(initial.regions.filter((r) => r.unlocked).map((r) => r.id), ['kanto']);
-  assert.equal(initial.regions[0]?.spins, 3);
+  assert.deepEqual(initial.regions.filter((r) => r.unlocked).map((r) => r.id), ['all', 'kanto']);
+  assert.equal(reg(initial, 'kanto')?.spins, 3);
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'johto' })).status, 400, 'Johto fechada');
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).status, 400, 'busca específica fechada');
   assert.equal((await call('POST', `${base}/wild/search`, {})).status, 400);
@@ -402,19 +404,23 @@ test('regiões: só Kanto no início; progresso libera regiões, giros, lendári
   // giros por desafio: ginásio 5, elite 8, campeão 12
   const progress = async () => (await call<{ granted: string | null }>('POST', `${base}/dev/progress`)).json.granted;
   assert.equal(await progress(), 'kanto:gym1');
-  assert.equal((await call<WildState>('GET', `${base}/wild`)).json.regions[0]?.spins, 5);
+  assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 5);
   for (let i = 0; i < 7; i++) await progress();
-  assert.equal(await progress(), 'kanto:elite');
+  for (const n of [1, 2, 3]) {
+    assert.equal(await progress(), `kanto:elite${n}`);
+    assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 5, 'Elite incompleta não conta');
+  }
+  assert.equal(await progress(), 'kanto:elite4');
   const afterElite = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.equal(afterElite.regions[0]?.spins, 8);
-  assert.ok(afterElite.regions[0]?.legendaries);
-  assert.ok(!afterElite.regions[1]?.unlocked, 'Johto ainda fechada');
+  assert.equal(reg(afterElite, 'kanto')?.spins, 8);
+  assert.ok(reg(afterElite, 'kanto')?.legendaries);
+  assert.ok(!reg(afterElite, 'johto')?.unlocked, 'Johto ainda fechada');
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).status, 400);
   assert.equal(await progress(), 'kanto:champion');
   const afterChampion = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.equal(afterChampion.regions[0]?.spins, 12);
-  assert.ok(afterChampion.regions[1]?.unlocked, 'Johto abriu');
-  assert.ok(!afterChampion.regions[2]?.unlocked);
+  assert.equal(reg(afterChampion, 'kanto')?.spins, 12);
+  assert.ok(reg(afterChampion, 'johto')?.unlocked, 'Johto abriu');
+  assert.ok(!reg(afterChampion, 'hoenn')?.unlocked);
 
   // busca específica: os 10 são o escolhido e o mapa é o do tipo dele
   const specific = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).json.board;
@@ -442,27 +448,53 @@ test('regiões: só Kanto no início; progresso libera regiões, giros, lendári
 test('nível escolhido e mapa escolhido após os 8 ginásios', async () => {
   const save = await newSave();
   const base = `/api/saves/${save.id}`;
-  const levelled = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', minLevel: 20, maxLevel: 25 })).json;
-  assert.deepEqual(levelled.board?.levelRange, [20, 25]);
-  assert.ok(levelled.board?.slots.every((slot) => slot.level >= 20 && slot.level <= 25));
+  const levelled = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', minLevel: 2, maxLevel: 10 })).json;
+  assert.deepEqual(levelled.board?.levelRange, [2, 10]);
+  assert.ok(levelled.board?.slots.every((slot) => slot.level >= 2 && slot.level <= 10));
   const spun = (await call<WildState>('POST', `${base}/wild/spin`)).json;
-  assert.deepEqual(spun.board?.levelRange, [20, 25], 'o giro mantém a faixa');
-  assert.ok(spun.board?.slots.every((slot) => slot.level >= 20 && slot.level <= 25));
-  assert.deepEqual(levelled.defaultLevels, [3, 12]);
-  for (const bad of [{ minLevel: 0 }, { minLevel: 30, maxLevel: 20 }, { maxLevel: 101 }, { minLevel: 2.5 }]) {
+  assert.deepEqual(spun.board?.levelRange, [2, 10], 'o giro mantém a faixa');
+  assert.ok(spun.board?.slots.every((slot) => slot.level >= 2 && slot.level <= 10));
+  assert.equal(reg(levelled, 'kanto')?.levelCap, 10);
+  for (const bad of [{ minLevel: 0 }, { minLevel: 30, maxLevel: 20 }, { maxLevel: 101 }, { maxLevel: 11 }, { minLevel: 2.5 }]) {
     assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', ...bad })).status, 400, JSON.stringify(bad));
   }
 
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', habitat: 'coast' })).status, 400, 'mapa escolhido exige 8 ginásios');
   for (let i = 0; i < 8; i++) await call('POST', `${base}/dev/progress`);
   const state = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.ok(state.regions[0]?.chooseHabitat);
+  assert.ok(reg(state, 'kanto')?.chooseHabitat);
   for (const habitat of HABITATS) {
     const board = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', habitat: habitat.id })).json.board;
     assert.equal(board?.habitat, habitat.id);
     assert.ok(board?.slots.every((slot) => slot.types.some((t) => habitat.types.includes(t))), habitat.id);
   }
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', habitat: 'lua' })).status, 400);
+});
+
+test('Todas as gerações: mistura as regiões liberadas e usa o limite da mais recente', async () => {
+  const save = await newSave();
+  const base = `/api/saves/${save.id}`;
+  const first = (await call<WildState>('GET', `${base}/wild`)).json;
+  assert.equal(first.regions[0]?.id, 'all');
+  assert.equal(reg(first, 'all')?.levelCap, 10);
+  assert.equal((await call('POST', `${base}/wild/search`, { region: 'all', speciesId: 25 })).status, 400, 'sem busca específica');
+  assert.equal((await call('POST', `${base}/wild/search`, { region: 'all', maxLevel: 11 })).status, 400);
+  const board = (await call<WildState>('POST', `${base}/wild/search`, { region: 'all' })).json.board;
+  assert.equal(board?.region, 'all');
+  assert.deepEqual(board?.levelRange, [2, 10], 'mínimo padrão 2');
+  assert.ok(board?.slots.every((slot) => slot.speciesId <= 151));
+
+  for (let i = 0; i < 13; i++) await call('POST', `${base}/dev/progress`); // 8 ginásios + Elite + campeão de Kanto
+  const later = (await call<WildState>('GET', `${base}/wild`)).json;
+  assert.equal(reg(later, 'kanto')?.levelCap, 100);
+  assert.equal(reg(later, 'johto')?.levelCap, 10);
+  assert.equal(reg(later, 'all')?.levelCap, 10, 'acompanha a região mais recente');
+  assert.equal(reg(later, 'all')?.spins, reg(later, 'johto')?.spins);
+  const seen = new Set<number>();
+  for (let i = 0; i < 25; i++) for (const slot of (await call<WildState>('POST', `${base}/wild/search`, { region: 'all' })).json.board?.slots ?? []) seen.add(slot.speciesId);
+  assert.ok([...seen].some((id) => id <= 151), 'Kanto');
+  assert.ok([...seen].some((id) => id > 151 && id <= 251), 'Johto');
+  assert.ok([...seen].every((id) => id <= 251));
 });
 
 test('mapas: cada procura usa um habitat e os Pokémon combinam com ele', async () => {
@@ -484,7 +516,15 @@ test('loja: compra em carrinho, dinheiro e limites', async () => {
   const shop = (await call<ShopEntry[]>('GET', `/api/saves/${save.id}/shop`)).json;
   assert.ok(shop.some((e) => e.item === 'poke-ball' && e.price === 200));
   assert.ok(!shop.some((e) => e.item === 'master-ball'), 'Master Ball não é vendida');
-  assert.ok(!shop.some((e) => e.category === 'mega'));
+  assert.ok(!shop.some((e) => e.item === 'premier-ball'), 'Premier só de brinde');
+  const categories = new Set(shop.map((e) => e.category));
+  for (const category of ['captura', 'cura', 'evolucao', 'mega', 'primal', 'ivs', 'buff']) assert.ok(categories.has(category), category);
+  assert.ok(!categories.has('treino'));
+  assert.equal(shop.filter((e) => e.category === 'mega').length, 97);
+  assert.equal(shop.filter((e) => e.category === 'ivs').length, 6);
+  assert.ok(shop.filter((e) => e.category === 'ivs').every((e) => e.price === 5000));
+  assert.equal(shop.find((e) => e.item === 'shiny-stone')?.price, 1_000_000);
+  assert.equal(shop.filter((e) => e.category === 'captura' && e.price === 1000).length, 16);
 
   const bought = await call<BuyResult>('POST', `/api/saves/${save.id}/shop/buy`, {
     cart: [{ item: 'poke-ball', quantity: 5 }, { item: 'potion', quantity: 3 }, { item: 'poke-ball', quantity: 1 }],
@@ -505,6 +545,18 @@ test('loja: compra em carrinho, dinheiro e limites', async () => {
     assert.equal((await call('POST', `/api/saves/${save.id}/shop/buy`, { cart })).status, 400, JSON.stringify(cart));
   }
   assert.equal((await call('POST', `/api/saves/${save.id}/shop/buy`, {})).status, 400);
+});
+
+test('loja: Bola Premier de brinde a cada 10 Poké Bolas', async () => {
+  const save = await newSave();
+  await kit(save.id);
+  const bought = await call<BuyResult>('POST', `/api/saves/${save.id}/shop/buy`, { cart: [{ item: 'poke-ball', quantity: 20 }] });
+  assert.equal(bought.status, 201);
+  assert.equal(bought.json.premier, 2);
+  const inventory = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.inventory;
+  assert.equal(inventory.find((i) => i.item === 'premier-ball')?.quantity, 12, '10 do kit + 2 de brinde');
+  const few = await call<BuyResult>('POST', `/api/saves/${save.id}/shop/buy`, { cart: [{ item: 'poke-ball', quantity: 9 }] });
+  assert.equal(few.json.premier, 0);
 });
 
 test('itens: poção e reviver', async () => {

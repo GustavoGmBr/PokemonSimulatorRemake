@@ -190,7 +190,7 @@ export interface WildBoardView {
   spinsLeft: number;
   /** giros que um mapa novo desta região recebe */
   spinsTotal: number;
-  region: RegionId;
+  region: RegionId | 'all';
   regionName: string;
   /** mapa (habitat) desta procura */
   habitat: string;
@@ -203,13 +203,17 @@ export interface WildBoardView {
 
 /** Uma região na tela de busca. */
 export interface WildRegionOption {
-  id: RegionId;
+  /** 'all' = Todas as gerações (as regiões liberadas juntas) */
+  id: RegionId | 'all';
   name: string;
   generation: number;
   unlocked: boolean;
   gyms: number;
+  eliteMembers: number;
   elite: boolean;
   champion: boolean;
+  /** nível máximo liberado para os selvagens */
+  levelCap: number;
   /** giros de cada mapa nesta região */
   spins: number;
   /** lendários podem aparecer (Elite dos 4 derrotada) */
@@ -236,8 +240,6 @@ export interface WildState {
   balls: BallOption[];
   regions: WildRegionOption[];
   money: number;
-  /** faixa de nível padrão (cresce com os ginásios vencidos) */
-  defaultLevels: [number, number];
   /** preço de renovar o mapa sem giros */
   refreshCost: number;
   shinyCharm: boolean;
@@ -245,7 +247,7 @@ export interface WildState {
 }
 
 export interface SearchWildRequest {
-  region: RegionId;
+  region: RegionId | 'all';
   /** busca específica: id da espécie (exige o campeão da região derrotado) */
   speciesId?: number;
   /** escolher o mapa (exige os 8 ginásios da região) */
@@ -290,6 +292,8 @@ export interface BuyRequest {
 export interface BuyResult {
   spent: number;
   money: number;
+  /** Bolas Premier ganhas de brinde */
+  premier: number;
 }
 
 export interface UseItemRequest {

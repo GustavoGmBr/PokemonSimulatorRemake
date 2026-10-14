@@ -37,7 +37,11 @@ export function applyHealItem(item: string, currentHp: number, maxHp: number): U
 }
 
 /** Itens da loja: categorias à venda e limite por item. */
-export const SHOP_CATEGORIES = ['captura', 'cura', 'evolucao', 'buff'] as const;
+export const SHOP_CATEGORIES = ['captura', 'cura', 'evolucao', 'mega', 'primal', 'ivs', 'buff'] as const;
 export const MAX_STACK = 99;
 /** Amuletos e afins: só um por jogador. */
 export const UNIQUE_ITEMS: ReadonlySet<string> = new Set(['shiny-charm', 'catching-charm', 'amulet-coin', 'lucky-egg']);
+
+/** Bola Premier de brinde: uma a cada 10 Poké Bolas compradas de uma vez. */
+export const PREMIER_BALL = 'premier-ball';
+export const PREMIER_EVERY = 10;

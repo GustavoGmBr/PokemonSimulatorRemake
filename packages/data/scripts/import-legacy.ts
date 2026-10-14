@@ -141,7 +141,7 @@ const types: TypeInfo[] = legacy.tipos.map((entry) => ({
   noneTo: entry.relacoesDano.no_damage_to,
 }));
 
-const items: Item[] = legacy.itens.map((entry) => ({
+const legacyItems: Item[] = legacy.itens.map((entry) => ({
   id: entry.id,
   name: entry.nome,
   displayName: entry.nomeExibicao,
@@ -149,6 +149,44 @@ const items: Item[] = legacy.itens.map((entry) => ({
   description: entry.descricao,
   price: entry.precoLoja ?? null,
 }));
+
+// Itens do jogo antigo que não estão no catálogo (backend/src/services/captureBalls.js e ivRules.js).
+const SPECIAL_BALLS: [string, string, string, number | null][] = [
+  ['fast-ball', 'Bola Rápida', 'Multiplica a captura por 6× no primeiro turno.', 1000],
+  ['timer-ball', 'Bola Psíquica', 'Multiplica a captura por 3× contra Pokémon do tipo Psíquico.', 1000],
+  ['dusk-ball', 'Bola do Crepúsculo', 'Multiplica a captura por 4× contra Pokémon dos tipos Sombrio ou Fantasma.', 1000],
+  ['dive-ball', 'Bola Aquática', 'Multiplica a captura por 3,5× contra Pokémon do tipo Água.', 1000],
+  ['net-ball', 'Bola de Rede', 'Multiplica a captura por 3× contra Pokémon de Água ou Inseto.', 1000],
+  ['nest-ball', 'Bola do Ninho', 'Multiplica a captura por 3× contra Pokémon do tipo Voador.', 1000],
+  ['repeat-ball', 'Bola Trovão', 'Multiplica a captura por 3× contra Pokémon do tipo Elétrico.', 1000],
+  ['heavy-ball', 'Bola Pesada', 'Pokémon maiores ou mais pesados recebem bônus crescente, até 4×.', 1000],
+  ['moon-ball', 'Bola Dracônica', 'Multiplica a captura por 3× contra Pokémon do tipo Dragão.', 1000],
+  ['level-ball', 'Bola Congelante', 'Multiplica a captura por 3× contra Pokémon do tipo Gelo.', 1000],
+  ['love-ball', 'Bola das Fadas', 'Multiplica a captura por 3,5× contra Pokémon do tipo Fada e por 3× contra Pokémon que compartilham um tipo com o seu.', 1000],
+  ['dream-ball', 'Bola de Sonho', 'Multiplica a captura por 4× contra Pokémon adormecidos.', 1000],
+  ['heal-ball', 'Bola de Cura', 'Captura e restaura todo o HP do Pokémon.', 1000],
+  ['luxury-ball', 'Bola de Treino', 'Multiplica a captura por 3× contra Pokémon do tipo Lutador.', 1000],
+  ['friend-ball', 'Bola Floresta', 'Multiplica a captura por 3× contra Pokémon do tipo Planta.', 1000],
+  ['premier-ball', 'Bola Premier', 'Visual especial. Ganhe uma ao comprar 10 Poké Bolas de uma vez.', null],
+  ['sport-ball', 'Bola Incandescente', 'Multiplica a captura por 3× contra Pokémon do tipo Fogo.', 1000],
+];
+const IV_STATS: [string, string][] = [
+  ['hp', 'HP'], ['attack', 'Ataque'], ['defense', 'Defesa'], ['special-attack', 'At. especial'], ['special-defense', 'Def. especial'], ['speed', 'Velocidade'],
+];
+const PRICE_OVERRIDES: Record<string, number> = { 'shiny-stone': 1_000_000 };
+const EXTRA_ID_BASE = 9000;
+const extraItems: Item[] = [
+  ...SPECIAL_BALLS.map(([name, displayName, description, price]) => ({ name, displayName, description, price, category: 'captura' as const })),
+  ...IV_STATS.map(([stat, label]) => ({
+    name: `iv-${stat}`, displayName: `Essência de ${label}`, category: 'ivs' as const, price: 5000,
+    description: `Aumenta permanentemente +1 IV de ${label} de um Pokémon, até 31.`,
+  })),
+].map((item, index) => ({ id: EXTRA_ID_BASE + index, ...item }));
+const known = new Set(legacyItems.map((item) => item.name));
+const items: Item[] = [
+  ...legacyItems.map((item) => ({ ...item, price: PRICE_OVERRIDES[item.name] ?? item.price })),
+  ...extraItems.filter((item) => !known.has(item.name)),
+];
 
 const catalog: Catalog = { species, moves, types, items };
 mkdirSync(outDir, { recursive: true });

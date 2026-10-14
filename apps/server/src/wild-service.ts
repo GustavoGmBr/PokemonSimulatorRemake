@@ -2,8 +2,7 @@ import { randomInt } from 'node:crypto';
 import {
   HABITATS, LEGENDARY_SLOT_CHANCE, REFRESH_COST, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
   habitatById, habitatOfType, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor,
-  speciesInHabitat, statsOf, MAX_WILD_LEVEL, MIN_WILD_LEVEL, GYMS_PER_REGION, unlockedRegionIds, wildLevelRange,
-  type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
+  speciesInHabitat, statsOf, MIN_WILD_LEVEL, GYMS_PER_REGION, DEFAULT_MIN_LEVEL, levelCap, HEAL_BALL, unlockedRegionIds,   type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
   type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
@@ -21,6 +20,7 @@ interface BoardRow {
   target_species: number | null;
   min_level: number;
   max_level: number;
+  throws: number;
 }
 
 interface Board {
@@ -31,6 +31,8 @@ interface Board {
   habitat: string;
   target: number | null;
   levels: [number, number];
+  /** bolas já lançadas no encontro atual */
+  throws: number;
 }
 
 export function createWildService(db: Db, store: PokemonStore, inventory: Inventory, rng: Rng = rngFrom(randomInt)) {
@@ -54,28 +56,43 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
 
   function regionOptions(ids: string[]): WildRegionOption[] {
     const unlocked = unlockedRegionIds(ids);
-    return REGIONS.map((region) => {
+    const list: WildRegionOption[] = REGIONS.map((region) => {
       const progress = regionProgress(ids, region.id);
       return {
         id: region.id, name: region.name, generation: region.generation, unlocked: unlocked.includes(region.id),
-        gyms: progress.gyms, elite: progress.elite, champion: progress.champion,
+        gyms: progress.gyms, eliteMembers: progress.eliteMembers, elite: progress.elite, champion: progress.champion,
+        levelCap: levelCap(progress),
         spins: spinsFor(progress), legendaries: progress.elite, specific: progress.champion,
         chooseHabitat: progress.gyms >= GYMS_PER_REGION,
       };
     });
+    // "Todas as gerações": junta as regiões liberadas; o limite e os giros seguem a mais recente
+    const latest = list.filter((region) => region.unlocked).at(-1) as WildRegionOption;
+    const all: WildRegionOption = {
+      ...latest, id: 'all', name: 'Todas as gerações', generation: 0, unlocked: true,
+      legendaries: list.some((region) => region.unlocked && region.elite), specific: false,
+    };
+    return [all, ...list];
   }
 
   function randomOf<T>(list: readonly T[]): T {
     return list[rng.int(list.length)] as T;
   }
 
-  /** Espécies comuns da região (e do habitat, se houver) e lendários liberados. */
-  function pools(region: string, unlocked: string[], badges: number, habitat: Habitat | null, legendaries: boolean) {
+  /** Regiões de onde o mapa sorteia: a escolhida, ou todas as liberadas em "Todas as gerações". */
+  function scopeOf(region: string, unlocked: string[]): string[] {
+    return region === 'all' ? unlocked : [region];
+  }
+
+  /** Espécies comuns (e do habitat, se houver) e lendários das regiões cuja Elite dos 4 já caiu. */
+  function pools(regions: string[], unlocked: string[], badges: number, habitat: Habitat | null, ids: string[]) {
     const fits = (species: Species) => !habitat || speciesInHabitat(species, habitat);
-    const common = data.species.filter((species) => isWildEligible(species, region, unlocked, badges) && fits(species));
-    const rare = legendaries
-      ? data.species.filter((species) => isLegendary(species) && regionOfSpecies(species.id)?.id === region && fits(species))
-      : [];
+    const common = data.species.filter((species) => regions.some((region) => isWildEligible(species, region, unlocked, badges)) && fits(species));
+    const rare = data.species.filter((species) => {
+      if (!isLegendary(species) || !fits(species)) return false;
+      const home = regionOfSpecies(species.id)?.id;
+      return home !== undefined && regions.includes(home) && regionProgress(ids, home).elite;
+    });
     return { common, rare };
   }
 
@@ -101,8 +118,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       if (!species) throw badRequest('Espécie desconhecida.');
       return Array.from({ length: 10 }, () => makeMon(species, range, extraRolls));
     }
-    const progress = regionProgress(ids, region);
-    const { common, rare } = pools(region, unlocked, badges, habitat, progress.elite);
+    const { common, rare } = pools(scopeOf(region, unlocked), unlocked, badges, habitat, ids);
     if (common.length === 0 && rare.length === 0) throw badRequest('Nenhum POKÉMON disponível neste mapa.');
     return Array.from({ length: 10 }, () => {
       const useRare = rare.length > 0 && (common.length === 0 || rng.int(1000) < LEGENDARY_SLOT_CHANCE * 1000);
@@ -116,17 +132,17 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     if (!row) return null;
     return {
       slots: JSON.parse(row.slots) as PokemonInstance[], spinsLeft: row.spins_left, chosen: row.chosen,
-      region: row.region, habitat: row.habitat, target: row.target_species, levels: [row.min_level, row.max_level],
+      region: row.region, habitat: row.habitat, target: row.target_species, levels: [row.min_level, row.max_level], throws: row.throws,
     };
   }
 
   function writeBoard(saveId: string, board: Board): void {
     db.prepare(`
-      INSERT INTO wild_boards (save_id, slots, spins_left, chosen, region, habitat, target_species, min_level, max_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wild_boards (save_id, slots, spins_left, chosen, region, habitat, target_species, min_level, max_level, throws) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (save_id) DO UPDATE SET slots = excluded.slots, spins_left = excluded.spins_left, chosen = excluded.chosen,
         region = excluded.region, habitat = excluded.habitat, target_species = excluded.target_species,
-        min_level = excluded.min_level, max_level = excluded.max_level
-    `).run(saveId, JSON.stringify(board.slots), board.spinsLeft, board.chosen, board.region, board.habitat, board.target, board.levels[0], board.levels[1]);
+        min_level = excluded.min_level, max_level = excluded.max_level, throws = excluded.throws
+    `).run(saveId, JSON.stringify(board.slots), board.spinsLeft, board.chosen, board.region, board.habitat, board.target, board.levels[0], board.levels[1], board.throws);
   }
 
   function speciesOf(pokemon: PokemonInstance): Species {
@@ -155,7 +171,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     };
   }
 
-  function captureInput(saveId: string, pokemon: PokemonInstance, ball: string, caught: Set<number>): CaptureInput {
+  function captureInput(saveId: string, pokemon: PokemonInstance, ball: string, throws: number): CaptureInput {
     const species = speciesOf(pokemon);
     return {
       maxHp: statsOf(pokemon, species).hp,
@@ -164,11 +180,11 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       ball,
       catchingCharm: inventory.quantity(saveId, 'catching-charm') > 0,
       context: {
-        level: pokemon.level,
         types: species.types,
-        baseSpeed: species.baseStats.spe,
-        caughtBefore: caught.has(species.id),
-        hour: new Date().getHours(),
+        weight: species.weight,
+        height: species.height,
+        firstTurn: throws === 0,
+        leadTypes: store.team(saveId)[0]?.types ?? [],
       },
     };
   }
@@ -189,7 +205,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         displayName: item.displayName,
         description: item.description,
         quantity: quantities.get(item.name) ?? 0,
-        chance: encounter ? captureChance(captureInput(saveId, encounter, item.name, caught)) : null,
+        chance: encounter ? captureChance(captureInput(saveId, encounter, item.name, board?.throws ?? 0)) : null,
       }));
 
     const regions = regionOptions(ids);
@@ -201,7 +217,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         spinsLeft: board.spinsLeft,
         spinsTotal: regions.find((region) => region.id === board.region)?.spins ?? 3,
         region: board.region as WildBoardView['region'],
-        regionName: REGIONS.find((region) => region.id === board.region)?.name ?? board.region,
+        regionName: regions.find((region) => region.id === board.region)?.name ?? board.region,
         habitat: habitat.id,
         habitatName: habitat.name,
         targetSpeciesId: board.target,
@@ -213,7 +229,6 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       chosen: board?.chosen ?? null,
       balls,
       regions,
-      defaultLevels: wildLevelRange(gymCount(ids)),
       money: moneyOf(saveId),
       refreshCost: REFRESH_COST,
       shinyCharm: (quantities.get('shiny-charm') ?? 0) > 0,
@@ -236,18 +251,18 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       if (!option) throw badRequest('Escolha uma região.');
       if (!option.unlocked) throw badRequest(`${option.name} ainda não foi liberada.`);
 
-      const defaults = wildLevelRange(gymCount(ids));
-      const min = input.minLevel === undefined || input.minLevel === null ? defaults[0] : Number(input.minLevel);
-      const max = input.maxLevel === undefined || input.maxLevel === null ? Math.max(defaults[1], min) : Number(input.maxLevel);
-      if (![min, max].every((n) => Number.isInteger(n) && n >= MIN_WILD_LEVEL && n <= MAX_WILD_LEVEL)) {
-        throw badRequest(`Os níveis vão de ${MIN_WILD_LEVEL} a ${MAX_WILD_LEVEL}.`);
-      }
+      const cap = option.levelCap;
+      const min = input.minLevel === undefined || input.minLevel === null ? Math.min(DEFAULT_MIN_LEVEL, cap) : Number(input.minLevel);
+      const max = input.maxLevel === undefined || input.maxLevel === null ? cap : Number(input.maxLevel);
+      if (![min, max].every((n) => Number.isInteger(n) && n >= MIN_WILD_LEVEL)) throw badRequest(`O nível mínimo é ${MIN_WILD_LEVEL}.`);
+      if (max > cap) throw badRequest(`O nível máximo liberado em ${option.name} é ${cap}.`);
       if (min > max) throw badRequest('O nível mínimo não pode ser maior que o máximo.');
       const levels: [number, number] = [min, max];
 
       let target: number | null = null;
       let habitat: Habitat;
       if (input.speciesId !== undefined && input.speciesId !== null) {
+        if (option.id === 'all') throw badRequest('Escolha uma região para procurar um POKÉMON específico.');
         if (!option.specific) throw badRequest(`Derrote o campeão de ${option.name} para procurar um POKÉMON específico.`);
         const species = data.speciesById.get(Number(input.speciesId));
         if (!species || regionOfSpecies(species.id)?.id !== option.id) throw badRequest(`Escolha um POKÉMON de ${option.name}.`);
@@ -257,21 +272,22 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         if (!option.chooseHabitat) throw badRequest(`Vença os ${GYMS_PER_REGION} ginásios de ${option.name} para escolher o mapa.`);
         const chosenHabitat = habitatById(input.habitat);
         if (!chosenHabitat) throw badRequest('Mapa desconhecido.');
-        const { common, rare } = pools(option.id, unlockedRegionIds(ids), gymCount(ids), chosenHabitat, option.legendaries);
+        const unlockedNow = unlockedRegionIds(ids);
+        const { common, rare } = pools(scopeOf(option.id, unlockedNow), unlockedNow, gymCount(ids), chosenHabitat, ids);
         if (common.length + rare.length === 0) throw badRequest('Nenhum POKÉMON desta região vive neste mapa.');
         habitat = chosenHabitat;
       } else {
         const unlocked = unlockedRegionIds(ids);
         const badges = gymCount(ids);
         const candidates = HABITATS.filter((entry) => {
-          const { common, rare } = pools(option.id, unlocked, badges, entry, option.legendaries);
+          const { common, rare } = pools(scopeOf(option.id, unlocked), unlocked, badges, entry, ids);
           return common.length + rare.length > 0;
         });
         if (candidates.length === 0) throw badRequest('Nenhum POKÉMON disponível nesta região.');
         habitat = randomOf(candidates);
       }
       writeBoard(saveId, {
-        slots: generate(saveId, option.id, habitat, target, levels), spinsLeft: option.spins, chosen: null,
+        slots: generate(saveId, option.id, habitat, target, levels), spinsLeft: option.spins, chosen: null, throws: 0,
         region: option.id, habitat: habitat.id, target, levels,
       });
       return state(saveId);
@@ -293,7 +309,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
           if (moneyOf(saveId) < REFRESH_COST) throw badRequest('Dinheiro insuficiente para renovar o mapa.');
           db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(REFRESH_COST, new Date().toISOString(), saveId);
         }
-        writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.target, board.levels), spinsLeft, chosen: null });
+        writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.target, board.levels), spinsLeft, chosen: null, throws: 0 });
         return state(saveId);
       });
     },
@@ -314,7 +330,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       const pokemon = Number.isInteger(index) ? board.slots[index] : undefined;
       if (!pokemon) throw badRequest('Escolha um dos POKÉMON do mapa.');
       store.markSeen(saveId, pokemon.speciesId);
-      writeBoard(saveId, { ...board, chosen: index });
+      writeBoard(saveId, { ...board, chosen: index, throws: 0 });
       return state(saveId);
     },
 
@@ -322,7 +338,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     flee(saveId: string): WildState {
       assertSave(saveId);
       const board = readBoard(saveId);
-      if (board) writeBoard(saveId, { ...board, chosen: null });
+      if (board) writeBoard(saveId, { ...board, chosen: null, throws: 0 });
       return state(saveId);
     },
 
@@ -336,16 +352,19 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       if (!item || item.category !== 'captura') throw badRequest('Escolha uma POKÉ BOLA.');
 
       const caught = caughtSet(saveId);
-      const input = captureInput(saveId, wild, item.name, caught);
+      const input = captureInput(saveId, wild, item.name, board.throws);
       const chance = captureChance(input);
       return transaction(db, () => {
         if (!inventory.take(saveId, item.name)) throw badRequest(`Você não tem ${item.displayName}.`);
         const result = attemptCapture(rng, input);
         let pokemon = null;
         if (result.caught) {
-          const placed = store.place(saveId, { ...wild, ball: item.name });
+          const healed = item.name === HEAL_BALL ? { ...wild, currentHp: statsOf(wild, speciesOf(wild)).hp } : wild;
+          const placed = store.place(saveId, { ...healed, ball: item.name });
           pokemon = store.view(saveId, placed.id);
           db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
+        } else {
+          writeBoard(saveId, { ...board, throws: board.throws + 1 });
         }
         return { shakes: result.shakes, caught: result.caught, chance, pokemon, state: state(saveId) };
       });

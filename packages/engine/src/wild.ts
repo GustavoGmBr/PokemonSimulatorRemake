@@ -13,20 +13,24 @@ export const LEGENDARY_SLOT_CHANCE = 0.04;
 
 // ---------------------------------------------------------------- progresso por região
 
-/** Ids gravados na tabela `badges`: `kanto:gym1`…`kanto:gym8`, `kanto:elite`, `kanto:champion`. */
+/** Ids gravados na tabela `badges`: `kanto:gym1`…`kanto:gym8`, `kanto:elite1`…`kanto:elite4`, `kanto:champion`. */
 export const gymId = (region: string, n: number) => `${region}:gym${n}`;
-export const eliteId = (region: string) => `${region}:elite`;
+export const eliteId = (region: string, n: number) => `${region}:elite${n}`;
 export const championId = (region: string) => `${region}:champion`;
 
 export interface RegionProgress {
   gyms: number;
+  /** membros da Elite dos 4 derrotados (0–4) */
+  eliteMembers: number;
+  /** os 4 membros derrotados */
   elite: boolean;
   champion: boolean;
 }
 
 export function regionProgress(challengeIds: readonly string[], region: string): RegionProgress {
   const gyms = challengeIds.filter((id) => id.startsWith(`${region}:gym`)).length;
-  return { gyms, elite: challengeIds.includes(eliteId(region)), champion: challengeIds.includes(championId(region)) };
+  const eliteMembers = [1, 2, 3, 4].filter((n) => challengeIds.includes(eliteId(region, n))).length;
+  return { gyms, eliteMembers, elite: eliteMembers >= 4, champion: challengeIds.includes(championId(region)) };
 }
 
 /** Kanto começa liberada; cada região seguinte abre ao derrotar o campeão da anterior. */
@@ -42,6 +46,19 @@ export function unlockedRegionIds(challengeIds: readonly string[]): string[] {
 /** Giros por mapa: 3 de base; 5 com um ginásio da região, 8 com a Elite dos 4, 12 com o campeão. */
 export function spinsFor(progress: RegionProgress): number {
   return progress.champion ? 12 : progress.elite ? 8 : progress.gyms > 0 ? 5 : BOARD_SPINS;
+}
+
+/** Nível máximo liberado: 10 antes do 1º ginásio, sobe a cada ginásio, membro da Elite e campeão. */
+export const GYM_LEVEL_CAPS = [16, 22, 28, 34, 40, 46, 52, 58] as const;
+export const ELITE_LEVEL_CAPS = [70, 82, 94, 100] as const;
+export const BASE_LEVEL_CAP = 10;
+export const DEFAULT_MIN_LEVEL = 2;
+
+export function levelCap(progress: RegionProgress): number {
+  if (progress.champion) return 100;
+  if (progress.eliteMembers > 0) return ELITE_LEVEL_CAPS[Math.min(4, progress.eliteMembers) - 1] as number;
+  if (progress.gyms > 0) return GYM_LEVEL_CAPS[Math.min(8, progress.gyms) - 1] as number;
+  return BASE_LEVEL_CAP;
 }
 
 // ---------------------------------------------------------------- habitats (mapas)

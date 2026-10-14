@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { HABITATS, MAX_WILD_LEVEL, MIN_WILD_LEVEL, REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
+import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
@@ -84,9 +84,17 @@ export function WildScreen({ saveId, onBack }: Props) {
     }
   };
 
+  /** Faixa de nível escolhida, sempre dentro do limite liberado da região (padrão: do 2 ao máximo). */
+  const rangeFor = (option: WildRegionOption | undefined): [number, number] => {
+    const cap = option?.levelCap ?? DEFAULT_MIN_LEVEL;
+    const [lo, hi] = levels ?? [Math.min(DEFAULT_MIN_LEVEL, cap), cap];
+    const max = Math.max(MIN_WILD_LEVEL, Math.min(cap, hi));
+    return [Math.max(MIN_WILD_LEVEL, Math.min(max, lo)), max];
+  };
+
   const search = (region: string, speciesId?: number) => run(async () => {
-    const [minLevel, maxLevel] = levels ?? state?.defaultLevels ?? [MIN_WILD_LEVEL, MIN_WILD_LEVEL + 9];
     const option = state?.regions.find((r) => r.id === region);
+    const [minLevel, maxLevel] = rangeFor(option);
     const request = { region: region as never, minLevel, maxLevel, ...(speciesId ? { speciesId } : option?.chooseHabitat && habitatPick ? { habitat: habitatPick } : {}) };
     const next = await api.wildSearch(saveId, request);
     setState(next);
@@ -186,8 +194,8 @@ export function WildScreen({ saveId, onBack }: Props) {
   const regionOf = (id: string): WildRegionOption | undefined => state.regions.find((region) => region.id === id);
   const selected = regionOf(step === 'regions' ? hoverRegion : regionId) ?? (state.regions[0] as WildRegionOption);
   const cycleRow = (id: string, d: number) => {
-    const [lo, hi] = levels ?? state.defaultLevels;
-    const clamp = (n: number) => Math.max(MIN_WILD_LEVEL, Math.min(MAX_WILD_LEVEL, n));
+    const [lo, hi] = rangeFor(selected);
+    const clamp = (n: number) => Math.max(MIN_WILD_LEVEL, Math.min(selected.levelCap, n));
     if (id === 'min') { const v = clamp(lo + d); setLevels([v, Math.max(v, hi)]); }
     else if (id === 'max') { const v = clamp(hi + d); setLevels([Math.min(lo, v), v]); }
     else if (id === 'habitat') {
@@ -222,7 +230,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                   items={state.regions.map((region): MenuItem => ({
                     id: region.id,
                     label: `${region.name}`,
-                    extra: region.unlocked ? `Ger. ${region.generation}` : '🔒',
+                    extra: region.unlocked ? (region.id === 'all' ? 'Todas' : `Ger. ${region.generation}`) : '🔒',
                     disabled: !region.unlocked,
                   }))}
                   onMove={setHoverRegion}
@@ -233,7 +241,7 @@ export function WildScreen({ saveId, onBack }: Props) {
             </div>
             <div className="gb-grow" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <section className="gb-window" aria-label="Detalhes da região">
-                <h2 className="gb-title" style={{ fontSize: 22, marginBottom: 4 }}>{selected.name} · Geração {selected.generation}</h2>
+                <h2 className="gb-title" style={{ fontSize: 22, marginBottom: 4 }}>{selected.id === 'all' ? selected.name : `${selected.name} · Geração ${selected.generation}`}</h2>
                 {selected.unlocked ? (
                   <p style={{ margin: '0 0 8px' }}>Cada mapa mostra 10 POKÉMON soltos. Clique no que quiser enfrentar.</p>
                 ) : (
@@ -242,10 +250,12 @@ export function WildScreen({ saveId, onBack }: Props) {
                   </p>
                 )}
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
-                  <li>Ginásios: <b>{selected.gyms}/8</b> · Elite dos 4: <b>{selected.elite ? '✓' : '—'}</b> · Campeão: <b>{selected.champion ? '✓' : '—'}</b></li>
+                  {selected.id === 'all' ? <li className="gb-muted">Mistura as regiões liberadas; giros, lendários e limite de nível seguem a região mais recente.</li> : null}
+                  <li>Ginásios: <b>{selected.gyms}/8</b> · Elite dos 4: <b>{selected.eliteMembers}/4</b> · Campeão: <b>{selected.champion ? '✓' : '—'}</b></li>
+                  <li>Nível máximo liberado: <b>{selected.levelCap}</b></li>
                   <li>Giros por mapa: <b>{selected.spins}</b> <span className="gb-muted">(ginásio 5 · Elite dos 4 8 · campeão 12)</span></li>
                   <li>Lendários: <b>{selected.legendaries ? 'liberados' : 'derrote a Elite dos 4'}</b></li>
-                  <li>Pokémon específico: <b>{selected.specific ? 'liberado' : 'derrote o campeão'}</b></li>
+                  <li>Pokémon específico: <b>{selected.id === 'all' ? 'escolha uma geração' : selected.specific ? 'liberado' : 'derrote o campeão'}</b></li>
                 </ul>
               </section>
               {step !== 'regions' && selected.unlocked ? (
@@ -256,12 +266,13 @@ export function WildScreen({ saveId, onBack }: Props) {
                       <FilterPanel
                         title="Procura"
                         active={!busy}
-                        rows={actionRows(selected, levels ?? state.defaultLevels, habitatPick)}
+                        rows={actionRows(selected, rangeFor(selected), habitatPick)}
                         onBigCycle={(id, d) => cycleRow(id, d * 10)}
                         onCycle={(id, d) => cycleRow(id, d)}
                         onAction={(id) => {
                           if (id === 'search') void search(regionId);
                           else if (id === 'specific') {
+                            if (selected.id === 'all') { setMessage('Escolha uma geração para procurar um POKÉMON específico.'); playSound('error'); return; }
                             if (!selected.specific) { setMessage(`Derrote o campeão de ${selected.name} para procurar um POKÉMON específico.`); playSound('error'); return; }
                             setFilter(''); setStep('species'); setMessage('Digite o nome e escolha o POKÉMON.');
                           } else setStep('regions');
@@ -269,7 +280,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                         onBack={() => setStep('regions')}
                       />
                       <p className="gb-hint" style={{ margin: '8px 0 0' }}>
-                        ←→ mudam o valor (Q/E de 10 em 10). Os níveis valem para este mapa e para os giros.
+                        ←→ mudam o valor (Q/E de 10 em 10). Os níveis (1 até o máximo liberado) valem para este mapa e para os giros.
                         {selected.chooseHabitat && habitatPick ? ` ${HABITATS.find((h) => h.id === habitatPick)?.description ?? ''}` : ''}
                       </p>
                     </>
@@ -391,7 +402,7 @@ function actionRows(region: WildRegionOption, levels: [number, number], habitatP
   const habitat = HABITATS.find((h) => h.id === habitatPick);
   return [
     { id: 'search', label: 'Procurar selvagem', value: '', kind: 'action' },
-    { id: 'specific', label: 'POKÉMON específico', value: region.specific ? '' : '🔒 campeão', kind: 'action' },
+    { id: 'specific', label: 'POKÉMON específico', value: region.id === 'all' ? '— por geração' : region.specific ? '' : '🔒 campeão', kind: 'action' },
     { id: 'min', label: 'Nível mínimo', value: String(levels[0]), kind: 'cycle' },
     { id: 'max', label: 'Nível máximo', value: String(levels[1]), kind: 'cycle' },
     { id: 'habitat', label: 'Mapa', value: region.chooseHabitat ? (habitat ? habitat.name : 'Aleatório') : '🔒 8 ginásios', kind: 'cycle' },

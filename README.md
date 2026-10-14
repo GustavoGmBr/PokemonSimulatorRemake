@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.4**, Fase 1 em andamento (PC, Pokédex, selvagens, captura e loja prontos; batalha a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.5**, Fase 1 em andamento (PC, Pokédex, selvagens, captura e loja prontos; batalha a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -82,9 +82,15 @@ packages/
      depois do campeão. Brilhante 1/4096 (Amuleto Brilhante = +2 sorteios), fórmula de captura por HP e
      status, todas as Poké Bolas, animação de 3 balanços e alerta de brilhante / ★★★ ou mais.
      Os Pokémon "andam" pelo mapa (param ao passar o mouse). Você escolhe o nível mínimo e máximo de cada
-     procura (1–100, padrão cresce com os ginásios) e, com os 8 ginásios da região vencidos, também o mapa
-     (habitat). Iniciais: só os da 1ª geração por enquanto.
-   - ✅ Itens e loja: poções e revives na Mochila, loja com carrinho.
+     procura, de 1 até o limite liberado (padrão: do 2 ao limite) e, com os 8 ginásios da região vencidos,
+     também o mapa (habitat). **Limite de nível:** 10 antes do 1º ginásio; 16, 22, 28, 34, 40, 46, 52 e 58
+     após cada ginásio; 70, 82, 94 e 100 após cada membro da Elite dos 4; 100 após o campeão. A opção
+     **Todas as gerações** mistura as regiões liberadas e segue giros, lendários e limite da região mais
+     recente liberada (sem busca específica). Iniciais: só os da 1ª geração por enquanto.
+   - ✅ Itens e loja: poções e revives na Mochila, loja com carrinho e todos os itens do jogo antigo:
+     Poké Bolas (as 16 especiais com os mesmos multiplicadores; Bola Premier de brinde a cada 10 Poké
+     Bolas), curas, pedras de evolução, Mega (97), Primal, Essências de IV (₽ 5.000; o uso vem com a
+     tela de detalhes) e amuletos.
    - ⏳ Dependem da batalha (Fase 2): dinheiro por vitória, equipe curada após cada batalha e uso
      de itens dentro da batalha. O motor de itens (`packages/engine/src/items.ts`) já está pronto.
 2. **Batalhas** — engine de batalha com status e estágios, IA de treinador, ginásios, Elite 4 e campeões.

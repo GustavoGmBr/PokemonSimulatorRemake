@@ -2,14 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadGameData } from './index.ts';
 import {
-  HABITATS, applyHealItem, habitatOfType, regionProgress, spinsFor, unlockedRegionIds,
+  HABITATS, applyHealItem, habitatOfType, levelCap, regionProgress, spinsFor, unlockedRegionIds,
   attemptCapture, ballMultiplier, captureChance, captureValue, evolutionStage, isWildEligible, maxStageForBadges,
   rollShiny, seededRng, shakeThreshold, wildLevelRange, type BallContext,
 } from '@pokesim/engine';
 
 const data = loadGameData();
 const species = (id: number) => data.speciesById.get(id) as NonNullable<ReturnType<typeof data.speciesById.get>>;
-const ctx: BallContext = { level: 20, types: ['normal'], baseSpeed: 50, caughtBefore: false, hour: 12 };
+const ctx: BallContext = { types: ['normal'], weight: 10, height: 1, firstTurn: false, leadTypes: ['fire'] };
 const base = { maxHp: 100, currentHp: 100, captureRate: 45, ball: 'poke-ball', context: ctx };
 
 test('brilhante: cerca de 1 em 4096, e o amuleto aumenta a chance', () => {
@@ -43,16 +43,34 @@ test('fórmula de captura: HP baixo e bolas melhores ajudam', () => {
   assert.ok(shakeThreshold(255) >= 65536 && shakeThreshold(30) < shakeThreshold(120));
 });
 
-test('bolas especiais olham tipo, nível, velocidade, hora e Pokédex', () => {
-  assert.equal(ballMultiplier('net-ball', { ...ctx, types: ['water'] }), 3.5);
+test('bolas especiais seguem a tabela do jogo antigo', () => {
+  const only = (types: BallContext['types']) => ({ ...ctx, types });
+  assert.equal(ballMultiplier('net-ball', only(['water'])), 3);
+  assert.equal(ballMultiplier('net-ball', only(['bug'])), 3);
   assert.equal(ballMultiplier('net-ball', ctx), 1);
-  assert.equal(ballMultiplier('nest-ball', { ...ctx, level: 5 }), 3.6);
-  assert.equal(ballMultiplier('nest-ball', { ...ctx, level: 60 }), 1);
-  assert.equal(ballMultiplier('repeat-ball', { ...ctx, caughtBefore: true }), 3.5);
-  assert.equal(ballMultiplier('dusk-ball', { ...ctx, hour: 22 }), 3);
+  assert.equal(ballMultiplier('dive-ball', only(['water'])), 3.5);
+  assert.equal(ballMultiplier('nest-ball', only(['flying'])), 3);
+  assert.equal(ballMultiplier('repeat-ball', only(['electric'])), 3);
+  assert.equal(ballMultiplier('dusk-ball', only(['ghost'])), 4);
+  assert.equal(ballMultiplier('dusk-ball', only(['dark'])), 4);
   assert.equal(ballMultiplier('dusk-ball', ctx), 1);
-  assert.equal(ballMultiplier('fast-ball', { ...ctx, baseSpeed: 110 }), 4);
-  assert.equal(ballMultiplier('quick-ball', ctx), 5);
+  assert.equal(ballMultiplier('timer-ball', only(['psychic'])), 3);
+  assert.equal(ballMultiplier('moon-ball', only(['dragon'])), 3);
+  assert.equal(ballMultiplier('level-ball', only(['ice'])), 3);
+  assert.equal(ballMultiplier('luxury-ball', only(['fighting'])), 3);
+  assert.equal(ballMultiplier('friend-ball', only(['grass'])), 3);
+  assert.equal(ballMultiplier('sport-ball', only(['fire'])), 3);
+  assert.equal(ballMultiplier('fast-ball', { ...ctx, firstTurn: true }), 6);
+  assert.equal(ballMultiplier('fast-ball', ctx), 1);
+  assert.equal(ballMultiplier('love-ball', only(['fairy'])), 3.5);
+  assert.equal(ballMultiplier('love-ball', only(['fire'])), 3, 'compartilha tipo com o líder');
+  assert.equal(ballMultiplier('love-ball', ctx), 1);
+  assert.equal(ballMultiplier('dream-ball', ctx), 1, 'selvagem não dorme');
+  assert.equal(ballMultiplier('dream-ball', { ...ctx, asleep: true }), 4);
+  assert.equal(ballMultiplier('heavy-ball', ctx), 1);
+  assert.equal(ballMultiplier('heavy-ball', { ...ctx, weight: 150 }), 2);
+  assert.equal(ballMultiplier('heavy-ball', { ...ctx, weight: 460 }), 4);
+  assert.equal(ballMultiplier('heavy-ball', { ...ctx, height: 3.5 }), 3);
   assert.equal(ballMultiplier('poke-ball', ctx), 1);
 });
 
@@ -108,9 +126,19 @@ test('progresso: regiões abrem pelo campeão e os giros crescem com os desafios
   assert.deepEqual(unlockedRegionIds(['johto:champion']), ['kanto'], 'não pula regiões');
   assert.equal(spinsFor(regionProgress([], 'kanto')), 3);
   assert.equal(spinsFor(regionProgress(['kanto:gym1'], 'kanto')), 5);
-  assert.equal(spinsFor(regionProgress(['kanto:gym1', 'kanto:elite'], 'kanto')), 8);
+  assert.equal(spinsFor(regionProgress(['kanto:gym1', 'kanto:elite1', 'kanto:elite2', 'kanto:elite3', 'kanto:elite4'], 'kanto')), 8);
   assert.equal(spinsFor(regionProgress(['kanto:champion'], 'kanto')), 12);
   assert.equal(spinsFor(regionProgress(['kanto:champion'], 'johto')), 3);
+});
+
+test('limites de nível por progresso', () => {
+  const cap = (ids: string[], region = 'kanto') => levelCap(regionProgress(ids, region));
+  assert.equal(cap([]), 10);
+  const gyms = Array.from({ length: 8 }, (_, i) => `kanto:gym${i + 1}`);
+  [16, 22, 28, 34, 40, 46, 52, 58].forEach((level, i) => assert.equal(cap(gyms.slice(0, i + 1)), level));
+  [70, 82, 94, 100].forEach((level, i) => assert.equal(cap([...gyms, ...[1, 2, 3, 4].slice(0, i + 1).map((n) => `kanto:elite${n}`)]), level));
+  assert.equal(cap(['kanto:champion']), 100);
+  assert.equal(cap(['kanto:gym3'], 'johto'), 10);
 });
 
 test('habitats: todos os 18 tipos têm exatamente um mapa', () => {
