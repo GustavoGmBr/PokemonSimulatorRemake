@@ -6,6 +6,8 @@ import type { Gender, MoveCategory, Stats, TypeName } from './types.ts';
 import type { IvStars } from './ivs.ts';
 import type { RegionId } from './regions.ts';
 import type { PokemonLocation, SortKey } from './collection.ts';
+import type { BattleEvent, BattlePhase, BattleResult, StageKey, StatusKind } from './battle.ts';
+import type { EvolutionChoice } from './evolution.ts';
 
 export interface SaveSummary {
   id: string;
@@ -60,6 +62,11 @@ export interface PokemonView {
   favorite: boolean;
   ball: string | null;
   caughtAt: string;
+  /** evoluções que já podem ser feitas (o jogador clica em Evoluir) */
+  evolutions: EvolutionChoice[];
+  /** golpes aprendidos ao subir de nível que esperam uma vaga */
+  pendingMoves: MoveView[];
+  friendship: number;
 }
 
 export interface InventoryEntry {
@@ -314,4 +321,77 @@ export interface DevKitResult {
 export interface DevProgressResult {
   /** o desafio liberado agora (ex.: "kanto:gym3"); null se tudo já estava feito */
   granted: string | null;
+}
+
+// ---------------------------------------------------------------- batalha
+
+export interface BattleMonView {
+  index: number;
+  speciesId: number;
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  status: StatusKind | null;
+  confused: boolean;
+  shiny: boolean;
+  types: TypeName[];
+  /** só estágios diferentes de zero */
+  stages: Partial<Record<StageKey, number>>;
+  expProgress: number;
+}
+
+export interface BattleMoveView extends MoveView {
+  slot: number;
+  /** multiplicador de tipo contra o oponente em campo (null = golpe de status) */
+  effectiveness: number | null;
+}
+
+export interface BattleItemOption {
+  item: string;
+  displayName: string;
+  quantity: number;
+}
+
+export interface BattleOutcome {
+  result: BattleResult;
+  money: number;
+  caught: PokemonView | null;
+  /** nomes dos Pokémon que ganharam XP, com o nível final */
+  levels: { name: string; level: number }[];
+  /** Pokémon que ficaram com golpes pendentes */
+  pending: string[];
+}
+
+export interface BattleView {
+  phase: BattlePhase;
+  turn: number;
+  player: { active: number; team: BattleMonView[]; moves: BattleMoveView[]; mustStruggle: boolean };
+  foe: { active: number; team: BattleMonView[]; caughtBefore: boolean };
+  balls: BallOption[];
+  heals: BattleItemOption[];
+  outcome: BattleOutcome | null;
+}
+
+export type BattleActRequest =
+  | { kind: 'move'; slot: number }
+  | { kind: 'switch'; to: number }
+  | { kind: 'run' }
+  | { kind: 'ball'; item: string }
+  | { kind: 'item'; item: string; target: number };
+
+/** Resposta de iniciar ou agir: os eventos para animar e o estado depois deles. */
+export interface BattleTurnResult {
+  events: BattleEvent[];
+  view: BattleView;
+}
+
+export interface EvolveRequest {
+  speciesId: number;
+}
+
+export interface LearnMoveRequest {
+  move: string;
+  /** posição (0–3) do golpe que será esquecido; null descarta o golpe novo */
+  replace: number | null;
 }

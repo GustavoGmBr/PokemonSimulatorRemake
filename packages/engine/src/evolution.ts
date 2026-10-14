@@ -1,4 +1,4 @@
-import type { EvolutionCondition, EvolutionNode } from './types.ts';
+import type { EvolutionCondition, EvolutionNode, Species, TypeName } from './types.ts';
 
 const TRIGGER_TEXT: Record<string, string> = {
   trade: 'Troca',
@@ -74,4 +74,60 @@ export function flattenEvolution(root: EvolutionNode, itemName?: (id: string) =>
   };
   walk(root, 0);
   return rows;
+}
+
+export interface EvolutionChoice {
+  speciesId: number;
+  requirement: string;
+}
+
+export interface EvolutionState {
+  level: number;
+  friendship: number;
+  /** tipos dos golpes que o Pokémon conhece */
+  moveTypes: readonly TypeName[];
+  /** hora local (0–23) */
+  hour: number;
+}
+
+function phaseOfDay(hour: number): 'day' | 'dusk' | 'night' {
+  if (hour >= 6 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 19) return 'dusk';
+  return 'night';
+}
+
+/** A condição pode ser cumprida agora, sem item, troca ou local? Só gatilhos de nível entram. */
+export function conditionMet(condition: EvolutionCondition, state: EvolutionState): boolean {
+  if (condition.trigger !== 'level-up' || condition.item || condition.heldItem) return false;
+  const hasRequirement = condition.level !== null || condition.happiness !== null || condition.timeOfDay !== null || condition.knownMoveType !== null;
+  if (!hasRequirement) return false; // condição desconhecida (local, gênero…): fora do alcance
+  if (condition.level !== null && state.level < condition.level) return false;
+  if (condition.happiness !== null && state.friendship < condition.happiness) return false;
+  if (condition.timeOfDay) {
+    const phase = phaseOfDay(state.hour);
+    const wanted = condition.timeOfDay;
+    if (wanted === 'day' && phase !== 'day') return false;
+    if (wanted === 'night' && phase !== 'night') return false;
+    if (wanted === 'dusk' && phase !== 'dusk') return false;
+  }
+  if (condition.knownMoveType && !state.moveTypes.includes(condition.knownMoveType as TypeName)) return false;
+  return true;
+}
+
+function findNode(root: EvolutionNode, speciesId: number): EvolutionNode | null {
+  if (root.speciesId === speciesId) return root;
+  for (const next of root.evolvesTo) {
+    const found = findNode(next, speciesId);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Evoluções que o Pokémon pode fazer agora (por nível, amizade, hora do dia ou golpe conhecido). */
+export function availableEvolutions(species: Species, state: EvolutionState, itemName?: (id: string) => string): EvolutionChoice[] {
+  const node = findNode(species.evolutionChain, species.id);
+  if (!node) return [];
+  return node.evolvesTo
+    .filter((next) => next.conditions.some((condition) => conditionMet(condition, state)))
+    .map((next) => ({ speciesId: next.speciesId, requirement: describeConditions(next.conditions, itemName) }));
 }

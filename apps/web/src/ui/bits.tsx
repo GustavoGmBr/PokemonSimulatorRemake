@@ -42,9 +42,11 @@ interface SpriteProps {
   alt: string;
   size?: number;
   className?: string;
+  /** chamado quando a imagem não carrega (para tentar outra vista) */
+  onFail?: () => void;
 }
 
-export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 64, className }: SpriteProps) {
+export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 64, className, onFail }: SpriteProps) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
@@ -61,7 +63,7 @@ export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 6
       width={size}
       height={size}
       style={{ width: size, height: size, objectFit: 'contain' }}
-      onError={() => setFailed(true)}
+      onError={() => { setFailed(true); onFail?.(); }}
       draggable={false}
     />
   );

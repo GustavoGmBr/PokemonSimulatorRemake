@@ -165,7 +165,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
               />
             ) : null}
             {panel === 'summary' && selectedMon ? (
-              <PokemonSummary mon={selectedMon} onBack={() => setPanel('team')} />
+              <PokemonSummary mon={selectedMon} saveId={saveId} onChanged={(next) => { setSelectedMon(next); void reload(); }} onBack={() => setPanel('team')} />
             ) : null}
             {panel === 'bag' ? <BagPanel
                 save={save}

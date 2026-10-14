@@ -50,6 +50,10 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     return ids.filter((id) => id.includes(':gym')).length;
   }
 
+  function guardBattle(saveId: string): void {
+    if (db.prepare('SELECT 1 FROM battles WHERE save_id = ?').get(saveId)) throw badRequest('Termine a batalha em andamento primeiro.');
+  }
+
   function moneyOf(saveId: string): number {
     return (db.prepare('SELECT money FROM saves WHERE id = ?').get(saveId) as { money: number }).money;
   }
@@ -245,6 +249,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
      */
     search(saveId: string, input: { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }): WildState {
       assertSave(saveId);
+      guardBattle(saveId);
       const ids = challenges(saveId);
       const options = regionOptions(ids);
       const option = options.find((entry) => entry.id === input.region);
@@ -296,6 +301,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     /** Gasta um giro (ou paga a renovação quando não há giros) e sorteia os 10 de novo, no mesmo mapa. */
     spin(saveId: string, pay = false): WildState {
       assertSave(saveId);
+      guardBattle(saveId);
       const board = readBoard(saveId);
       if (!board) throw badRequest('Procure um selvagem primeiro.');
       if (board.chosen !== null) throw badRequest('Fuja do encontro antes de girar.');
@@ -317,6 +323,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     /** Voltar à tela inicial de busca: descarta o mapa atual. */
     leave(saveId: string): WildState {
       assertSave(saveId);
+      guardBattle(saveId);
       db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
       return state(saveId);
     },
@@ -324,6 +331,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     /** Clicar em um Pokémon do mapa: começa o encontro (e a espécie passa a contar como vista). */
     choose(saveId: string, slot: unknown): WildState {
       assertSave(saveId);
+      guardBattle(saveId);
       const board = readBoard(saveId);
       if (!board) throw badRequest('Procure um selvagem primeiro.');
       const index = Number(slot);
@@ -334,9 +342,27 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       return state(saveId);
     },
 
+    /** O selvagem escolhido (para a batalha começar). */
+    encounter(saveId: string): PokemonInstance {
+      assertSave(saveId);
+      const board = readBoard(saveId);
+      const wild = board && board.chosen !== null ? board.slots[board.chosen] : undefined;
+      if (!wild) throw badRequest('Escolha um selvagem no mapa antes de lutar.');
+      return wild;
+    },
+
+    /** Fim da batalha: vitória ou captura encerram o mapa; fuga e derrota devolvem ao mapa. */
+    finishEncounter(saveId: string, result: 'win' | 'lose' | 'fled' | 'captured'): void {
+      const board = readBoard(saveId);
+      if (!board) return;
+      if (result === 'win' || result === 'captured') db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
+      else writeBoard(saveId, { ...board, chosen: null, throws: 0 });
+    },
+
     /** Fugir do encontro: volta ao mapa (os giros que sobraram continuam). */
     flee(saveId: string): WildState {
       assertSave(saveId);
+      guardBattle(saveId);
       const board = readBoard(saveId);
       if (board) writeBoard(saveId, { ...board, chosen: null, throws: 0 });
       return state(saveId);
@@ -344,6 +370,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
 
     throwBall(saveId: string, ball: unknown): ThrowBallResult {
       assertSave(saveId);
+      guardBattle(saveId);
       const board = readBoard(saveId);
       if (!board || board.chosen === null) throw badRequest('Escolha um selvagem antes de lançar a bola.');
       const wild = board.slots[board.chosen];

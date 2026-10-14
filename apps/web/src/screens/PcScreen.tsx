@@ -309,7 +309,7 @@ export function PcScreen({ saveId, onBack }: Props) {
   if (mode === 'summary' && summaryOf) {
     return (
       <main className="gb-screen"><div className="gb-stage">
-        <PokemonSummary mon={summaryOf} onBack={() => { setMode(prevModeRef.current); setSummaryOf(null); }} />
+        <PokemonSummary mon={summaryOf} saveId={saveId} onChanged={(next) => { setSummaryOf(next); void refreshAll(); }} onBack={() => { setMode(prevModeRef.current); setSummaryOf(null); }} />
         <KeyHints hints={[['Z / X', 'voltar']]} />
       </div></main>
     );

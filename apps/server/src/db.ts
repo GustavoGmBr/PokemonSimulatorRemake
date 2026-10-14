@@ -95,6 +95,19 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE wild_boards ADD COLUMN throws INTEGER NOT NULL DEFAULT 0;
   `,
+  // 7 — batalhas em andamento e golpes que esperam uma vaga
+  `
+  CREATE TABLE battles (
+    save_id    TEXT PRIMARY KEY REFERENCES saves(id) ON DELETE CASCADE,
+    state      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE pending_moves (
+    pokemon_id TEXT NOT NULL REFERENCES pokemon(id) ON DELETE CASCADE,
+    move       TEXT NOT NULL,
+    PRIMARY KEY (pokemon_id, move)
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;

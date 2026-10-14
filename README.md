@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.5**, Fase 1 em andamento (PC, Pokédex, selvagens, captura e loja prontos; batalha a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.6**, Fase 1 em andamento (PC, Pokédex, selvagens, captura, loja e batalha selvagem prontos; treinadores/ginásios a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -91,9 +91,17 @@ packages/
      Poké Bolas (as 16 especiais com os mesmos multiplicadores; Bola Premier de brinde a cada 10 Poké
      Bolas), curas, pedras de evolução, Mega (97), Primal, Essências de IV (₽ 5.000; o uso vem com a
      tela de detalhes) e amuletos.
-   - ⏳ Dependem da batalha (Fase 2): dinheiro por vitória, equipe curada após cada batalha e uso
-     de itens dentro da batalha. O motor de itens (`packages/engine/src/items.ts`) já está pronto.
-2. **Batalhas** — engine de batalha com status e estágios, IA de treinador, ginásios, Elite 4 e campeões.
+   - ✅ Batalha selvagem (engine + tela): turnos, dano (fórmula clássica), precisão, crítico, STAB,
+     efetividade, prioridade e velocidade; status (queimadura, veneno, paralisia, sono, congelamento,
+     confusão), estágios de atributo, golpes de vários acertos/dreno/recuo, Struggle e troca de Pokémon.
+     A engine é pura e **reproduzível por semente** (`packages/engine/src/battle.ts`; o estado guarda o
+     RNG, então mesma semente + mesmas ações = mesma batalha). Ao vencer: XP, nível, golpes novos (se já
+     tem 4, escolha no perfil), dinheiro (nível do inimigo × 10, Moeda Amuleto) e Ovo da Sorte. A equipe
+     é curada (HP e PP) ao fim de toda batalha. Dentro da batalha: bolsa (Poké Bolas e curas), fugir.
+     Tela retrô com texto digitando, HP descendo, piscadas, XP, e animações de golpe por tipo.
+     **Evolução é manual:** botão "Evoluir" no perfil do Pokémon da equipe (nível, amizade, horário,
+     golpe de tipo; pedras/troca/local ficam para depois).
+2. **Batalhas** — ✅ engine e batalha selvagem; falta IA de treinador, ginásios, Elite 4 e campeões.
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
 
@@ -121,6 +129,7 @@ alerta de destaque no mapa vale a partir de ★★★.
 - As fontes (Pixelify Sans e VT323) são baixadas pelo `npm install` / `npm run dev` (ou `npm run fonts`)
   para `apps/web/public/fonts`. Sem internet nesse momento, o jogo usa uma fonte monoespaçada e
   tenta de novo na próxima vez.
+- Dream Ball ainda sem efeito (selvagens não dormem fora de golpes); evoluções por item/troca/local virão depois.
 - Os nomes de golpes, habilidades e itens ainda vêm do catálogo em inglês.
 
 Dados de referência obtidos via [PokéAPI](https://pokeapi.co/). Sprites e dados Pokémon

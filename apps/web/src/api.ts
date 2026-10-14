@@ -1,5 +1,5 @@
 import type {
-  BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest,
@@ -52,6 +52,13 @@ export const api = {
   wildLeave: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/leave`),
   wildChoose: (id: string, slot: number) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/choose`, { slot }),
   wildFlee: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/flee`),
+  battle: (id: string) => request<BattleView | null>('GET', `/api/saves/${encodeURIComponent(id)}/battle`),
+  battleStart: (id: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/start`),
+  battleAct: (id: string, action: BattleActRequest) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/act`, action),
+  evolve: (id: string, pokemonId: string, speciesId: number) =>
+    request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/evolve`, { speciesId }),
+  learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>
+    request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/learn`, { move, replace }),
   wildThrow: (id: string, ball: string) => request<ThrowBallResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/throw`, { ball }),
   shop: (id: string) => request<ShopEntry[]>('GET', `/api/saves/${encodeURIComponent(id)}/shop`),
   buy: (id: string, cart: { item: string; quantity: number }[]) => request<BuyResult>('POST', `/api/saves/${encodeURIComponent(id)}/shop/buy`, { cart }),

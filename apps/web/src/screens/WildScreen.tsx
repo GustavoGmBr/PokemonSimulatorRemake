@@ -1,28 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
+import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type BattleTurnResult, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
-import { BallIcon, HpBar, KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
+import { KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
+import { BattleScreen } from './BattleScreen.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
 /** Pokémon com tantas estrelas (ou mais) ganham destaque no mapa; brilhantes sempre. */
 const ALERT_STARS = 3;
-const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-const SHAKE_TEXT = ['A bola nem balançou…', 'Balançou uma vez…', 'Balançou duas vezes… quase!', 'Três balanços… por pouco!'];
 
 const stars = (n: number) => (n > 0 ? '★'.repeat(n) : '0★');
-const percent = (chance: number | null) => (chance === null ? '' : chance >= 1 ? '100%' : chance < 0.01 ? '<1%' : `${Math.round(chance * 100)}%`);
 const yen = (n: number) => `₽ ${n.toLocaleString('pt-BR')}`;
-
-interface Anim {
-  ball: string;
-  stage: 'fly' | 'shake' | 'open';
-  shakeCount: number;
-}
 
 interface Props {
   saveId: string;
@@ -40,8 +31,7 @@ export function WildScreen({ saveId, onBack }: Props) {
   const [step, setStep] = useState<Step>('regions');
   const [regionId, setRegionId] = useState<string>('kanto');
   const [hoverRegion, setHoverRegion] = useState<string>('kanto');
-  const [anim, setAnim] = useState<Anim | null>(null);
-  const [caught, setCaught] = useState<PokemonView | null>(null);
+  const [battle, setBattle] = useState<{ start: BattleTurnResult; habitat: string } | null>(null);
   const [index, setIndex] = useState<SpeciesIndexEntry[]>([]);
   const [filter, setFilter] = useState('');
   const [levels, setLevels] = useState<[number, number] | null>(null);
@@ -50,17 +40,17 @@ export function WildScreen({ saveId, onBack }: Props) {
 
   useEffect(() => {
     alive.current = true;
-    api.wild(saveId).then((next) => {
+    Promise.all([api.wild(saveId), api.battle(saveId)]).then(([next, running]) => {
       setState(next);
-      if (next.board) setMessage(next.chosen !== null ? 'Você continua o encontro.' : 'Você voltou ao mapa da última procura.');
+      if (running) setBattle({ start: { events: [], view: running }, habitat: next.board?.habitat ?? 'forest' });
+      else if (next.board) setMessage('Você voltou ao mapa da última procura.');
     }, (e: Error) => setError(e.message));
     api.speciesIndex().then(setIndex, () => undefined);
     return () => { alive.current = false; };
   }, [saveId]);
 
   const board = state?.board ?? null;
-  const chosen = state && board && state.chosen !== null ? board.slots[state.chosen] ?? null : null;
-  const mode: 'idle' | 'board' | 'encounter' | 'caught' = caught ? 'caught' : chosen ? 'encounter' : board ? 'board' : 'idle';
+  const mode: 'idle' | 'board' = board ? 'board' : 'idle';
 
   const found = useMemo(() => (board?.slots ?? []).filter((slot) => slot.shiny || slot.ivStars >= ALERT_STARS), [board]);
   const hasShiny = found.some((slot) => slot.shiny);
@@ -98,7 +88,6 @@ export function WildScreen({ saveId, onBack }: Props) {
     const request = { region: region as never, minLevel, maxLevel, ...(speciesId ? { speciesId } : option?.chooseHabitat && habitatPick ? { habitat: habitatPick } : {}) };
     const next = await api.wildSearch(saveId, request);
     setState(next);
-    setCaught(null);
     setCursor(0);
     const b = next.board;
     setMessage(b ? `${b.habitatName}! Escolha um POKÉMON (${b.spinsLeft} giros para trocar todos).` : '');
@@ -113,56 +102,26 @@ export function WildScreen({ saveId, onBack }: Props) {
   const leave = () => run(async () => {
     const next = await api.wildLeave(saveId);
     setState(next);
-    setCaught(null);
     setStep('regions');
     setMessage('Escolha uma região para procurar POKÉMON selvagens.');
   });
   const choose = (slot: number) => run(async () => {
     const next = await api.wildChoose(saveId, slot);
     setState(next);
-    const wild = next.board?.slots[slot];
-    setMessage(wild ? `Um ${wild.name.toUpperCase()} selvagem apareceu!` : '');
+    const started = await api.battleStart(saveId);
+    setBattle({ start: started, habitat: next.board?.habitat ?? 'forest' });
   });
-  const flee = () => run(async () => {
-    setState(await api.wildFlee(saveId));
-    setMessage('Você fugiu. Escolha outro POKÉMON.');
-  });
-  const afterCapture = () => {
-    setCaught(null);
-    setStep('region');
-    setState((s) => (s ? { ...s, board: null, chosen: null } : s));
-    setMessage('Procure outro POKÉMON selvagem!');
+  const afterBattle = async () => {
+    setBattle(null);
+    try {
+      const next = await api.wild(saveId);
+      setState(next);
+      if (next.board) setMessage('De volta ao mapa. Escolha outro POKÉMON.');
+      else { setStep('region'); setMessage('Procure outro POKÉMON selvagem!'); }
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
-
-  const throwBall = (ball: string) => run(async () => {
-    if (!state || !chosen) return;
-    const ballName = state.balls.find((b) => b.item === ball)?.displayName ?? 'bola';
-    const result = await api.wildThrow(saveId, ball);
-    const fast = reducedMotion();
-    setMessage(`Você lançou ${ballName}!`);
-    setAnim({ ball, stage: 'fly', shakeCount: 0 });
-    await sleep(fast ? 100 : 700);
-    for (let i = 1; i <= result.shakes; i++) {
-      if (!alive.current) return;
-      setAnim({ ball, stage: 'shake', shakeCount: i });
-      playSound('move');
-      await sleep(fast ? 100 : 750);
-    }
-    setAnim({ ball, stage: 'open', shakeCount: result.shakes });
-    await sleep(fast ? 100 : 500);
-    if (!alive.current) return;
-    setAnim(null);
-    setState(result.state);
-    if (result.caught && result.pokemon) {
-      playSound('save');
-      setCaught(result.pokemon);
-      const where = result.pokemon.location.kind === 'team' ? 'foi para a sua equipe' : `foi para a caixa ${result.pokemon.location.box + 1} do PC`;
-      setMessage(`Gotcha! ${result.pokemon.name.toUpperCase()} foi capturado e ${where}!`);
-    } else {
-      playSound('back');
-      setMessage(`${SHAKE_TEXT[result.shakes] ?? ''} ${chosen.name.toUpperCase()} escapou!`);
-    }
-  });
 
   const speciesChoices = useSpeciesChoices(index, regionId, filter);
 
@@ -176,10 +135,12 @@ export function WildScreen({ saveId, onBack }: Props) {
       } else if (key === 'confirm') { playSound('confirm'); void choose(cursor); }
       else if (key === 'prev') void spin();
       else if (key === 'back') { playSound('back'); void leave(); }
-    } else if (mode === 'caught') {
-      if (key === 'confirm' || key === 'back') afterCapture();
     }
-  }, (mode === 'board' || mode === 'caught') && !busy);
+  }, mode === 'board' && !busy && !battle);
+
+  if (battle) {
+    return <BattleScreen key="battle" saveId={saveId} start={battle.start} habitat={battle.habitat} onExit={() => void afterBattle()} />;
+  }
 
   if (error) {
     return (
@@ -335,60 +296,7 @@ export function WildScreen({ saveId, onBack }: Props) {
           </section>
         ) : null}
 
-        {mode === 'encounter' && chosen ? (
-          <div className="gb-row" style={{ alignItems: 'stretch' }}>
-            <section className="gb-arena gb-grow" aria-label="Encontro">
-              <span className="gb-wildname">
-                {chosen.shiny ? '✦ ' : ''}{chosen.name} · Nv{chosen.level} · <span className="gb-stars">{stars(chosen.ivStars)}</span>
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>{chosen.types.map((t) => <TypeBadge key={t} type={t} />)}</div>
-              <div style={{ width: 220 }}><HpBar current={1} max={1} /></div>
-              <div style={{ minHeight: 170, display: 'flex', alignItems: 'center' }}>
-                {anim && anim.stage !== 'open' ? (
-                  <BallIcon item={anim.ball} className={anim.stage === 'fly' ? 'gb-pokeball--fly' : 'gb-pokeball--shake'} />
-                ) : (
-                  <Sprite speciesId={chosen.speciesId} shiny={chosen.shiny} alt={chosen.name} size={168} className="gb-bob" />
-                )}
-              </div>
-              {chosen.caughtBefore ? <span className="gb-hint" style={{ color: 'var(--ink)' }}>Você já capturou esta espécie.</span> : <span className="gb-hint" style={{ color: 'var(--ink)' }}>Espécie nova para a sua Pokédex!</span>}
-            </section>
-            <section className="gb-window gb-side" style={{ flex: '0 0 auto', maxWidth: 520, minWidth: 380 }} aria-label="Bolas">
-              <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>Lançar bola</h2>
-              {state.balls.length === 0 ? <p className="gb-muted">Você está sem POKÉ BOLAS. Compre mais na Loja.</p> : null}
-              <Menu
-                label="Bolas"
-                active={!busy && !anim}
-                items={[
-                  ...state.balls.map((ball): MenuItem => ({
-                    id: ball.item,
-                    label: (
-                      <span className="gb-ballrow">
-                        <BallIcon item={ball.item} small />
-                        <span>{ball.displayName}</span>
-                        <span className="gb-ballrow__chance">×{ball.quantity} · {percent(ball.chance)}</span>
-                      </span>
-                    ),
-                  })),
-                  { id: '__flee', label: 'Fugir' },
-                ]}
-                onSelect={(id) => (id === '__flee' ? void flee() : void throwBall(id))}
-                onBack={() => void flee()}
-              />
-              <p className="gb-hint" style={{ marginBottom: 0 }}>A porcentagem é a chance de captura com cada bola.</p>
-            </section>
-          </div>
-        ) : null}
-
-        {mode === 'caught' && caught ? (
-          <section className="gb-window gb-window--accent" aria-label="Capturado" style={{ textAlign: 'center' }}>
-            <Sprite speciesId={caught.speciesId} shiny={caught.shiny} alt={caught.name} size={160} className="gb-bob" />
-            <h2 className="gb-title" style={{ fontSize: 28 }}>{caught.shiny ? '✦ ' : ''}{caught.name} · Nv{caught.level}</h2>
-            <p style={{ margin: '4px 0' }}><span className="gb-stars">{stars(caught.ivStars)}</span> · IV {caught.ivTotal}/186</p>
-            <button type="button" className="gb-button gb-button--red" onClick={afterCapture}>Continuar (Z)</button>
-          </section>
-        ) : null}
-
-        <div className="gb-window gb-window--accent gb-info" role="status"><p style={{ margin: 0 }}>{busy && !anim ? 'Aguarde…' : message}</p></div>
+        <div className="gb-window gb-window--accent gb-info" role="status"><p style={{ margin: 0 }}>{busy ? 'Aguarde…' : message}</p></div>
         <KeyHints hints={mode === 'board'
           ? [['↑↓←→', 'mover'], ['Z', 'enfrentar'], ['Q', 'girar / renovar'], ['X', 'voltar à busca']]
           : [['↑↓', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar / fugir']]}

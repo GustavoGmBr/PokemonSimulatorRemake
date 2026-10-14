@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
-  BOX_SIZE, MAX_BOX_INDEX, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
+  BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
   ivQuality, isValidLocation, levelProgress, searchCollection, statsOf,
-  type BoxView, type CollectionEntry, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
+  type BoxView, type Combatant, type CollectionEntry, type MoveView, type EvolutionChoice, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
   type PokemonInstance, type PokemonLocation, type PokemonSearchResult, type PokemonView,
   type SearchPokemonQuery, type SortKey, type Stats, type TypeName, SORT_KEYS,
 } from '@pokesim/engine';
@@ -80,25 +80,41 @@ export function createPokemonStore(db: Db) {
       ivs,
       ivStars: quality.stars,
       ivTotal: quality.total,
-      moves: slots.map((slot) => {
-        const move = data.movesByName.get(slot.name);
-        return {
-          name: slot.name,
-          displayName: move?.displayName ?? slot.name,
-          type: move?.type ?? 'normal',
-          category: move?.category ?? 'physical',
-          power: move?.power ?? 0,
-          accuracy: move?.accuracy ?? null,
-          pp: slot.pp,
-          maxPp: slot.maxPp,
-        };
-      }),
+      moves: slots.map((slot) => moveView(slot.name, slot.pp, slot.maxPp)),
       generation: species.generation,
       location: locationOf(row),
       favorite: row.favorite === 1,
       ball: row.ball,
       caughtAt: row.caught_at,
+      evolutions: evolutionsOf(row, species, slots),
+      pendingMoves: pendingOf(row.id),
+      friendship: row.friendship,
     };
+  }
+
+  function moveView(name: string, pp?: number, maxPp?: number): MoveView {
+    const move = data.movesByName.get(name);
+    return {
+      name,
+      displayName: move?.displayName ?? name,
+      type: move?.type ?? 'normal',
+      category: move?.category ?? 'physical',
+      power: move?.power ?? 0,
+      accuracy: move?.accuracy ?? null,
+      pp: pp ?? move?.pp ?? 0,
+      maxPp: maxPp ?? move?.pp ?? 0,
+    };
+  }
+
+  function pendingOf(pokemonId: string): MoveView[] {
+    const rows = db.prepare('SELECT move FROM pending_moves WHERE pokemon_id = ? ORDER BY rowid').all(pokemonId) as { move: string }[];
+    return rows.map((row) => moveView(row.move));
+  }
+
+  function evolutionsOf(row: PokemonRow, species: NonNullable<ReturnType<typeof data.speciesById.get>>, slots: MoveSlot[]): EvolutionChoice[] {
+    const moveTypes = slots.map((slot) => data.movesByName.get(slot.name)?.type).filter((type): type is TypeName => type !== undefined);
+    return availableEvolutions(species, { level: row.level, friendship: row.friendship, moveTypes, hour: new Date().getHours() })
+      .map((choice) => ({ ...choice, requirement: choice.requirement }));
   }
 
   function writeLocation(id: string, location: PokemonLocation | null): void {
@@ -227,6 +243,62 @@ export function createPokemonStore(db: Db) {
         }
       });
       return healed;
+    },
+
+    /** Guarda o resultado de uma batalha (nível, XP, golpes, amizade) e cura toda a equipe. */
+    applyBattle(saveId: string, combatants: Combatant[]): void {
+      assertSave(saveId);
+      transaction(db, () => {
+        for (const c of combatants) {
+          if (!c.ref) continue;
+          const row = db.prepare('SELECT * FROM pokemon WHERE id = ? AND save_id = ?').get(c.ref, saveId) as PokemonRow | undefined;
+          if (!row) continue;
+          const friendship = c.fought ? Math.min(255, row.friendship + 5) : row.friendship;
+          const slots = c.moves.map((slot) => ({ ...slot, pp: slot.maxPp }));
+          db.prepare('UPDATE pokemon SET level = ?, exp = ?, moves = ?, friendship = ? WHERE id = ?').run(c.level, c.exp, JSON.stringify(slots), friendship, row.id);
+          for (const move of c.pendingMoves) db.prepare('INSERT OR IGNORE INTO pending_moves (pokemon_id, move) VALUES (?, ?)').run(row.id, move);
+        }
+        this.healTeam(saveId);
+      });
+    },
+
+    /** Evolui por escolha do jogador (botão no perfil). */
+    evolve(saveId: string, pokemonId: string, toSpeciesId: unknown): PokemonView {
+      const row = getRow(saveId, pokemonId);
+      const view = rowToView(row);
+      const choice = view.evolutions.find((entry) => entry.speciesId === toSpeciesId);
+      if (!choice) throw badRequest('Este Pokémon não pode evoluir assim agora.');
+      const next = data.speciesById.get(choice.speciesId);
+      if (!next) throw badRequest('Espécie desconhecida.');
+      transaction(db, () => {
+        const grown = { ...row, species_id: next.id };
+        const newMax = rowToView(grown).stats.hp;
+        const hp = Math.min(newMax, row.current_hp + Math.max(0, newMax - view.stats.hp));
+        db.prepare('UPDATE pokemon SET species_id = ?, current_hp = ? WHERE id = ?').run(next.id, hp, row.id);
+        recordCaught(saveId, next.id);
+      });
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
+    /** Aprende um golpe pendente, trocando por um dos quatro atuais (ou descarta). */
+    learnMove(saveId: string, pokemonId: string, input: { move?: unknown; replace?: unknown }): PokemonView {
+      const row = getRow(saveId, pokemonId);
+      const name = typeof input.move === 'string' ? input.move : '';
+      const pending = db.prepare('SELECT 1 FROM pending_moves WHERE pokemon_id = ? AND move = ?').get(row.id, name);
+      if (!pending) throw badRequest('Esse golpe não está esperando uma vaga.');
+      const move = data.movesByName.get(name);
+      if (!move) throw badRequest('Golpe desconhecido.');
+      const slots = JSON.parse(row.moves) as MoveSlot[];
+      transaction(db, () => {
+        if (input.replace !== null && input.replace !== undefined) {
+          const index = Number(input.replace);
+          if (!Number.isInteger(index) || index < 0 || index >= slots.length) throw badRequest('Escolha qual golpe esquecer.');
+          slots[index] = toMoveSlot(move);
+          db.prepare('UPDATE pokemon SET moves = ? WHERE id = ?').run(JSON.stringify(slots), row.id);
+        }
+        db.prepare('DELETE FROM pending_moves WHERE pokemon_id = ? AND move = ?').run(row.id, name);
+      });
+      return rowToView(getRow(saveId, pokemonId));
     },
 
     team(saveId: string): PokemonView[] {

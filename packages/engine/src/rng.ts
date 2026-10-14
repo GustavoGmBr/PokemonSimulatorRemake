@@ -35,3 +35,23 @@ export function pick<T>(rng: Rng, list: readonly T[]): T {
   if (list.length === 0) throw new Error('Lista vazia.');
   return list[rng.int(list.length)] as T;
 }
+
+/** Gerador com estado salvável (mulberry32): quem guarda `state` consegue retomar a sequência depois. */
+export interface ResumableRng extends Rng {
+  state: number;
+}
+
+export function resumableRng(initial: number): ResumableRng {
+  const rng: ResumableRng = {
+    state: initial >>> 0,
+    int(maxExclusive) {
+      rng.state = (rng.state + 0x6d2b79f5) >>> 0;
+      let t = rng.state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      const value = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      return Math.floor(value * maxExclusive);
+    },
+  };
+  return rng;
+}

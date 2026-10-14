@@ -45,3 +45,8 @@ export const UNIQUE_ITEMS: ReadonlySet<string> = new Set(['shiny-charm', 'catchi
 /** Bola Premier de brinde: uma a cada 10 Poké Bolas compradas de uma vez. */
 export const PREMIER_BALL = 'premier-ball';
 export const PREMIER_EVERY = 10;
+
+/** Lucky Egg: 2× de XP, +25% por geração concluída depois da 1ª, até 4×. */
+export const luckyEggMultiplier = (extraGenerations: number) => Math.min(4, 2 + 0.25 * extraGenerations);
+/** Amulet Coin: 2× de dinheiro, +50% por geração concluída depois da 1ª, até 5×. */
+export const amuletCoinMultiplier = (extraGenerations: number) => Math.min(5, 2 + 0.5 * extraGenerations);

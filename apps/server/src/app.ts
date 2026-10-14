@@ -8,6 +8,7 @@ import type { HealthInfo, SearchPokemonQuery, SortKey, SpeciesIndexEntry } from 
 import { createSaveService } from './saves.ts';
 import { createPokemonStore } from './pokemon-store.ts';
 import { createInventory } from './inventory.ts';
+import { createBattleService } from './battle-service.ts';
 import { createWildService } from './wild-service.ts';
 import { createItemService } from './item-service.ts';
 import { badRequest, notFound } from './errors.ts';
@@ -63,6 +64,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   const inventory = createInventory(db);
   const wild = createWildService(db, store, inventory);
   const items = createItemService(db, store, inventory);
+  const battle = createBattleService(db, store, inventory, wild);
   const data = loadGameData();
   const speciesIndex: SpeciesIndexEntry[] = data.species.map((s) => ({
     id: s.id, name: s.displayName, types: s.types, generation: s.generation,
@@ -92,6 +94,11 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
     .post('/api/saves/:id/wild/flee', ({ params }) => wild.flee(params.id as string))
     .post('/api/saves/:id/wild/throw', ({ params, body }) => wild.throwBall(params.id as string, (body as { ball?: unknown } | null)?.ball))
+    .get('/api/saves/:id/battle', ({ params }) => battle.current(params.id as string))
+    .post('/api/saves/:id/battle/start', ({ params }) => battle.start(params.id as string))
+    .post('/api/saves/:id/battle/act', ({ params, body }) => battle.act(params.id as string, body))
+    .post('/api/saves/:id/pokemon/:pid/evolve', ({ params, body }) => store.evolve(params.id as string, params.pid as string, (body as { speciesId?: unknown } | null)?.speciesId))
+    .post('/api/saves/:id/pokemon/:pid/learn', ({ params, body }) => store.learnMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; replace?: unknown }))
     .get('/api/saves/:id/shop', ({ params }) => items.shop(params.id as string))
     .post('/api/saves/:id/shop/buy', ({ params, body }) => items.buy(params.id as string, (body as { cart?: unknown } | null)?.cart))
     .post('/api/saves/:id/items/use', ({ params, body }) => items.useItem(params.id as string, (body ?? {}) as { item?: unknown; pokemonId?: unknown }))
