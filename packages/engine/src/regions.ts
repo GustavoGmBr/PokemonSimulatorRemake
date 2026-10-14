@@ -32,7 +32,12 @@ export function regionById(id: string): Region | undefined {
   return REGIONS.find((entry) => entry.id === id);
 }
 
-export const ALL_STARTERS: ReadonlySet<number> = new Set(REGIONS.flatMap((region) => region.starters));
+/** Regiões cujos iniciais já podem ser escolhidos ao começar (por enquanto, só a 1ª geração). */
+export const STARTER_REGIONS: readonly RegionId[] = ['kanto'];
+
+export const ALL_STARTERS: ReadonlySet<number> = new Set(
+  REGIONS.filter((region) => STARTER_REGIONS.includes(region.id)).flatMap((region) => region.starters),
+);
 
 export const STARTER_LEVEL = 5;
 

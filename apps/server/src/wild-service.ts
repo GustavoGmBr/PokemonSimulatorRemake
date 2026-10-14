@@ -1,9 +1,10 @@
 import { randomInt } from 'node:crypto';
 import {
-  BOARD_SIZE, BOARD_SPINS, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon, isWildEligible, rollShiny,
-  ivQuality, regionOfSpecies, rngFrom, statsOf, wildLevelRange,
-  type AutoSearchResult, type AutoSearchTarget, type BallOption, type CaptureInput, type PokemonInstance, type Rng,
-  type Species, type ThrowBallResult, type WildBoardView, type WildSlotView, type WildState,
+  HABITATS, LEGENDARY_SLOT_CHANCE, REFRESH_COST, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
+  habitatById, habitatOfType, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor,
+  speciesInHabitat, statsOf, unlockedRegionIds, wildLevelRange,
+  type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
+  type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
 import { transaction, type Db } from './db.ts';
@@ -11,77 +12,117 @@ import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 
-/** Teto de mapas gerados por uma busca automática (evita travar o servidor). */
-export const MAX_AUTO_SEARCHES = 5000;
-export const DEFAULT_AUTO_STARS = 3;
-
 interface BoardRow {
   slots: string;
   spins_left: number;
   chosen: number | null;
+  region: string;
+  habitat: string;
+  target_species: number | null;
+}
+
+interface Board {
+  slots: PokemonInstance[];
+  spinsLeft: number;
+  chosen: number | null;
+  region: string;
+  habitat: string;
+  target: number | null;
 }
 
 export function createWildService(db: Db, store: PokemonStore, inventory: Inventory, rng: Rng = rngFrom(randomInt)) {
   const data = loadGameData();
-  const poolCache = new Map<string, Species[]>();
 
   function assertSave(saveId: string): void {
     if (!db.prepare('SELECT 1 FROM saves WHERE id = ?').get(saveId)) throw notFound('Save não encontrado.');
   }
 
-  /** Regiões liberadas. Saves sem o campo (criados antes da migração 3) usam a região do Pokémon mais antigo. */
-  function unlockedRegions(saveId: string): string[] {
-    const row = db.prepare('SELECT unlocked_regions FROM saves WHERE id = ?').get(saveId) as { unlocked_regions: string } | undefined;
-    const stored = (row?.unlocked_regions ?? '').split(',').filter(Boolean);
-    if (stored.length > 0) return stored;
-    const first = db.prepare('SELECT species_id FROM pokemon WHERE save_id = ? ORDER BY caught_at LIMIT 1').get(saveId) as { species_id: number } | undefined;
-    return [first ? (regionOfSpecies(first.species_id)?.id ?? 'kanto') : 'kanto'];
+  function challenges(saveId: string): string[] {
+    return (db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((row) => row.challenge_id);
   }
 
-  function badgeCount(saveId: string): number {
-    return (db.prepare('SELECT COUNT(*) AS n FROM badges WHERE save_id = ?').get(saveId) as { n: number }).n;
+  function gymCount(ids: string[]): number {
+    return ids.filter((id) => id.includes(':gym')).length;
   }
 
-  function pool(regions: string[], badges: number): Species[] {
-    const key = `${regions.join(',')}|${badges}`;
-    let list = poolCache.get(key);
-    if (!list) {
-      list = data.species.filter((species) => isWildEligible(species, regions, badges));
-      poolCache.set(key, list);
-    }
-    return list;
+  function moneyOf(saveId: string): number {
+    return (db.prepare('SELECT money FROM saves WHERE id = ?').get(saveId) as { money: number }).money;
   }
 
-  function generate(saveId: string): PokemonInstance[] {
-    const regions = unlockedRegions(saveId);
-    const badges = badgeCount(saveId);
-    const species = pool(regions, badges);
-    if (species.length === 0) throw badRequest('Nenhum POKÉMON disponível nas regiões liberadas.');
-    const extraRolls = inventory.quantity(saveId, 'shiny-charm') > 0 ? SHINY_CHARM_EXTRA_ROLLS : 0;
-    const [min, max] = wildLevelRange(badges);
-    return Array.from({ length: BOARD_SIZE }, () => {
-      const chosen = species[rng.int(species.length)] as Species;
-      return createPokemon({
-        species: chosen,
-        level: min + rng.int(max - min + 1),
-        rng,
-        moves: data.movesByName,
-        shiny: rollShiny(rng, extraRolls),
-      });
+  function regionOptions(ids: string[]): WildRegionOption[] {
+    const unlocked = unlockedRegionIds(ids);
+    return REGIONS.map((region) => {
+      const progress = regionProgress(ids, region.id);
+      return {
+        id: region.id, name: region.name, generation: region.generation, unlocked: unlocked.includes(region.id),
+        gyms: progress.gyms, elite: progress.elite, champion: progress.champion,
+        spins: spinsFor(progress), legendaries: progress.elite, specific: progress.champion,
+      };
     });
   }
 
-  function readBoard(saveId: string): { slots: PokemonInstance[]; spinsLeft: number; chosen: number | null } | null {
-    const row = db.prepare('SELECT slots, spins_left, chosen FROM wild_boards WHERE save_id = ?').get(saveId) as BoardRow | undefined;
-    if (!row) return null;
-    return { slots: JSON.parse(row.slots) as PokemonInstance[], spinsLeft: row.spins_left, chosen: row.chosen };
+  function randomOf<T>(list: readonly T[]): T {
+    return list[rng.int(list.length)] as T;
   }
 
-  function writeBoard(saveId: string, slots: PokemonInstance[], spinsLeft: number, chosen: number | null): void {
+  /** Espécies comuns da região (e do habitat, se houver) e lendários liberados. */
+  function pools(region: string, unlocked: string[], badges: number, habitat: Habitat | null, legendaries: boolean) {
+    const fits = (species: Species) => !habitat || speciesInHabitat(species, habitat);
+    const common = data.species.filter((species) => isWildEligible(species, region, unlocked, badges) && fits(species));
+    const rare = legendaries
+      ? data.species.filter((species) => isLegendary(species) && regionOfSpecies(species.id)?.id === region && fits(species))
+      : [];
+    return { common, rare };
+  }
+
+  function makeMon(saveId: string, species: Species, level: [number, number], extraRolls: number, legendary: boolean): PokemonInstance {
+    const [min, max] = level;
+    return createPokemon({
+      species,
+      level: legendary ? Math.max(max, 45) : min + rng.int(max - min + 1),
+      rng,
+      moves: data.movesByName,
+      shiny: rollShiny(rng, extraRolls),
+    });
+  }
+
+  /** Sorteia os 10 do mapa. */
+  function generate(saveId: string, region: string, habitat: Habitat, target: number | null): PokemonInstance[] {
+    const ids = challenges(saveId);
+    const unlocked = unlockedRegionIds(ids);
+    const badges = gymCount(ids);
+    const extraRolls = inventory.quantity(saveId, 'shiny-charm') > 0 ? SHINY_CHARM_EXTRA_ROLLS : 0;
+    const range = wildLevelRange(badges);
+    if (target !== null) {
+      const species = data.speciesById.get(target);
+      if (!species) throw badRequest('Espécie desconhecida.');
+      return Array.from({ length: 10 }, () => makeMon(saveId, species, range, extraRolls, false));
+    }
+    const progress = regionProgress(ids, region);
+    const { common, rare } = pools(region, unlocked, badges, habitat, progress.elite);
+    if (common.length === 0 && rare.length === 0) throw badRequest('Nenhum POKÉMON disponível neste mapa.');
+    return Array.from({ length: 10 }, () => {
+      const useRare = rare.length > 0 && (common.length === 0 || rng.int(1000) < LEGENDARY_SLOT_CHANCE * 1000);
+      const species = useRare ? randomOf(rare) : randomOf(common);
+      return makeMon(saveId, species, range, extraRolls, useRare);
+    });
+  }
+
+  function readBoard(saveId: string): Board | null {
+    const row = db.prepare('SELECT * FROM wild_boards WHERE save_id = ?').get(saveId) as BoardRow | undefined;
+    if (!row) return null;
+    return {
+      slots: JSON.parse(row.slots) as PokemonInstance[], spinsLeft: row.spins_left, chosen: row.chosen,
+      region: row.region, habitat: row.habitat, target: row.target_species,
+    };
+  }
+
+  function writeBoard(saveId: string, board: Board): void {
     db.prepare(`
-      INSERT INTO wild_boards (save_id, slots, spins_left, chosen) VALUES (?, ?, ?, ?)
-      ON CONFLICT (save_id) DO UPDATE SET slots = excluded.slots, spins_left = excluded.spins_left, chosen = excluded.chosen
-    `).run(saveId, JSON.stringify(slots), spinsLeft, chosen);
+      INSERT INTO wild_boards (save_id, slots, spins_left, chosen, region, habitat, target_species) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (save_id) DO UPDATE SET slots = excluded.slots, spins_left = excluded.spins_left, chosen = excluded.chosen,
+        region = excluded.region, habitat = excluded.habitat, target_species = excluded.target_species
+    `).run(saveId, JSON.stringify(board.slots), board.spinsLeft, board.chosen, board.region, board.habitat, board.target);
   }
 
   function speciesOf(pokemon: PokemonInstance): Species {
@@ -132,7 +173,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     assertSave(saveId);
     const board = readBoard(saveId);
     const caught = caughtSet(saveId);
-    const regions = unlockedRegions(saveId);
+    const ids = challenges(saveId);
     const encounter = board && board.chosen !== null ? board.slots[board.chosen] : undefined;
 
     const owned = db.prepare('SELECT item, quantity FROM inventory WHERE save_id = ? AND quantity > 0').all(saveId) as { item: string; quantity: number }[];
@@ -147,65 +188,100 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         chance: encounter ? captureChance(captureInput(saveId, encounter, item.name, caught)) : null,
       }));
 
-    const view: WildBoardView | null = board
-      ? {
+    const regions = regionOptions(ids);
+    let view: WildBoardView | null = null;
+    if (board) {
+      const habitat = habitatById(board.habitat) ?? (HABITATS[0] as Habitat);
+      view = {
         slots: board.slots.map((pokemon, index) => slotView(index, pokemon, caught)),
         spinsLeft: board.spinsLeft,
-        regions: regions.map((id) => REGIONS.find((region) => region.id === id)?.name ?? id),
-        levelRange: wildLevelRange(badgeCount(saveId)),
-      }
-      : null;
+        spinsTotal: regions.find((region) => region.id === board.region)?.spins ?? 3,
+        region: board.region as WildBoardView['region'],
+        regionName: REGIONS.find((region) => region.id === board.region)?.name ?? board.region,
+        habitat: habitat.id,
+        habitatName: habitat.name,
+        targetSpeciesId: board.target,
+        levelRange: wildLevelRange(gymCount(ids)),
+      };
+    }
     return {
       board: view,
       chosen: board?.chosen ?? null,
       balls,
+      regions,
+      money: moneyOf(saveId),
+      refreshCost: REFRESH_COST,
       shinyCharm: (quantities.get('shiny-charm') ?? 0) > 0,
       catchingCharm: (quantities.get('catching-charm') ?? 0) > 0,
     };
   }
 
-  function matches(slots: PokemonInstance[], target: AutoSearchTarget, minStars: number): boolean {
-    return slots.some((pokemon) => {
-      const shiny = pokemon.shiny;
-      const stars = ivQuality(pokemon.ivs).stars >= minStars;
-      return target === 'shiny' ? shiny : target === 'stars' ? stars : shiny || stars;
-    });
-  }
-
   return {
     state,
 
-    /** "Procurar selvagem": novo mapa com 10 Pokémon e 3 giros. */
-    search(saveId: string): WildState {
+    /**
+     * "Procurar selvagem": escolhe a região (e, com o campeão derrotado, uma espécie específica).
+     * Sem espécie, o mapa (habitat) é sorteado entre os que têm Pokémon disponíveis.
+     */
+    search(saveId: string, input: { region?: unknown; speciesId?: unknown }): WildState {
       assertSave(saveId);
-      writeBoard(saveId, generate(saveId), BOARD_SPINS, null);
+      const ids = challenges(saveId);
+      const options = regionOptions(ids);
+      const option = options.find((entry) => entry.id === input.region);
+      if (!option) throw badRequest('Escolha uma região.');
+      if (!option.unlocked) throw badRequest(`${option.name} ainda não foi liberada.`);
+
+      let target: number | null = null;
+      let habitat: Habitat;
+      if (input.speciesId !== undefined && input.speciesId !== null) {
+        if (!option.specific) throw badRequest(`Derrote o campeão de ${option.name} para procurar um POKÉMON específico.`);
+        const species = data.speciesById.get(Number(input.speciesId));
+        if (!species || regionOfSpecies(species.id)?.id !== option.id) throw badRequest(`Escolha um POKÉMON de ${option.name}.`);
+        target = species.id;
+        habitat = habitatOfType(species.types[0] as Species['types'][number]);
+      } else {
+        const unlocked = unlockedRegionIds(ids);
+        const badges = gymCount(ids);
+        const candidates = HABITATS.filter((entry) => {
+          const { common, rare } = pools(option.id, unlocked, badges, entry, option.legendaries);
+          return common.length + rare.length > 0;
+        });
+        if (candidates.length === 0) throw badRequest('Nenhum POKÉMON disponível nesta região.');
+        habitat = randomOf(candidates);
+      }
+      writeBoard(saveId, {
+        slots: generate(saveId, option.id, habitat, target), spinsLeft: option.spins, chosen: null,
+        region: option.id, habitat: habitat.id, target,
+      });
       return state(saveId);
     },
 
-    /** Gasta um giro e sorteia os 10 de novo. */
-    spin(saveId: string): WildState {
+    /** Gasta um giro (ou paga a renovação quando não há giros) e sorteia os 10 de novo, no mesmo mapa. */
+    spin(saveId: string, pay = false): WildState {
       assertSave(saveId);
       const board = readBoard(saveId);
       if (!board) throw badRequest('Procure um selvagem primeiro.');
       if (board.chosen !== null) throw badRequest('Fuja do encontro antes de girar.');
-      if (board.spinsLeft <= 0) throw badRequest('Acabaram os giros deste mapa. Faça uma nova procura.');
-      writeBoard(saveId, generate(saveId), board.spinsLeft - 1, null);
-      return state(saveId);
+      const habitat = habitatById(board.habitat) ?? (HABITATS[0] as Habitat);
+      return transaction(db, () => {
+        let spinsLeft = board.spinsLeft;
+        if (spinsLeft > 0) {
+          spinsLeft -= 1;
+        } else {
+          if (!pay) throw badRequest(`Acabaram os giros. Renovar o mapa custa ₽ ${REFRESH_COST.toLocaleString('pt-BR')}.`);
+          if (moneyOf(saveId) < REFRESH_COST) throw badRequest('Dinheiro insuficiente para renovar o mapa.');
+          db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(REFRESH_COST, new Date().toISOString(), saveId);
+        }
+        writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.target), spinsLeft, chosen: null });
+        return state(saveId);
+      });
     },
 
-    /** Gera mapas novos, sem gastar giros, até aparecer um brilhante e/ou de estrelas altas. */
-    autoSearch(saveId: string, input: { target?: unknown; minStars?: unknown }): AutoSearchResult {
+    /** Voltar à tela inicial de busca: descarta o mapa atual. */
+    leave(saveId: string): WildState {
       assertSave(saveId);
-      const target: AutoSearchTarget = input.target === 'shiny' || input.target === 'stars' ? input.target : 'either';
-      const minStars = Math.max(1, Math.min(4, Math.floor(Number(input.minStars ?? DEFAULT_AUTO_STARS)) || DEFAULT_AUTO_STARS));
-      let slots = generate(saveId);
-      let searches = 1;
-      while (!matches(slots, target, minStars) && searches < MAX_AUTO_SEARCHES) {
-        slots = generate(saveId);
-        searches++;
-      }
-      writeBoard(saveId, slots, BOARD_SPINS, null);
-      return { found: matches(slots, target, minStars), searches, state: state(saveId) };
+      db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
+      return state(saveId);
     },
 
     /** Clicar em um Pokémon do mapa: começa o encontro (e a espécie passa a contar como vista). */
@@ -217,7 +293,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       const pokemon = Number.isInteger(index) ? board.slots[index] : undefined;
       if (!pokemon) throw badRequest('Escolha um dos POKÉMON do mapa.');
       store.markSeen(saveId, pokemon.speciesId);
-      writeBoard(saveId, board.slots, board.spinsLeft, index);
+      writeBoard(saveId, { ...board, chosen: index });
       return state(saveId);
     },
 
@@ -225,7 +301,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     flee(saveId: string): WildState {
       assertSave(saveId);
       const board = readBoard(saveId);
-      if (board) writeBoard(saveId, board.slots, board.spinsLeft, null);
+      if (board) writeBoard(saveId, { ...board, chosen: null });
       return state(saveId);
     },
 

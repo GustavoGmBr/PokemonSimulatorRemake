@@ -58,7 +58,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
       dialog = [`Prazer, ${trainer}! De qual região vem o seu primeiro parceiro?`];
       break;
     case 'starter':
-      dialog = [`Estes são os POKÉMON iniciais de ${region?.name.toUpperCase() ?? ''}. Qual deles vai com você?`];
+      dialog = [`Prazer, ${trainer}! Estes são os POKÉMON iniciais de ${region?.name.toUpperCase() ?? ''}. Qual deles vai com você?`];
       break;
     case 'confirm':
       dialog = starter
@@ -78,7 +78,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
             <NameEntry
               value={name}
               onChange={(value) => { setName(value); setError(null); }}
-              onConfirm={() => (name.trim() ? setStep('region') : setError('O nome não pode ficar vazio.'))}
+              onConfirm={() => (name.trim() ? setStep(regions && regions.length === 1 ? 'starter' : 'region') : setError('O nome não pode ficar vazio.'))}
               onBack={() => setStep('intro')}
             />
           ) : null}
@@ -103,7 +103,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
               active={step === 'starter'}
               initialId={starter?.speciesId}
               onPick={(option) => { setStarter(option); setStep('confirm'); }}
-              onBack={() => setStep('region')}
+              onBack={() => setStep(regions && regions.length === 1 ? 'name' : 'region')}
             />
           ) : null}
           {step === 'intro' ? (

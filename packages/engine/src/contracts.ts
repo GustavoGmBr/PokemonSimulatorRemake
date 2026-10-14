@@ -188,9 +188,33 @@ export interface WildSlotView {
 export interface WildBoardView {
   slots: WildSlotView[];
   spinsLeft: number;
-  /** nomes das regiões liberadas, de onde vêm os selvagens */
-  regions: string[];
+  /** giros que um mapa novo desta região recebe */
+  spinsTotal: number;
+  region: RegionId;
+  regionName: string;
+  /** mapa (habitat) desta procura */
+  habitat: string;
+  habitatName: string;
+  /** procura por espécie específica (todos os 10 são ela) */
+  targetSpeciesId: number | null;
   levelRange: [number, number];
+}
+
+/** Uma região na tela de busca. */
+export interface WildRegionOption {
+  id: RegionId;
+  name: string;
+  generation: number;
+  unlocked: boolean;
+  gyms: number;
+  elite: boolean;
+  champion: boolean;
+  /** giros de cada mapa nesta região */
+  spins: number;
+  /** lendários podem aparecer (Elite dos 4 derrotada) */
+  legendaries: boolean;
+  /** busca por Pokémon específico liberada (campeão derrotado) */
+  specific: boolean;
 }
 
 export interface BallOption {
@@ -207,23 +231,18 @@ export interface WildState {
   board: WildBoardView | null;
   chosen: number | null;
   balls: BallOption[];
+  regions: WildRegionOption[];
+  money: number;
+  /** preço de renovar o mapa sem giros */
+  refreshCost: number;
   shinyCharm: boolean;
   catchingCharm: boolean;
 }
 
-export type AutoSearchTarget = 'shiny' | 'stars' | 'either';
-
-export interface AutoSearchRequest {
-  target?: AutoSearchTarget;
-  /** estrelas mínimas quando o alvo inclui estrelas (padrão 3) */
-  minStars?: number;
-}
-
-export interface AutoSearchResult {
-  found: boolean;
-  /** quantos mapas foram gerados até parar */
-  searches: number;
-  state: WildState;
+export interface SearchWildRequest {
+  region: RegionId;
+  /** busca específica: id da espécie (exige o campeão da região derrotado) */
+  speciesId?: number;
 }
 
 export interface ChooseWildRequest {
@@ -275,11 +294,11 @@ export interface UseItemResult {
   remaining: number;
 }
 
-export interface CenterResult {
-  healed: number;
+export interface DevKitResult {
+  balls: number;
 }
 
-export interface DevKitResult {
-  regions: number;
-  balls: number;
+export interface DevProgressResult {
+  /** o desafio liberado agora (ex.: "kanto:gym3"); null se tudo já estava feito */
+  granted: string | null;
 }

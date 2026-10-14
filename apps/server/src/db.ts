@@ -78,6 +78,13 @@ const MIGRATIONS: string[] = [
     chosen     INTEGER
   );
   `,
+  // 4 — selvagens por região, habitat (mapa) e busca específica
+  `
+  ALTER TABLE wild_boards ADD COLUMN region TEXT NOT NULL DEFAULT 'kanto';
+  ALTER TABLE wild_boards ADD COLUMN habitat TEXT NOT NULL DEFAULT 'forest';
+  ALTER TABLE wild_boards ADD COLUMN target_species INTEGER;
+  DELETE FROM wild_boards;
+  `,
 ];
 
 export type Db = DatabaseSync;

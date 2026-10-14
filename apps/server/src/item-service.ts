@@ -1,6 +1,6 @@
 import {
-  MAX_STACK, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem,
-  type BuyResult, type CenterResult, type DevKitResult, type ShopEntry, type UseItemResult,
+  MAX_STACK, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
+  type BuyResult, type DevKitResult, type DevProgressResult, type ShopEntry, type UseItemResult,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
 import { transaction, type Db } from './db.ts';
@@ -8,7 +8,7 @@ import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 
-/** Itens, loja e Centro Pokémon. */
+/** Itens e loja. */
 export function createItemService(db: Db, store: PokemonStore, inventory: Inventory) {
   const data = loadGameData();
 
@@ -79,11 +79,6 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
       });
     },
 
-    /** Centro Pokémon: cura a equipe inteira, de graça. */
-    center(saveId: string): CenterResult {
-      return { healed: store.healTeam(saveId) };
-    },
-
     // ---- ferramentas de teste da alpha ----
     devKit(saveId: string): DevKitResult {
       money(saveId);
@@ -93,10 +88,24 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
           if (item.category === 'captura') { inventory.add(saveId, item.name, 10); balls += 10; }
           if (item.category === 'cura') inventory.add(saveId, item.name, 5);
         }
-        db.prepare('UPDATE saves SET unlocked_regions = ?, money = money + 20000 WHERE id = ?')
-          .run(REGIONS.map((region) => region.id).join(','), saveId);
+        db.prepare('UPDATE saves SET money = money + 20000 WHERE id = ?').run(saveId);
       });
-      return { regions: REGIONS.length, balls };
+      return { balls };
+    },
+
+    /** Libera o próximo desafio na ordem (ginásios, Elite dos 4, campeão; região por região). */
+    devProgress(saveId: string, all = false): DevProgressResult {
+      money(saveId);
+      const won = new Set((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((row) => row.challenge_id));
+      const order = REGIONS.flatMap((region) => [
+        ...Array.from({ length: 8 }, (_, i) => gymId(region.id, i + 1)), eliteId(region.id), championId(region.id),
+      ]);
+      const pending = order.filter((id) => !won.has(id));
+      const grant = all ? pending : pending.slice(0, 1);
+      const insert = db.prepare('INSERT OR IGNORE INTO badges (save_id, challenge_id, won_at) VALUES (?, ?, ?)');
+      const now = new Date().toISOString();
+      transaction(db, () => { for (const id of grant) insert.run(saveId, id, now); });
+      return { granted: grant.length === 0 ? null : all ? `${grant.length} desafios` : (grant[0] as string) };
     },
 
     /** Machuca a equipe (HP aleatório, às vezes 0) para testar poções e o Centro Pokémon. */

@@ -7,7 +7,7 @@ import { HpBar, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../
 import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'center' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devhurt';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -17,7 +17,6 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'team', label: 'Equipe', info: 'Veja os POKÉMON que viajam com você.' },
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
-  { id: 'center', label: 'Centro Pokémon', info: 'Cura a equipe inteira, de graça.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, caça-níqueis e outros jogos.', phase: 'Fase 4' },
   { id: 'missions', label: 'Missões', info: 'Objetivos renovados com recompensas.', phase: 'Fase 3' },
@@ -27,8 +26,10 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
 ];
 
 const DEV_MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
-  { id: 'devkit', label: '[TESTE] Kit', info: 'Libera todas as regiões e dá bolas, curas e dinheiro para testar.' },
-  { id: 'devhurt', label: '[TESTE] Ferir equipe', info: 'Reduz o HP da equipe para testar poções e o Centro Pokémon.' },
+  { id: 'devkit', label: '[TESTE] Kit', info: 'Dá bolas, curas e ₽ 20.000 para testar.' },
+  { id: 'devprogress', label: '[TESTE] Próximo desafio', info: 'Vence o próximo ginásio, Elite dos 4 ou campeão (libera giros, lendários, regiões e busca específica).' },
+  { id: 'devall', label: '[TESTE] Vencer tudo', info: 'Vence todos os desafios das 9 regiões.' },
+  { id: 'devhurt', label: '[TESTE] Ferir equipe', info: 'Reduz o HP da equipe para testar poções.' },
 ];
 
 interface Props {
@@ -102,16 +103,16 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'exit') return onExit();
     if (id === 'wild') return onOpenWild();
     if (id === 'shop') return onOpenShop();
-    if (id === 'center') {
-      return void act(async () => {
-        const result = await api.centerHeal(saveId);
-        return result.healed > 0 ? 'Sua equipe foi curada! Esperamos você de novo!' : 'Sua equipe já está em plena forma!';
-      });
-    }
     if (id === 'devkit') {
       return void act(async () => {
         const result = await api.devKit(saveId);
-        return `[TESTE] ${result.regions} regiões liberadas, +${result.balls} bolas, curas e ₽ 20.000.`;
+        return `[TESTE] +${result.balls} bolas, curas e ₽ 20.000.`;
+      });
+    }
+    if (id === 'devprogress' || id === 'devall') {
+      return void act(async () => {
+        const result = await api.devProgress(saveId, id === 'devall');
+        return result.granted ? `[TESTE] Desafio vencido: ${result.granted}.` : '[TESTE] Todos os desafios já foram vencidos.';
       });
     }
     if (id === 'devhurt') return void act(async () => `[TESTE] ${(await api.devHurt(saveId)).hurt} POKÉMON feridos.`);

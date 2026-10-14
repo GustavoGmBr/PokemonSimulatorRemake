@@ -86,16 +86,15 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
       store.patch(params.id as string, params.pid as string, (body ?? {}) as { nickname?: unknown; favorite?: unknown }))
     .get('/api/saves/:id/pokedex', ({ params }) => store.pokedex(params.id as string))
     .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
-    .post('/api/saves/:id/wild/search', ({ params }) => wild.search(params.id as string))
-    .post('/api/saves/:id/wild/spin', ({ params }) => wild.spin(params.id as string))
-    .post('/api/saves/:id/wild/auto', ({ params, body }) => wild.autoSearch(params.id as string, (body ?? {}) as { target?: unknown; minStars?: unknown }))
+    .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown }))
+    .post('/api/saves/:id/wild/spin', ({ params, body }) => wild.spin(params.id as string, (body as { pay?: unknown } | null)?.pay === true))
+    .post('/api/saves/:id/wild/leave', ({ params }) => wild.leave(params.id as string))
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
     .post('/api/saves/:id/wild/flee', ({ params }) => wild.flee(params.id as string))
     .post('/api/saves/:id/wild/throw', ({ params, body }) => wild.throwBall(params.id as string, (body as { ball?: unknown } | null)?.ball))
     .get('/api/saves/:id/shop', ({ params }) => items.shop(params.id as string))
     .post('/api/saves/:id/shop/buy', ({ params, body }) => items.buy(params.id as string, (body as { cart?: unknown } | null)?.cart))
     .post('/api/saves/:id/items/use', ({ params, body }) => items.useItem(params.id as string, (body ?? {}) as { item?: unknown; pokemonId?: unknown }))
-    .post('/api/saves/:id/center/heal', ({ params }) => items.center(params.id as string))
     .get('/api/starters', () => saves.starters())
     .get('/api/catalog/species-index', () => speciesIndex)
     .get('/api/catalog/types', () => data.types)
@@ -110,6 +109,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     router.post('/api/saves/:id/dev/grant', ({ params, body }) =>
       saves.devGrant(params.id as string, (body as { count?: unknown } | null)?.count));
     router.post('/api/saves/:id/dev/kit', ({ params }) => items.devKit(params.id as string));
+    router.post('/api/saves/:id/dev/progress', ({ params, body }) => items.devProgress(params.id as string, (body as { all?: unknown } | null)?.all === true));
     router.post('/api/saves/:id/dev/hurt', ({ params }) => ({ hurt: items.devHurt(params.id as string) }));
   }
 

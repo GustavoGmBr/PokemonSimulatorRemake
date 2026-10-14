@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AutoSearchTarget, PokemonView, WildSlotView, WildState } from '@pokesim/engine';
+import { REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
-import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
+import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { BallIcon, HpBar, KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
-const COLUMNS = 5;
-const TARGETS: AutoSearchTarget[] = ['either', 'shiny', 'stars'];
-const TARGET_LABEL: Record<AutoSearchTarget, string> = { either: 'Brilhante ou estrelas', shiny: 'Só brilhante', stars: 'Só estrelas' };
+/** Pokémon com tantas estrelas (ou mais) ganham destaque no mapa; brilhantes sempre. */
+const ALERT_STARS = 3;
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const SHAKE_TEXT = ['A bola nem balançou…', 'Balançou uma vez…', 'Balançou duas vezes… quase!', 'Três balanços… por pouco!'];
 
 const stars = (n: number) => (n > 0 ? '★'.repeat(n) : '0★');
 const percent = (chance: number | null) => (chance === null ? '' : chance >= 1 ? '100%' : chance < 0.01 ? '<1%' : `${Math.round(chance * 100)}%`);
+const yen = (n: number) => `₽ ${n.toLocaleString('pt-BR')}`;
 
 interface Anim {
   ball: string;
@@ -28,21 +28,30 @@ interface Props {
   onBack: () => void;
 }
 
+type Step = 'regions' | 'region' | 'species';
+
 export function WildScreen({ saveId, onBack }: Props) {
   const [state, setState] = useState<WildState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState('Procure um POKÉMON selvagem!');
+  const [message, setMessage] = useState('Escolha uma região para procurar POKÉMON selvagens.');
   const [busy, setBusy] = useState(false);
   const [cursor, setCursor] = useState(0);
-  const [target, setTarget] = useState<AutoSearchTarget>('either');
-  const [minStars, setMinStars] = useState(3);
+  const [step, setStep] = useState<Step>('regions');
+  const [regionId, setRegionId] = useState<string>('kanto');
+  const [hoverRegion, setHoverRegion] = useState<string>('kanto');
   const [anim, setAnim] = useState<Anim | null>(null);
   const [caught, setCaught] = useState<PokemonView | null>(null);
+  const [index, setIndex] = useState<SpeciesIndexEntry[]>([]);
+  const [filter, setFilter] = useState('');
   const alive = useRef(true);
 
   useEffect(() => {
     alive.current = true;
-    api.wild(saveId).then(setState, (e: Error) => setError(e.message));
+    api.wild(saveId).then((next) => {
+      setState(next);
+      if (next.board) setMessage(next.chosen !== null ? 'Você continua o encontro.' : 'Você voltou ao mapa da última procura.');
+    }, (e: Error) => setError(e.message));
+    api.speciesIndex().then(setIndex, () => undefined);
     return () => { alive.current = false; };
   }, [saveId]);
 
@@ -50,8 +59,7 @@ export function WildScreen({ saveId, onBack }: Props) {
   const chosen = state && board && state.chosen !== null ? board.slots[state.chosen] ?? null : null;
   const mode: 'idle' | 'board' | 'encounter' | 'caught' = caught ? 'caught' : chosen ? 'encounter' : board ? 'board' : 'idle';
 
-  const highlight = (slot: WildSlotView): 'shiny' | 'stars' | null => (slot.shiny ? 'shiny' : slot.ivStars >= minStars ? 'stars' : null);
-  const found = useMemo(() => (board?.slots ?? []).filter((slot) => highlight(slot) !== null), [board, minStars]); // eslint-disable-line react-hooks/exhaustive-deps
+  const found = useMemo(() => (board?.slots ?? []).filter((slot) => slot.shiny || slot.ivStars >= ALERT_STARS), [board]);
   const hasShiny = found.some((slot) => slot.shiny);
 
   // alerta sonoro quando o mapa tem brilhante / estrelas altas
@@ -73,27 +81,27 @@ export function WildScreen({ saveId, onBack }: Props) {
     }
   };
 
-  const search = () => run(async () => {
-    const next = await api.wildSearch(saveId);
+  const search = (region: string, speciesId?: number) => run(async () => {
+    const next = await api.wildSearch(saveId, speciesId ? { region: region as never, speciesId } : { region: region as never });
     setState(next);
     setCaught(null);
     setCursor(0);
-    setMessage('Um mapa novo! Escolha um POKÉMON (3 giros para trocar todos).');
+    const b = next.board;
+    setMessage(b ? `${b.habitatName}! Escolha um POKÉMON (${b.spinsLeft} giros para trocar todos).` : '');
   });
   const spin = () => run(async () => {
-    const next = await api.wildSpin(saveId);
+    if (!board) return;
+    const pay = board.spinsLeft === 0;
+    const next = await api.wildSpin(saveId, pay);
     setState(next);
-    setMessage(`Giro! Restam ${next.board?.spinsLeft ?? 0}.`);
+    setMessage(pay ? `Mapa renovado por ${yen(next.refreshCost)}.` : `Giro! Restam ${next.board?.spinsLeft ?? 0}.`);
   });
-  const autoSearch = () => run(async () => {
-    setMessage('Procurando…');
-    const result = await api.wildAuto(saveId, { target, minStars });
-    setState(result.state);
+  const leave = () => run(async () => {
+    const next = await api.wildLeave(saveId);
+    setState(next);
     setCaught(null);
-    setCursor(0);
-    setMessage(result.found
-      ? `Achei! Apareceu depois de ${result.searches.toLocaleString('pt-BR')} ${result.searches === 1 ? 'mapa' : 'mapas'}.`
-      : `Nada em ${result.searches.toLocaleString('pt-BR')} mapas. Tente de novo.`);
+    setStep('regions');
+    setMessage('Escolha uma região para procurar POKÉMON selvagens.');
   });
   const choose = (slot: number) => run(async () => {
     const next = await api.wildChoose(saveId, slot);
@@ -105,6 +113,12 @@ export function WildScreen({ saveId, onBack }: Props) {
     setState(await api.wildFlee(saveId));
     setMessage('Você fugiu. Escolha outro POKÉMON.');
   });
+  const afterCapture = () => {
+    setCaught(null);
+    setStep('region');
+    setState((s) => (s ? { ...s, board: null, chosen: null } : s));
+    setMessage('Procure outro POKÉMON selvagem!');
+  };
 
   const throwBall = (ball: string) => run(async () => {
     if (!state || !chosen) return;
@@ -136,22 +150,20 @@ export function WildScreen({ saveId, onBack }: Props) {
     }
   });
 
-  // ---- teclado ----
+  const speciesChoices = useSpeciesChoices(index, regionId, filter);
+
+  // ---- teclado (mapa e captura; as listas usam o próprio Menu) ----
   useKeys((key) => {
-    if (mode === 'board') {
-      const n = board?.slots.length ?? 0;
-      if (key === 'left') setCursor((c) => (c + n - 1) % n);
-      else if (key === 'right') setCursor((c) => (c + 1) % n);
-      else if (key === 'up') setCursor((c) => (c - COLUMNS + n) % n);
-      else if (key === 'down') setCursor((c) => (c + COLUMNS) % n);
-      else if (key === 'confirm') { playSound('confirm'); void choose(cursor); }
-      else if (key === 'prev') { if ((board?.spinsLeft ?? 0) > 0) void spin(); else playSound('error'); }
-      else if (key === 'filter') void search();
-      else if (key === 'next') void autoSearch();
-      else if (key === 'back') { playSound('back'); onBack(); }
-      if (key === 'left' || key === 'right' || key === 'up' || key === 'down') playSound('move');
+    if (mode === 'board' && board) {
+      const n = board.slots.length;
+      if (key === 'left' || key === 'right' || key === 'up' || key === 'down') {
+        setCursor((c) => neighbour(board.habitat, c, key, n));
+        playSound('move');
+      } else if (key === 'confirm') { playSound('confirm'); void choose(cursor); }
+      else if (key === 'prev') void spin();
+      else if (key === 'back') { playSound('back'); void leave(); }
     } else if (mode === 'caught') {
-      if (key === 'confirm' || key === 'back') { setCaught(null); setState((s) => (s ? { ...s, board: null, chosen: null } : s)); setMessage('Procure outro POKÉMON selvagem!'); }
+      if (key === 'confirm' || key === 'back') afterCapture();
     }
   }, (mode === 'board' || mode === 'caught') && !busy);
 
@@ -165,13 +177,9 @@ export function WildScreen({ saveId, onBack }: Props) {
   }
   if (!state) return <main className="gb-screen"><div className="gb-stage"><div className="gb-window gb-dialog"><p>Carregando…</p></div></div></main>;
 
-  const rows: FilterRow[] = [
-    { id: 'search', label: 'Procurar selvagem', value: '', kind: 'action' },
-    { id: 'auto', label: 'Busca automática', value: '', kind: 'action' },
-    { id: 'target', label: 'Parar quando achar', value: TARGET_LABEL[target], kind: 'cycle' },
-    { id: 'stars', label: 'Estrelas mínimas', value: stars(minStars), kind: 'cycle' },
-    { id: 'back', label: 'Voltar', value: '', kind: 'action' },
-  ];
+  const regionOf = (id: string): WildRegionOption | undefined => state.regions.find((region) => region.id === id);
+  const selected = regionOf(step === 'regions' ? hoverRegion : regionId) ?? (state.regions[0] as WildRegionOption);
+  const previous = REGIONS[Math.max(0, REGIONS.findIndex((region) => region.id === selected.id) - 1)];
 
   return (
     <main className="gb-screen">
@@ -179,29 +187,84 @@ export function WildScreen({ saveId, onBack }: Props) {
         <header className="gb-window gb-spread" style={{ alignItems: 'center', padding: '10px 20px' }}>
           <h1 className="gb-title" style={{ fontSize: 26 }}>Selvagens</h1>
           <span className="gb-muted">
-            {board ? `${board.regions.join(' · ')} · Nv ${board.levelRange[0]}–${board.levelRange[1]}` : 'Nenhuma procura em andamento'}
+            {board ? `${board.regionName} · ${board.habitatName} · Nv ${board.levelRange[0]}–${board.levelRange[1]}` : 'Nenhuma procura em andamento'}
             {state.shinyCharm ? ' · Amuleto Brilhante' : ''}{state.catchingCharm ? ' · Amuleto de Captura' : ''}
+            {' · '}{yen(state.money)}
           </span>
         </header>
 
         {mode === 'idle' ? (
           <div className="gb-row" style={{ alignItems: 'flex-start' }}>
-            <div className="gb-side" style={{ maxWidth: 520 }}>
-              <FilterPanel
-                title="O que fazer?"
-                rows={rows}
-                active={!busy}
-                onCycle={(id, d) => {
-                  if (id === 'target') setTarget(TARGETS[(TARGETS.indexOf(target) + d + TARGETS.length) % TARGETS.length] as AutoSearchTarget);
-                  else if (id === 'stars') setMinStars(((minStars - 1 + d + 4) % 4) + 1);
-                }}
-                onAction={(id) => { if (id === 'search') void search(); else if (id === 'auto') void autoSearch(); else onBack(); }}
-                onBack={onBack}
-              />
+            <div className="gb-side" style={{ maxWidth: 380 }}>
+              <section className="gb-window" aria-label="Regiões">
+                <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>Região</h2>
+                <Menu
+                  label="Regiões"
+                  active={step === 'regions' && !busy}
+                  initialId={regionId}
+                  items={state.regions.map((region): MenuItem => ({
+                    id: region.id,
+                    label: `${region.name}`,
+                    extra: region.unlocked ? `Ger. ${region.generation}` : '🔒',
+                    disabled: !region.unlocked,
+                  }))}
+                  onMove={setHoverRegion}
+                  onSelect={(id) => { setRegionId(id); setStep('region'); setMessage(`${regionOf(id)?.name ?? ''}: o que vamos procurar?`); }}
+                  onBack={onBack}
+                />
+              </section>
             </div>
-            <div className="gb-window gb-grow">
-              <p style={{ margin: 0 }}>Cada procura mostra 10 POKÉMON no mapa. Você tem 3 giros para trocar todos eles; clique no que quiser enfrentar.</p>
-              <p className="gb-muted" style={{ marginBottom: 0 }}>A busca automática gera mapas até aparecer um brilhante ou um POKÉMON com as estrelas mínimas escolhidas.</p>
+            <div className="gb-grow" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <section className="gb-window" aria-label="Detalhes da região">
+                <h2 className="gb-title" style={{ fontSize: 22, marginBottom: 4 }}>{selected.name} · Geração {selected.generation}</h2>
+                {selected.unlocked ? (
+                  <p style={{ margin: '0 0 8px' }}>Cada mapa mostra 10 POKÉMON soltos. Clique no que quiser enfrentar.</p>
+                ) : (
+                  <p className="gb-region-lock" style={{ margin: '0 0 8px' }}>
+                    🔒 Bloqueada. Derrote o campeão de {previous?.name ?? 'Kanto'} para liberar.
+                  </p>
+                )}
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+                  <li>Ginásios: <b>{selected.gyms}/8</b> · Elite dos 4: <b>{selected.elite ? '✓' : '—'}</b> · Campeão: <b>{selected.champion ? '✓' : '—'}</b></li>
+                  <li>Giros por mapa: <b>{selected.spins}</b> <span className="gb-muted">(ginásio 5 · Elite dos 4 8 · campeão 12)</span></li>
+                  <li>Lendários: <b>{selected.legendaries ? 'liberados' : 'derrote a Elite dos 4'}</b></li>
+                  <li>Pokémon específico: <b>{selected.specific ? 'liberado' : 'derrote o campeão'}</b></li>
+                </ul>
+              </section>
+              {step !== 'regions' && selected.unlocked ? (
+                <section className="gb-window" aria-label="Ações">
+                  {step === 'region' ? (
+                    <>
+                      <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>{selected.name}</h2>
+                      <Menu
+                        label="Ações"
+                        active={!busy}
+                        items={[
+                          { id: 'search', label: 'Procurar selvagem' },
+                          { id: 'specific', label: 'Procurar POKÉMON específico', extra: selected.specific ? '' : '🔒', disabled: !selected.specific },
+                          { id: 'back', label: 'Voltar' },
+                        ]}
+                        onSelect={(id) => {
+                          if (id === 'search') void search(regionId);
+                          else if (id === 'specific') { setFilter(''); setStep('species'); setMessage('Digite o nome e escolha o POKÉMON.'); }
+                          else setStep('regions');
+                        }}
+                        onBack={() => setStep('regions')}
+                      />
+                    </>
+                  ) : null}
+                  {step === 'species' ? (
+                    <SpeciesPicker
+                      choices={speciesChoices}
+                      filter={filter}
+                      onFilter={setFilter}
+                      busy={busy}
+                      onPick={(id) => void search(regionId, id)}
+                      onBack={() => setStep('region')}
+                    />
+                  ) : null}
+                </section>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -210,40 +273,32 @@ export function WildScreen({ saveId, onBack }: Props) {
           <section className="gb-window" aria-label="Mapa de selvagens">
             {found.length > 0 ? (
               <div className={`gb-banner${hasShiny ? '' : ' gb-banner--stars'}`} role="alert" style={{ marginBottom: 10 }}>
-                {hasShiny ? '✦ Brilhante no mapa!' : `${minStars === 4 ? '4★' : `${minStars}★ ou mais`} no mapa!`}
+                {hasShiny ? '✦ Brilhante no mapa!' : `${ALERT_STARS}★ ou mais no mapa!`}
                 {hasShiny && found.some((s) => !s.shiny) ? ' Também há POKÉMON de estrelas altas.' : ''}
               </div>
             ) : null}
-            <div className="gb-spawn-grid" role="grid">
-              {board.slots.map((slot) => {
-                const mark = highlight(slot);
-                return (
-                  <button
-                    key={slot.slot}
-                    type="button"
-                    role="gridcell"
-                    className={`gb-spawn${mark === 'shiny' ? ' gb-spawn--shiny' : mark === 'stars' ? ' gb-spawn--stars' : ''}`}
-                    aria-current={cursor === slot.slot}
-                    aria-label={`${slot.name}, nível ${slot.level}, ${slot.ivStars} estrelas${slot.shiny ? ', brilhante' : ''}`}
-                    onMouseEnter={() => setCursor(slot.slot)}
-                    onClick={() => { setCursor(slot.slot); playSound('confirm'); void choose(slot.slot); }}
-                    disabled={busy}
-                  >
-                    <span className="gb-spawn__name">{slot.shiny ? '✦ ' : ''}{slot.name}</span>
-                    <span className="gb-spawn__meta">Nv{slot.level} · <span className="gb-stars">{stars(slot.ivStars)}</span></span>
-                    <Sprite speciesId={slot.speciesId} shiny={slot.shiny} alt="" size={96} />
-                    <span style={{ display: 'flex', gap: 3 }}>{slot.types.map((t) => <TypeBadge key={t} type={t} />)}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="gb-spread" style={{ marginTop: 12, alignItems: 'center' }}>
-              <span>Giros restantes: <b>{board.spinsLeft}</b>/3</span>
-              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                <button type="button" className="gb-button" disabled={busy || board.spinsLeft === 0} onClick={() => void spin()}>Girar (Q)</button>
-                <button type="button" className="gb-button" disabled={busy} onClick={() => void search()}>Nova procura (F)</button>
-                <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void autoSearch()}>Busca automática (E)</button>
-              </span>
+            {board.targetSpeciesId !== null ? (
+              <p className="gb-muted" style={{ margin: '0 0 8px' }}>Procura específica: todos os POKÉMON do mapa são da mesma espécie. Escolha o de melhores estrelas.</p>
+            ) : null}
+            <HabitatBoard
+              habitat={board.habitat}
+              slots={board.slots}
+              cursor={cursor}
+              alertStars={ALERT_STARS}
+              disabled={busy}
+              onHover={setCursor}
+              onPick={(slot) => { setCursor(slot); playSound('confirm'); void choose(slot); }}
+            />
+            <div className="gb-spread" style={{ marginTop: 12, alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button type="button" className="gb-button" disabled={busy} onClick={() => { playSound('back'); void leave(); }}>← Voltar à busca (X)</button>
+              <span>Giros: <b>{board.spinsLeft}</b>/{board.spinsTotal}</span>
+              {board.spinsLeft > 0 ? (
+                <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void spin()}>Girar (Q)</button>
+              ) : (
+                <button type="button" className="gb-button gb-button--red" disabled={busy || state.money < state.refreshCost} onClick={() => void spin()}>
+                  Renovar mapa — {yen(state.refreshCost)} (Q)
+                </button>
+              )}
             </div>
           </section>
         ) : null}
@@ -265,7 +320,7 @@ export function WildScreen({ saveId, onBack }: Props) {
               </div>
               {chosen.caughtBefore ? <span className="gb-hint" style={{ color: 'var(--ink)' }}>Você já capturou esta espécie.</span> : <span className="gb-hint" style={{ color: 'var(--ink)' }}>Espécie nova para a sua Pokédex!</span>}
             </section>
-            <section className="gb-window gb-side" style={{ maxWidth: 470, minWidth: 330 }} aria-label="Bolas">
+            <section className="gb-window gb-side" style={{ flex: '0 0 auto', maxWidth: 520, minWidth: 380 }} aria-label="Bolas">
               <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>Lançar bola</h2>
               {state.balls.length === 0 ? <p className="gb-muted">Você está sem POKÉ BOLAS. Compre mais na Loja.</p> : null}
               <Menu
@@ -297,16 +352,68 @@ export function WildScreen({ saveId, onBack }: Props) {
             <Sprite speciesId={caught.speciesId} shiny={caught.shiny} alt={caught.name} size={160} className="gb-bob" />
             <h2 className="gb-title" style={{ fontSize: 28 }}>{caught.shiny ? '✦ ' : ''}{caught.name} · Nv{caught.level}</h2>
             <p style={{ margin: '4px 0' }}><span className="gb-stars">{stars(caught.ivStars)}</span> · IV {caught.ivTotal}/186</p>
-            <button type="button" className="gb-button gb-button--red" onClick={() => { setCaught(null); setState((s) => (s ? { ...s, board: null, chosen: null } : s)); setMessage('Procure outro POKÉMON selvagem!'); }}>Continuar (Z)</button>
+            <button type="button" className="gb-button gb-button--red" onClick={afterCapture}>Continuar (Z)</button>
           </section>
         ) : null}
 
         <div className="gb-window gb-window--accent gb-info" role="status"><p style={{ margin: 0 }}>{busy && !anim ? 'Aguarde…' : message}</p></div>
         <KeyHints hints={mode === 'board'
-          ? [['↑↓←→', 'mover'], ['Z', 'enfrentar'], ['Q', 'girar'], ['F', 'nova procura'], ['E', 'busca automática'], ['X', 'sair']]
+          ? [['↑↓←→', 'mover'], ['Z', 'enfrentar'], ['Q', 'girar / renovar'], ['X', 'voltar à busca']]
           : [['↑↓', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar / fugir']]}
         />
       </div>
     </main>
+  );
+}
+
+function useSpeciesChoices(index: SpeciesIndexEntry[], regionId: string, filter: string): SpeciesIndexEntry[] {
+  const generation = REGIONS.find((region) => region.id === regionId)?.generation ?? 1;
+  return useMemo(() => {
+    const text = filter.trim().toLowerCase();
+    return index.filter((entry) => entry.generation === generation && (!text || entry.name.toLowerCase().includes(text)));
+  }, [index, generation, filter]);
+}
+
+interface PickerProps {
+  choices: SpeciesIndexEntry[];
+  filter: string;
+  onFilter: (value: string) => void;
+  onPick: (speciesId: number) => void;
+  onBack: () => void;
+  busy: boolean;
+}
+
+function SpeciesPicker({ choices, filter, onFilter, onPick, onBack, busy }: PickerProps) {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { input.current?.focus(); }, []);
+  useKeys((key) => {
+    if (key === 'back') onBack();
+    else if (key === 'confirm' && choices[0] && !busy) onPick(choices[0].id);
+  }, true);
+  return (
+    <div>
+      <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>POKÉMON específico</h2>
+      <input
+        ref={input}
+        className="gb-input"
+        value={filter}
+        placeholder="Digite o nome…"
+        aria-label="Nome do POKÉMON"
+        maxLength={20}
+        onChange={(event) => onFilter(event.target.value)}
+        style={{ width: '100%' }}
+      />
+      <p className="gb-hint" style={{ margin: '6px 0 0' }}>Enter escolhe o primeiro da lista · Esc volta. O mapa terá 10 do mesmo POKÉMON, no habitat do tipo dele.</p>
+      <div className="gb-species-grid" role="list">
+        {choices.length === 0 ? <p className="gb-muted" style={{ gridColumn: '1 / -1' }}>Nenhum POKÉMON com esse nome nesta região.</p> : null}
+        {choices.slice(0, 80).map((entry) => (
+          <button key={entry.id} type="button" role="listitem" className="gb-species-pick" disabled={busy} onClick={() => onPick(entry.id)}>
+            <Sprite speciesId={entry.id} alt="" size={56} />
+            <span>{entry.name}</span>
+            <span style={{ display: 'flex', gap: 3 }}>{entry.types.map((t) => <TypeBadge key={t} type={t} />)}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

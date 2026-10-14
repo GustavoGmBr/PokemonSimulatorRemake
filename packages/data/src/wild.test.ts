@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadGameData } from './index.ts';
 import {
-  applyHealItem, attemptCapture, ballMultiplier, captureChance, captureValue, evolutionStage, isWildEligible, maxStageForBadges,
+  HABITATS, applyHealItem, habitatOfType, regionProgress, spinsFor, unlockedRegionIds,
+  attemptCapture, ballMultiplier, captureChance, captureValue, evolutionStage, isWildEligible, maxStageForBadges,
   rollShiny, seededRng, shakeThreshold, wildLevelRange, type BallContext,
 } from '@pokesim/engine';
 
@@ -79,14 +80,14 @@ test('selvagens: estágio, nível e regiões liberadas', () => {
   assert.equal(maxStageForBadges(5), 2);
   assert.deepEqual(wildLevelRange(0), [3, 12]);
   assert.deepEqual(wildLevelRange(8), [43, 52]);
-  assert.ok(isWildEligible(species(25), ['kanto'], 0), 'Pikachu: o Pichu é de Johto, ainda fechada');
-  assert.ok(!isWildEligible(species(25), ['kanto', 'johto'], 0));
-  assert.ok(isWildEligible(species(25), ['kanto', 'johto'], 2));
-  assert.ok(!isWildEligible(species(6), ['kanto'], 0), 'Charizard só com insígnias');
-  assert.ok(isWildEligible(species(6), ['kanto'], 5));
-  assert.ok(!isWildEligible(species(152), ['kanto'], 8), 'região não liberada');
-  assert.ok(!isWildEligible(species(150), ['kanto'], 8), 'lendário bloqueado');
-  assert.ok(!isWildEligible(species(151), ['kanto'], 8), 'mítico bloqueado');
+  assert.ok(isWildEligible(species(25), 'kanto', ['kanto'], 0), 'Pikachu: o Pichu é de Johto, ainda fechada');
+  assert.ok(!isWildEligible(species(25), 'kanto', ['kanto', 'johto'], 0));
+  assert.ok(isWildEligible(species(25), 'kanto', ['kanto', 'johto'], 2));
+  assert.ok(!isWildEligible(species(6), 'kanto', ['kanto'], 0), 'Charizard só com insígnias');
+  assert.ok(isWildEligible(species(6), 'kanto', ['kanto'], 5));
+  assert.ok(!isWildEligible(species(152), 'kanto', ['kanto'], 8), 'região não liberada');
+  assert.ok(!isWildEligible(species(150), 'kanto', ['kanto'], 8), 'lendário bloqueado');
+  assert.ok(!isWildEligible(species(151), 'kanto', ['kanto'], 8), 'mítico bloqueado');
 });
 
 test('itens de cura', () => {
@@ -99,4 +100,23 @@ test('itens de cura', () => {
   assert.deepEqual(applyHealItem('max-revive', 0, 81), { ok: true, newHp: 81, healed: 81 });
   assert.equal(applyHealItem('revive', 5, 81).ok, false);
   assert.equal(applyHealItem('poke-ball', 5, 81).ok, false);
+});
+
+test('progresso: regiões abrem pelo campeão e os giros crescem com os desafios', () => {
+  assert.deepEqual(unlockedRegionIds([]), ['kanto']);
+  assert.deepEqual(unlockedRegionIds(['kanto:champion']), ['kanto', 'johto']);
+  assert.deepEqual(unlockedRegionIds(['johto:champion']), ['kanto'], 'não pula regiões');
+  assert.equal(spinsFor(regionProgress([], 'kanto')), 3);
+  assert.equal(spinsFor(regionProgress(['kanto:gym1'], 'kanto')), 5);
+  assert.equal(spinsFor(regionProgress(['kanto:gym1', 'kanto:elite'], 'kanto')), 8);
+  assert.equal(spinsFor(regionProgress(['kanto:champion'], 'kanto')), 12);
+  assert.equal(spinsFor(regionProgress(['kanto:champion'], 'johto')), 3);
+});
+
+test('habitats: todos os 18 tipos têm exatamente um mapa', () => {
+  const all = HABITATS.flatMap((habitat) => habitat.types);
+  assert.equal(new Set(all).size, 18);
+  assert.equal(all.length, 18);
+  assert.equal(habitatOfType('electric').id, 'industrial');
+  assert.equal(habitatOfType('fairy').id, 'grove');
 });

@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import {
-  ALL_STARTERS, REGIONS, STARTER_LEVEL, STARTING_ITEMS, STARTING_MONEY,
+  ALL_STARTERS, REGIONS, STARTER_LEVEL, STARTER_REGIONS, STARTING_ITEMS, STARTING_MONEY,
   createPokemon, perfectIvs, regionOfSpecies, rngFrom,
   type DevGrantResult, type InventoryEntry, type SaveDetail, type SaveSummary, type StarterRegion,
 } from '@pokesim/engine';
@@ -35,7 +35,7 @@ export function createSaveService(db: Db, store: PokemonStore) {
       'SELECT species_id, shiny, level FROM pokemon WHERE save_id = ? AND team_slot IS NOT NULL ORDER BY team_slot',
     ).all(row.id) as { species_id: number; shiny: number; level: number }[];
     const caught = db.prepare('SELECT COUNT(*) AS n FROM pokedex WHERE save_id = ? AND caught = 1').get(row.id) as { n: number };
-    const badges = db.prepare('SELECT COUNT(*) AS n FROM badges WHERE save_id = ?').get(row.id) as { n: number };
+    const badges = db.prepare("SELECT COUNT(*) AS n FROM badges WHERE save_id = ? AND challenge_id LIKE '%:gym%'").get(row.id) as { n: number };
     return {
       id: row.id,
       trainerName: row.trainer_name,
@@ -121,7 +121,7 @@ export function createSaveService(db: Db, store: PokemonStore) {
     },
 
     starters(): StarterRegion[] {
-      return REGIONS.map((region) => ({
+      return REGIONS.filter((region) => STARTER_REGIONS.includes(region.id)).map((region) => ({
         region: region.id,
         name: region.name,
         starters: region.starters.map((speciesId) => {
