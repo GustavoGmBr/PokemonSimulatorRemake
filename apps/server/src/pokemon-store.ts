@@ -203,6 +203,32 @@ export function createPokemonStore(db: Db) {
       });
     },
 
+    /** Um Pokémon do save, já no formato da API. */
+    view(saveId: string, pokemonId: string): PokemonView {
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
+    setHp(saveId: string, pokemonId: string, hp: number): void {
+      getRow(saveId, pokemonId);
+      db.prepare('UPDATE pokemon SET current_hp = ? WHERE id = ?').run(Math.max(0, Math.floor(hp)), pokemonId);
+    },
+
+    /** Centro Pokémon: HP e PP cheios para toda a equipe. Devolve quantos precisavam de cura. */
+    healTeam(saveId: string): number {
+      assertSave(saveId);
+      let healed = 0;
+      transaction(db, () => {
+        for (const row of teamRows(saveId)) {
+          const view = rowToView(row);
+          const slots = (JSON.parse(row.moves) as MoveSlot[]).map((slot) => ({ ...slot, pp: slot.maxPp }));
+          const ppFull = slots.every((slot, i) => slot.pp === (JSON.parse(row.moves) as MoveSlot[])[i]?.pp);
+          if (row.current_hp < view.stats.hp || !ppFull) healed++;
+          db.prepare('UPDATE pokemon SET current_hp = ?, moves = ? WHERE id = ?').run(view.stats.hp, JSON.stringify(slots), row.id);
+        }
+      });
+      return healed;
+    },
+
     team(saveId: string): PokemonView[] {
       return teamRows(saveId).map(rowToView);
     },

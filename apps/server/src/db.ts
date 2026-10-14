@@ -68,6 +68,16 @@ const MIGRATIONS: string[] = [
   CREATE UNIQUE INDEX pokemon_box_position ON pokemon (save_id, box, box_slot) WHERE box IS NOT NULL;
   ALTER TABLE pokedex ADD COLUMN seen INTEGER NOT NULL DEFAULT 1;
   `,
+  // 3 — selvagens: regiões liberadas e o mapa de procura em andamento
+  `
+  ALTER TABLE saves ADD COLUMN unlocked_regions TEXT NOT NULL DEFAULT '';
+  CREATE TABLE wild_boards (
+    save_id    TEXT PRIMARY KEY REFERENCES saves(id) ON DELETE CASCADE,
+    slots      TEXT NOT NULL,
+    spins_left INTEGER NOT NULL,
+    chosen     INTEGER
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;
@@ -90,14 +100,22 @@ function migrate(db: Db): void {
   }
 }
 
+const depths = new WeakMap<Db, number>();
+
+/** Transação que pode ser aninhada: a de fora usa BEGIN, as de dentro usam SAVEPOINT. */
 export function transaction<T>(db: Db, work: () => T): T {
-  db.exec('BEGIN');
+  const depth = depths.get(db) ?? 0;
+  const point = `sp_${depth}`;
+  db.exec(depth === 0 ? 'BEGIN' : `SAVEPOINT ${point}`);
+  depths.set(db, depth + 1);
   try {
     const result = work();
-    db.exec('COMMIT');
+    db.exec(depth === 0 ? 'COMMIT' : `RELEASE ${point}`);
     return result;
   } catch (error) {
-    db.exec('ROLLBACK');
+    db.exec(depth === 0 ? 'ROLLBACK' : `ROLLBACK TO ${point}; RELEASE ${point}`);
     throw error;
+  } finally {
+    depths.set(db, depth);
   }
 }

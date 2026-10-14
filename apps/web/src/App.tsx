@@ -4,6 +4,8 @@ import { NewGameScreen } from './screens/NewGameScreen.tsx';
 import { MenuScreen, type MenuId } from './screens/MenuScreen.tsx';
 import { PcScreen } from './screens/PcScreen.tsx';
 import { PokedexScreen } from './screens/PokedexScreen.tsx';
+import { WildScreen } from './screens/WildScreen.tsx';
+import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
 
@@ -14,6 +16,8 @@ export type Screen =
   | { name: 'menu'; saveId: string; welcome?: string; focus?: MenuId }
   | { name: 'pc'; saveId: string }
   | { name: 'pokedex'; saveId: string }
+  | { name: 'wild'; saveId: string }
+  | { name: 'shop'; saveId: string }
   | { name: 'options'; back: Screen };
 
 function saveIdOf(screen: Screen): string | null {
@@ -54,6 +58,8 @@ export function App() {
           onOpenPc={() => setScreen({ name: 'pc', saveId })}
           onOpenPokedex={() => setScreen({ name: 'pokedex', saveId })}
           onOpenOptions={() => setScreen({ name: 'options', back: { name: 'menu', saveId, focus: 'options' } })}
+          onOpenWild={() => setScreen({ name: 'wild', saveId })}
+          onOpenShop={() => setScreen({ name: 'shop', saveId })}
         />
       );
     }
@@ -61,6 +67,10 @@ export function App() {
       return <PcScreen key={`pc-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pc' })} />;
     case 'pokedex':
       return <PokedexScreen key={`dex-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pokedex' })} />;
+    case 'wild':
+      return <WildScreen key={`wild-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'wild' })} />;
+    case 'shop':
+      return <ShopScreen key={`shop-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'shop' })} />;
     case 'options':
       return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }

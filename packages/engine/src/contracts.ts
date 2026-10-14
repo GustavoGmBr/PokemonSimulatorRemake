@@ -168,3 +168,118 @@ export interface DevGrantResult {
   inTeam: number;
   inBoxes: number;
 }
+
+// ---------------------------------------------------------------- selvagens e captura
+
+/** Um selvagem no mapa. Só mostra o que o jogador pode ver: nome, nível, estrelas e brilho. */
+export interface WildSlotView {
+  slot: number;
+  speciesId: number;
+  name: string;
+  level: number;
+  shiny: boolean;
+  ivStars: number;
+  types: TypeName[];
+  gender: Gender;
+  /** a espécie já foi capturada neste save */
+  caughtBefore: boolean;
+}
+
+export interface WildBoardView {
+  slots: WildSlotView[];
+  spinsLeft: number;
+  /** nomes das regiões liberadas, de onde vêm os selvagens */
+  regions: string[];
+  levelRange: [number, number];
+}
+
+export interface BallOption {
+  item: string;
+  displayName: string;
+  description: string;
+  quantity: number;
+  /** chance de captura (0–1) contra o selvagem escolhido; null sem encontro */
+  chance: number | null;
+}
+
+/** Resposta de GET /wild. `board` é null sem procura em andamento; `chosen` é o selvagem enfrentado. */
+export interface WildState {
+  board: WildBoardView | null;
+  chosen: number | null;
+  balls: BallOption[];
+  shinyCharm: boolean;
+  catchingCharm: boolean;
+}
+
+export type AutoSearchTarget = 'shiny' | 'stars' | 'either';
+
+export interface AutoSearchRequest {
+  target?: AutoSearchTarget;
+  /** estrelas mínimas quando o alvo inclui estrelas (padrão 3) */
+  minStars?: number;
+}
+
+export interface AutoSearchResult {
+  found: boolean;
+  /** quantos mapas foram gerados até parar */
+  searches: number;
+  state: WildState;
+}
+
+export interface ChooseWildRequest {
+  slot: number;
+}
+
+export interface ThrowBallRequest {
+  ball: string;
+}
+
+export interface ThrowBallResult {
+  shakes: 0 | 1 | 2 | 3;
+  caught: boolean;
+  chance: number;
+  /** o Pokémon capturado, já com o lugar onde foi parar */
+  pokemon: PokemonView | null;
+  state: WildState;
+}
+
+// ---------------------------------------------------------------- itens, loja e Centro Pokémon
+
+export interface ShopEntry {
+  item: string;
+  displayName: string;
+  category: string;
+  description: string;
+  price: number;
+  /** quantos o jogador já tem */
+  owned: number;
+}
+
+export interface BuyRequest {
+  cart: { item: string; quantity: number }[];
+}
+
+export interface BuyResult {
+  spent: number;
+  money: number;
+}
+
+export interface UseItemRequest {
+  item: string;
+  pokemonId: string;
+}
+
+export interface UseItemResult {
+  pokemon: PokemonView;
+  healed: number;
+  remaining: number;
+}
+
+export interface CenterResult {
+  healed: number;
+}
+
+export interface DevKitResult {
+  regions: number;
+  balls: number;
+}

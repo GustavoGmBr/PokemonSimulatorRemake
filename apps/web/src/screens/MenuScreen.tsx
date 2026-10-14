@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { PokemonView, SaveDetail } from '@pokesim/engine';
+import { HEAL_EFFECTS, type PokemonView, type SaveDetail } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
@@ -7,22 +7,28 @@ import { HpBar, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../
 import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'center' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devhurt';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'battle', label: 'Batalhar', info: 'Ginásios, treinadores e campeões.', phase: 'Fase 2' },
-  { id: 'wild', label: 'Selvagens', info: 'Explore rotas e capture POKÉMON.', phase: 'Fase 1' },
+  { id: 'wild', label: 'Selvagens', info: 'Procure POKÉMON no mapa, gire, escolha e capture.' },
   { id: 'pokedex', label: 'Pokédex', info: 'Os 1.025 POKÉMON das nove regiões.' },
   { id: 'team', label: 'Equipe', info: 'Veja os POKÉMON que viajam com você.' },
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
-  { id: 'bag', label: 'Mochila', info: 'Itens guardados na sua mochila.' },
-  { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais.', phase: 'Fase 3' },
+  { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
+  { id: 'center', label: 'Centro Pokémon', info: 'Cura a equipe inteira, de graça.' },
+  { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, caça-níqueis e outros jogos.', phase: 'Fase 4' },
   { id: 'missions', label: 'Missões', info: 'Objetivos renovados com recompensas.', phase: 'Fase 3' },
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },
   { id: 'options', label: 'Opções', info: 'Velocidade do texto e volume dos sons.' },
   { id: 'exit', label: 'Sair', info: 'Voltar para a tela de jornadas.' },
+];
+
+const DEV_MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
+  { id: 'devkit', label: '[TESTE] Kit', info: 'Libera todas as regiões e dá bolas, curas e dinheiro para testar.' },
+  { id: 'devhurt', label: '[TESTE] Ferir equipe', info: 'Reduz o HP da equipe para testar poções e o Centro Pokémon.' },
 ];
 
 interface Props {
@@ -34,19 +40,38 @@ interface Props {
   onOpenPc: () => void;
   onOpenPokedex: () => void;
   onOpenOptions: () => void;
+  onOpenWild: () => void;
+  onOpenShop: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
   const [panel, setPanel] = useState<Panel>('overview');
   const [notice, setNotice] = useState<string | null>(welcome ?? null);
   const [selectedMon, setSelectedMon] = useState<PokemonView | null>(null);
+  const [devTools, setDevTools] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api.getSave(saveId).then(setSave, (e: Error) => setError(e.message));
-  }, [saveId]);
+  const reload = () => api.getSave(saveId).then(setSave, (e: Error) => setError(e.message));
+  useEffect(() => { void reload(); }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.health().then((h) => setDevTools(h.devTools), () => setDevTools(false)); }, []);
+
+  const menu = devTools ? [...MENU.slice(0, -1), ...DEV_MENU, ...MENU.slice(-1)] : MENU;
+
+  /** Executa uma ação do servidor, atualiza o save e mostra o resultado num aviso. */
+  const act = async (work: () => Promise<string>) => {
+    setBusy(true);
+    try {
+      setNotice(await work());
+      await reload();
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (error) {
     return (
@@ -65,16 +90,31 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     );
   }
 
-  const menuActive = panel === 'overview' && !notice;
-  const items: MenuItem<MenuId>[] = MENU.map((entry) => ({
+  const menuActive = panel === 'overview' && !notice && !busy;
+  const items: MenuItem<MenuId>[] = menu.map((entry) => ({
     id: entry.id,
     label: entry.label,
     extra: entry.phase ? 'em breve' : undefined,
   }));
 
   const choose = (id: MenuId) => {
-    const entry = MENU.find((m) => m.id === id);
+    const entry = menu.find((m) => m.id === id);
     if (id === 'exit') return onExit();
+    if (id === 'wild') return onOpenWild();
+    if (id === 'shop') return onOpenShop();
+    if (id === 'center') {
+      return void act(async () => {
+        const result = await api.centerHeal(saveId);
+        return result.healed > 0 ? 'Sua equipe foi curada! Esperamos você de novo!' : 'Sua equipe já está em plena forma!';
+      });
+    }
+    if (id === 'devkit') {
+      return void act(async () => {
+        const result = await api.devKit(saveId);
+        return `[TESTE] ${result.regions} regiões liberadas, +${result.balls} bolas, curas e ₽ 20.000.`;
+      });
+    }
+    if (id === 'devhurt') return void act(async () => `[TESTE] ${(await api.devHurt(saveId)).hurt} POKÉMON feridos.`);
     if (id === 'team') return setPanel('team');
     if (id === 'pc') return onOpenPc();
     if (id === 'pokedex') return onOpenPokedex();
@@ -84,7 +124,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     setNotice(`${entry?.label.toUpperCase()} ainda está em construção. Chega na ${entry?.phase} do remake!`);
   };
 
-  const info = MENU.find((m) => m.id === hovered)?.info ?? '';
+  const info = menu.find((m) => m.id === hovered)?.info ?? '';
   const dialog = notice
     ? [notice]
     : panel === 'team'
@@ -92,7 +132,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
       : panel === 'summary' && selectedMon
         ? [`${selectedMon.name.toUpperCase()} · ${selectedMon.ivTotal}/186 de IV. X para voltar.`]
         : panel === 'bag'
-          ? ['Itens da sua mochila. X para voltar.']
+          ? ['Escolha um item de cura e depois o POKÉMON. X para voltar.']
           : panel === 'trainer'
             ? ['Seu cartão de treinador. X para voltar.']
             : [info];
@@ -126,7 +166,18 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
             {panel === 'summary' && selectedMon ? (
               <PokemonSummary mon={selectedMon} onBack={() => setPanel('team')} />
             ) : null}
-            {panel === 'bag' ? <BagPanel save={save} onBack={() => setPanel('overview')} /> : null}
+            {panel === 'bag' ? <BagPanel
+                save={save}
+                paused={Boolean(notice) || busy}
+                onBack={() => setPanel('overview')}
+                onUse={(item, mon) => void act(async () => {
+                  const result = await api.useItem(saveId, item, mon.id);
+                  const revived = mon.currentHp === 0;
+                  return revived
+                    ? `${mon.name.toUpperCase()} voltou à vida com ${result.pokemon.currentHp} HP!`
+                    : `${mon.name.toUpperCase()} recuperou ${result.healed} HP!`;
+                })}
+              /> : null}
             {panel === 'trainer' ? <TrainerCard save={save} onBack={() => setPanel('overview')} /> : null}
             {panel === 'overview' ? <JourneyPanel save={save} /> : null}
           </div>
@@ -215,23 +266,58 @@ function TeamPanel({ team, active, onOpen, onBack }: {
   );
 }
 
-function BagPanel({ save, onBack }: { save: SaveDetail; onBack: () => void }) {
-  useKeys((key) => { if (key === 'back') onBack(); });
+function BagPanel({ save, paused, onBack, onUse }: {
+  save: SaveDetail;
+  paused: boolean;
+  onBack: () => void;
+  onUse: (item: string, mon: PokemonView) => void;
+}) {
+  const [picking, setPicking] = useState<string | null>(null);
+  const itemName = picking ? save.inventory.find((entry) => entry.item === picking)?.displayName ?? '' : '';
   return (
     <section className="gb-window" aria-labelledby="bag-title">
-      <h2 id="bag-title" className="gb-title" style={{ marginBottom: 10 }}>Mochila</h2>
-      {save.inventory.length === 0 ? <p className="gb-muted">A mochila está vazia.</p> : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {save.inventory.map((entry) => (
-            <li key={entry.item} className="gb-spread" style={{ padding: '6px 4px', borderBottom: '2px solid var(--rim)', fontSize: 26 }}>
-              <span>{entry.displayName}</span>
-              <span>×{entry.quantity}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h2 id="bag-title" className="gb-title" style={{ marginBottom: 10 }}>{picking ? `Usar ${itemName} em…` : 'Mochila'}</h2>
+      {save.inventory.length === 0 ? <p className="gb-muted">A mochila está vazia.</p> : null}
+      {!picking && save.inventory.length > 0 ? (
+        <Menu
+          label="Itens"
+          active={!paused}
+          onBack={onBack}
+          items={[...save.inventory].sort((a, b) => Number(b.item in HEAL_EFFECTS) - Number(a.item in HEAL_EFFECTS) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
+            id: entry.item,
+            label: entry.displayName,
+            extra: `×${entry.quantity}`,
+            disabled: !(entry.item in HEAL_EFFECTS),
+          }))}
+          onSelect={setPicking}
+        />
+      ) : null}
+      {!picking && save.inventory.length === 0 ? <KeyBack onBack={onBack} active={!paused} /> : null}
+      {picking ? (
+        <Menu
+          label="Escolha o POKÉMON"
+          active={!paused}
+          onBack={() => setPicking(null)}
+          items={save.team.map((mon): MenuItem => ({
+            id: mon.id,
+            label: `${mon.name} Nv${mon.level}`,
+            extra: mon.currentHp === 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`,
+          }))}
+          onSelect={(id) => {
+            const mon = save.team.find((m) => m.id === id);
+            if (mon && picking) onUse(picking, mon);
+            setPicking(null);
+          }}
+        />
+      ) : null}
+      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>Itens esmaecidos são usados em outros lugares (bolas na captura, pedras na evolução).</p> : null}
     </section>
   );
+}
+
+function KeyBack({ onBack, active }: { onBack: () => void; active: boolean }) {
+  useKeys((key) => { if (key === 'back') onBack(); }, active);
+  return null;
 }
 
 function TrainerCard({ save, onBack }: { save: SaveDetail; onBack: () => void }) {

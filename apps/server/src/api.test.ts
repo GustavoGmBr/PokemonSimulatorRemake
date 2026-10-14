@@ -268,3 +268,192 @@ test('ferramenta de teste fica de fora quando desligada', async () => {
   server2.close();
   db2.close();
 });
+
+// ---------------------------------------------------------------- selvagens, itens e loja
+
+import type {
+  AutoSearchResult, BuyResult, CenterResult, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+} from '@pokesim/engine';
+
+async function kit(saveId: string): Promise<void> {
+  assert.equal((await call('POST', `/api/saves/${saveId}/dev/kit`)).status, 201);
+}
+
+test('procurar: mapa com 10 selvagens, 3 giros e nada sem procura', async () => {
+  const save = await newSave();
+  const idle = (await call<WildState>('GET', `/api/saves/${save.id}/wild`)).json;
+  assert.equal(idle.board, null);
+  assert.deepEqual(idle.balls.map((b) => [b.item, b.quantity]), [['poke-ball', 10]]);
+
+  const first = (await call<WildState>('POST', `/api/saves/${save.id}/wild/search`)).json;
+  assert.equal(first.board?.slots.length, 10);
+  assert.equal(first.board?.spinsLeft, 3);
+  assert.deepEqual(first.board?.regions, ['Kanto']);
+  for (const slot of first.board?.slots ?? []) {
+    assert.ok(slot.speciesId >= 1 && slot.speciesId <= 151, 'só Kanto');
+    assert.ok(slot.level >= 3 && slot.level <= 12);
+    assert.ok(slot.ivStars >= 0 && slot.ivStars <= 4);
+    assert.equal(typeof slot.shiny, 'boolean');
+  }
+
+  for (let left = 2; left >= 0; left--) {
+    const spun = (await call<WildState>('POST', `/api/saves/${save.id}/wild/spin`)).json;
+    assert.equal(spun.board?.spinsLeft, left);
+  }
+  const noMore = await call<{ error: string }>('POST', `/api/saves/${save.id}/wild/spin`);
+  assert.equal(noMore.status, 400);
+  assert.match(noMore.json.error, /giros/);
+  // buscar de novo renova os giros
+  assert.equal(((await call<WildState>('POST', `/api/saves/${save.id}/wild/search`)).json.board?.spinsLeft), 3);
+});
+
+test('escolher: encontro, fugir, e regras de ordem', async () => {
+  const save = await newSave();
+  assert.equal((await call('POST', `/api/saves/${save.id}/wild/choose`, { slot: 0 })).status, 400);
+  assert.equal((await call('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' })).status, 400);
+  await call('POST', `/api/saves/${save.id}/wild/search`);
+  assert.equal((await call('POST', `/api/saves/${save.id}/wild/choose`, { slot: 10 })).status, 400);
+  const chosen = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 4 })).json;
+  assert.equal(chosen.chosen, 4);
+  const ball = chosen.balls[0];
+  assert.ok(ball && ball.chance !== null && ball.chance > 0 && ball.chance < 1);
+  assert.equal((await call('POST', `/api/saves/${save.id}/wild/spin`)).status, 400, 'não gira durante o encontro');
+
+  const dex = (await call<PokedexView>('GET', `/api/saves/${save.id}/pokedex`)).json;
+  const speciesId = chosen.board?.slots[4]?.speciesId ?? 0;
+  assert.ok(dex.states[speciesId - 1] ?? 0 >= 1, 'a espécie escolhida vira vista');
+
+  const fled = (await call<WildState>('POST', `/api/saves/${save.id}/wild/flee`)).json;
+  assert.equal(fled.chosen, null);
+  assert.equal(fled.board?.spinsLeft, 3);
+});
+
+test('lançar bola: gasta a bola, errar mantém o encontro e a Master Ball captura', async () => {
+  const save = await newSave();
+  await kit(save.id);
+  await call('POST', `/api/saves/${save.id}/wild/search`);
+  const before = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 2 })).json;
+  const target = before.board?.slots[2];
+  assert.ok(target);
+  assert.equal((await call('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'rare-candy' })).status, 400);
+
+  const thrown = (await call<ThrowBallResult>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' })).json;
+  assert.ok([0, 1, 2, 3].includes(thrown.shakes));
+  assert.equal(thrown.state.balls.find((b) => b.item === 'poke-ball')?.quantity, 19);
+  if (!thrown.caught) assert.equal(thrown.state.chosen, 2);
+
+  const master = (await call<ThrowBallResult>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'master-ball' }));
+  if (thrown.caught) {
+    assert.equal(master.status, 400, 'o mapa acabou com a captura');
+  } else {
+    assert.equal(master.json.caught, true);
+    assert.equal(master.json.shakes, 3);
+    assert.equal(master.json.chance, 1);
+    assert.equal(master.json.pokemon?.speciesId, target.speciesId);
+    assert.equal(master.json.pokemon?.level, target.level);
+    assert.equal(master.json.pokemon?.shiny, target.shiny);
+    assert.equal(master.json.pokemon?.ball, 'master-ball');
+    assert.equal(master.json.state.board, null);
+  }
+  const mine = (await call<PokemonSearchResult>('GET', `/api/saves/${save.id}/pokemon?limit=100`)).json;
+  assert.equal(mine.total, 2);
+  const dex = (await call<PokedexView>('GET', `/api/saves/${save.id}/pokedex`)).json;
+  assert.equal(dex.states[target.speciesId - 1], 2);
+});
+
+test('sem bolas não dá para lançar', async () => {
+  const save = await newSave();
+  await call('POST', `/api/saves/${save.id}/wild/search`);
+  await call('POST', `/api/saves/${save.id}/wild/choose`, { slot: 0 });
+  for (let i = 0; i < 10; i++) {
+    const res = await call<ThrowBallResult>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' });
+    if (res.json.caught) return; // capturou com as 10 — o mapa encerra, nada a testar
+  }
+  const empty = await call<{ error: string }>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' });
+  assert.equal(empty.status, 400);
+});
+
+test('busca automática para em brilhante ou estrelas altas', async () => {
+  const save = await newSave();
+  const res = (await call<AutoSearchResult>('POST', `/api/saves/${save.id}/wild/auto`, { target: 'stars', minStars: 3 })).json;
+  assert.ok(res.found);
+  assert.ok(res.searches >= 1);
+  assert.ok(res.state.board?.slots.some((slot) => slot.ivStars >= 3));
+  assert.equal(res.state.board?.spinsLeft, 3);
+});
+
+test('regiões liberadas ampliam os selvagens e lendários nunca aparecem', async () => {
+  const save = await newSave();
+  await kit(save.id);
+  const seen = new Set<number>();
+  for (let i = 0; i < 30; i++) {
+    const board = (await call<WildState>('POST', `/api/saves/${save.id}/wild/search`)).json.board;
+    for (const slot of board?.slots ?? []) seen.add(slot.speciesId);
+  }
+  assert.ok([...seen].some((id) => id > 151), 'aparecem Pokémon de outras regiões');
+  for (const id of [150, 151, 249, 250, 251, 384, 483, 487]) assert.ok(!seen.has(id), `#${id} é lendário`);
+});
+
+test('loja: compra em carrinho, dinheiro e limites', async () => {
+  const save = await newSave();
+  const shop = (await call<ShopEntry[]>('GET', `/api/saves/${save.id}/shop`)).json;
+  assert.ok(shop.some((e) => e.item === 'poke-ball' && e.price === 200));
+  assert.ok(!shop.some((e) => e.item === 'master-ball'), 'Master Ball não é vendida');
+  assert.ok(!shop.some((e) => e.category === 'mega'));
+
+  const bought = await call<BuyResult>('POST', `/api/saves/${save.id}/shop/buy`, {
+    cart: [{ item: 'poke-ball', quantity: 5 }, { item: 'potion', quantity: 3 }, { item: 'poke-ball', quantity: 1 }],
+  });
+  assert.equal(bought.status, 201);
+  assert.equal(bought.json.spent, 6 * 200 + 3 * 300);
+  assert.equal(bought.json.money, 3000 - 2100);
+  const detail = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json;
+  assert.equal(detail.money, 900);
+  assert.deepEqual(detail.inventory.map((i) => [i.item, i.quantity]), [['poke-ball', 16], ['potion', 8]]);
+
+  const broke = await call<{ error: string }>('POST', `/api/saves/${save.id}/shop/buy`, { cart: [{ item: 'ultra-ball', quantity: 1 }] });
+  assert.equal(broke.status, 400);
+  assert.match(broke.json.error, /Dinheiro/);
+  assert.equal((await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.money, 900, 'nada foi cobrado');
+
+  for (const cart of [[], [{ item: 'master-ball', quantity: 1 }], [{ item: 'potion', quantity: 0 }], [{ item: 'potion', quantity: 1.5 }], [{ item: 'potion', quantity: 99 }]]) {
+    assert.equal((await call('POST', `/api/saves/${save.id}/shop/buy`, { cart })).status, 400, JSON.stringify(cart));
+  }
+  assert.equal((await call('POST', `/api/saves/${save.id}/shop/buy`, {})).status, 400);
+});
+
+test('itens: poção, reviver e Centro Pokémon', async () => {
+  const save = await newSave();
+  await kit(save.id);
+  await call('POST', `/api/saves/${save.id}/dev/grant`, { count: 3 });
+  const team = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.team;
+  const mon = team[0] as PokemonView;
+
+  const full = await call<{ error: string }>('POST', `/api/saves/${save.id}/items/use`, { item: 'potion', pokemonId: mon.id });
+  assert.equal(full.status, 400);
+  assert.match(full.json.error, /cheio/);
+
+  await call('POST', `/api/saves/${save.id}/dev/hurt`);
+  let hurt = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.team;
+  assert.ok(hurt.every((p) => p.currentHp < p.stats.hp));
+  const down = hurt.find((p) => p.currentHp === 0) ?? null;
+  const alive = hurt.find((p) => p.currentHp > 0) as PokemonView;
+
+  const used = await call<UseItemResult>('POST', `/api/saves/${save.id}/items/use`, { item: 'max-potion', pokemonId: alive.id });
+  assert.equal(used.status, 201);
+  assert.equal(used.json.pokemon.currentHp, alive.stats.hp);
+  assert.equal(used.json.remaining, 4);
+  assert.equal((await call('POST', `/api/saves/${save.id}/items/use`, { item: 'revive', pokemonId: alive.id })).status, 400);
+  if (down) {
+    const revived = (await call<UseItemResult>('POST', `/api/saves/${save.id}/items/use`, { item: 'max-revive', pokemonId: down.id })).json;
+    assert.equal(revived.pokemon.currentHp, down.stats.hp);
+  }
+  assert.equal((await call('POST', `/api/saves/${save.id}/items/use`, { item: 'potion', pokemonId: 'nao-existe' })).status, 404);
+  assert.equal((await call('POST', `/api/saves/${save.id}/items/use`, { item: 'poke-ball', pokemonId: mon.id })).status, 400);
+
+  const center = (await call<CenterResult>('POST', `/api/saves/${save.id}/center/heal`)).json;
+  assert.ok(center.healed >= 1);
+  hurt = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.team;
+  assert.ok(hurt.every((p) => p.currentHp === p.stats.hp));
+  assert.equal((await call<CenterResult>('POST', `/api/saves/${save.id}/center/heal`)).json.healed, 0);
+});

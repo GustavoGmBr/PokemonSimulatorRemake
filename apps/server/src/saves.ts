@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import {
   ALL_STARTERS, REGIONS, STARTER_LEVEL, STARTING_ITEMS, STARTING_MONEY,
-  createPokemon, perfectIvs, rngFrom,
+  createPokemon, perfectIvs, regionOfSpecies, rngFrom,
   type DevGrantResult, type InventoryEntry, type SaveDetail, type SaveSummary, type StarterRegion,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
@@ -95,9 +95,9 @@ export function createSaveService(db: Db, store: PokemonStore) {
       const now = new Date().toISOString();
       transaction(db, () => {
         db.prepare(`
-          INSERT INTO saves (id, trainer_name, money, chips, play_time_seconds, created_at, updated_at)
-          VALUES (?, ?, ?, 0, 0, ?, ?)
-        `).run(id, trainerName, STARTING_MONEY, now, now);
+          INSERT INTO saves (id, trainer_name, money, chips, play_time_seconds, created_at, updated_at, unlocked_regions)
+          VALUES (?, ?, ?, 0, 0, ?, ?, ?)
+        `).run(id, trainerName, STARTING_MONEY, now, now, regionOfSpecies(starterId)?.id ?? 'kanto');
         store.insert(id, starter, { kind: 'team', slot: 0 }, now, true); // o inicial já nasce favorito
         const addItem = db.prepare('INSERT INTO inventory (save_id, item, quantity) VALUES (?, ?, ?)');
         for (const entry of STARTING_ITEMS) addItem.run(id, entry.item, entry.quantity);

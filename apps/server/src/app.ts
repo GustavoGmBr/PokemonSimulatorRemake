@@ -7,6 +7,9 @@ import { Router, sendJson, serveFile } from './http.ts';
 import type { HealthInfo, SearchPokemonQuery, SortKey, SpeciesIndexEntry } from '@pokesim/engine';
 import { createSaveService } from './saves.ts';
 import { createPokemonStore } from './pokemon-store.ts';
+import { createInventory } from './inventory.ts';
+import { createWildService } from './wild-service.ts';
+import { createItemService } from './item-service.ts';
 import { badRequest, notFound } from './errors.ts';
 
 export interface AppOptions {
@@ -57,6 +60,9 @@ function searchQuery(url: URL): SearchPokemonQuery {
 export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptions): Server {
   const store = createPokemonStore(db);
   const saves = createSaveService(db, store);
+  const inventory = createInventory(db);
+  const wild = createWildService(db, store, inventory);
+  const items = createItemService(db, store, inventory);
   const data = loadGameData();
   const speciesIndex: SpeciesIndexEntry[] = data.species.map((s) => ({
     id: s.id, name: s.displayName, types: s.types, generation: s.generation,
@@ -79,6 +85,17 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .patch('/api/saves/:id/pokemon/:pid', ({ params, body }) =>
       store.patch(params.id as string, params.pid as string, (body ?? {}) as { nickname?: unknown; favorite?: unknown }))
     .get('/api/saves/:id/pokedex', ({ params }) => store.pokedex(params.id as string))
+    .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
+    .post('/api/saves/:id/wild/search', ({ params }) => wild.search(params.id as string))
+    .post('/api/saves/:id/wild/spin', ({ params }) => wild.spin(params.id as string))
+    .post('/api/saves/:id/wild/auto', ({ params, body }) => wild.autoSearch(params.id as string, (body ?? {}) as { target?: unknown; minStars?: unknown }))
+    .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
+    .post('/api/saves/:id/wild/flee', ({ params }) => wild.flee(params.id as string))
+    .post('/api/saves/:id/wild/throw', ({ params, body }) => wild.throwBall(params.id as string, (body as { ball?: unknown } | null)?.ball))
+    .get('/api/saves/:id/shop', ({ params }) => items.shop(params.id as string))
+    .post('/api/saves/:id/shop/buy', ({ params, body }) => items.buy(params.id as string, (body as { cart?: unknown } | null)?.cart))
+    .post('/api/saves/:id/items/use', ({ params, body }) => items.useItem(params.id as string, (body ?? {}) as { item?: unknown; pokemonId?: unknown }))
+    .post('/api/saves/:id/center/heal', ({ params }) => items.center(params.id as string))
     .get('/api/starters', () => saves.starters())
     .get('/api/catalog/species-index', () => speciesIndex)
     .get('/api/catalog/types', () => data.types)
@@ -92,6 +109,8 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   if (devTools) {
     router.post('/api/saves/:id/dev/grant', ({ params, body }) =>
       saves.devGrant(params.id as string, (body as { count?: unknown } | null)?.count));
+    router.post('/api/saves/:id/dev/kit', ({ params }) => items.devKit(params.id as string));
+    router.post('/api/saves/:id/dev/hurt', ({ params }) => ({ hurt: items.devHurt(params.id as string) }));
   }
 
   const hasWeb = Boolean(webDist && existsSync(path.join(webDist, 'index.html')));

@@ -89,3 +89,13 @@ export function KeyHints({ hints }: { hints: [string, string][] }) {
     </div>
   );
 }
+
+const BALL_VARIANT: Record<string, string> = {
+  'poke-ball': '', 'great-ball': 'great', 'ultra-ball': 'ultra', 'master-ball': 'master',
+};
+
+/** Poké Bola desenhada em CSS; a cor muda conforme o tipo de bola. */
+export function BallIcon({ item, small = false, className = '' }: { item: string; small?: boolean; className?: string }) {
+  const variant = item in BALL_VARIANT ? BALL_VARIANT[item] : 'other';
+  return <span aria-hidden="true" className={`gb-pokeball${variant ? ` gb-pokeball--${variant}` : ''}${small ? ' gb-pokeball--small' : ''} ${className}`} />;
+}
