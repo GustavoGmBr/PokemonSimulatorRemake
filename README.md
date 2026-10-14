@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.3**, Fase 1 em andamento (PC, Pokédex, selvagens, captura e loja prontos; batalha a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.4**, Fase 1 em andamento (PC, Pokédex, selvagens, captura e loja prontos; batalha a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -81,7 +81,9 @@ packages/
      depois da Elite dos 4 da região; busca por Pokémon específico (10 iguais, mapa do tipo dele) só
      depois do campeão. Brilhante 1/4096 (Amuleto Brilhante = +2 sorteios), fórmula de captura por HP e
      status, todas as Poké Bolas, animação de 3 balanços e alerta de brilhante / ★★★ ou mais.
-     Iniciais: só os da 1ª geração por enquanto.
+     Os Pokémon "andam" pelo mapa (param ao passar o mouse). Você escolhe o nível mínimo e máximo de cada
+     procura (1–100, padrão cresce com os ginásios) e, com os 8 ginásios da região vencidos, também o mapa
+     (habitat). Iniciais: só os da 1ª geração por enquanto.
    - ✅ Itens e loja: poções e revives na Mochila, loja com carrinho.
    - ⏳ Dependem da batalha (Fase 2): dinheiro por vitória, equipe curada após cada batalha e uso
      de itens dentro da batalha. O motor de itens (`packages/engine/src/items.ts`) já está pronto.

@@ -453,3 +453,25 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-species-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 10px; }
 .gb-species-pick { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; background: var(--paper); border: 3px solid var(--ink); cursor: pointer; font: inherit; color: inherit; text-transform: uppercase; font-size: 15px; }
 .gb-species-pick:hover, .gb-species-pick:focus-visible { background: var(--paper-2); box-shadow: inset 0 0 0 3px var(--red); }
+
+/* ---------- Pokémon "andando" no mapa ---------- */
+.gb-wild__body { display: flex; flex-direction: column; align-items: center; gap: 1px; animation: gb-wander var(--dur, 9s) ease-in-out var(--delay, 0s) infinite; }
+.gb-wild__walk { display: flex; animation: gb-step 0.5s steps(2, jump-none) infinite; }
+.gb-wild img, .gb-wild .gb-sprite-missing { animation: gb-face var(--dur, 9s) steps(1, end) var(--delay, 0s) infinite; }
+.gb-wild:hover .gb-wild__body, .gb-wild:hover .gb-wild__walk, .gb-wild:hover img,
+.gb-wild[aria-current='true'] .gb-wild__body, .gb-wild[aria-current='true'] .gb-wild__walk, .gb-wild[aria-current='true'] img { animation-play-state: paused; }
+@keyframes gb-wander {
+  0%, 6% { transform: translate(0, 0); }
+  30% { transform: translate(calc(var(--dx, 1) * 1.7cqw), -0.5cqw); }
+  42%, 50% { transform: translate(calc(var(--dx, 1) * 1.7cqw), 0.6cqw); }
+  78% { transform: translate(calc(var(--dx, 1) * -1.2cqw), 0.3cqw); }
+  90%, 100% { transform: translate(0, 0); }
+}
+@keyframes gb-step { 0% { transform: translateY(0); } 100% { transform: translateY(-0.5cqw); } }
+@keyframes gb-face {
+  0%, 6% { transform: scaleX(1); }
+  6.01%, 50% { transform: scaleX(calc(var(--dx, 1) * -1)); }
+  50.01%, 90% { transform: scaleX(var(--dx, 1)); }
+  90.01%, 100% { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) { .gb-wild__body, .gb-wild__walk, .gb-wild img, .gb-wild .gb-sprite-missing { animation: none !important; } }

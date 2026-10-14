@@ -85,6 +85,12 @@ const MIGRATIONS: string[] = [
   ALTER TABLE wild_boards ADD COLUMN target_species INTEGER;
   DELETE FROM wild_boards;
   `,
+  // 5 — faixa de nível escolhida na procura
+  `
+  ALTER TABLE wild_boards ADD COLUMN min_level INTEGER NOT NULL DEFAULT 3;
+  ALTER TABLE wild_boards ADD COLUMN max_level INTEGER NOT NULL DEFAULT 12;
+  DELETE FROM wild_boards;
+  `,
 ];
 
 export type Db = DatabaseSync;

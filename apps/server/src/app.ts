@@ -86,7 +86,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
       store.patch(params.id as string, params.pid as string, (body ?? {}) as { nickname?: unknown; favorite?: unknown }))
     .get('/api/saves/:id/pokedex', ({ params }) => store.pokedex(params.id as string))
     .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
-    .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown }))
+    .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }))
     .post('/api/saves/:id/wild/spin', ({ params, body }) => wild.spin(params.id as string, (body as { pay?: unknown } | null)?.pay === true))
     .post('/api/saves/:id/wild/leave', ({ params }) => wild.leave(params.id as string))
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))

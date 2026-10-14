@@ -18,10 +18,12 @@ interface Props {
   onEdit?: (id: string) => void;
   onAction?: (id: string) => void;
   onBack?: () => void;
+  /** Q/E nas linhas de ciclo (passo grande, ex.: 10 em 10) */
+  onBigCycle?: (id: string, direction: 1 | -1) => void;
 }
 
 /** Lista de filtros estilo opções do GBA: ↑↓ escolhe a linha, ←→ muda o valor. */
-export function FilterPanel({ title, rows, active, onCycle, onEdit, onAction, onBack }: Props) {
+export function FilterPanel({ title, rows, active, onCycle, onEdit, onAction, onBack, onBigCycle }: Props) {
   const [index, setIndex] = useState(0);
   const current = Math.min(index, rows.length - 1);
 
@@ -32,6 +34,7 @@ export function FilterPanel({ title, rows, active, onCycle, onEdit, onAction, on
     else if (key === 'down') { setIndex((current + 1) % rows.length); playSound('move'); }
     else if (key === 'left' && row.kind === 'cycle') { onCycle(row.id, -1); playSound('move'); }
     else if (key === 'right' && row.kind === 'cycle') { onCycle(row.id, 1); playSound('move'); }
+    else if (onBigCycle && row.kind === 'cycle' && (key === 'prev' || key === 'next')) { onBigCycle(row.id, key === 'next' ? 1 : -1); playSound('move'); }
     else if (key === 'confirm') {
       playSound('confirm');
       if (row.kind === 'text') onEdit?.(row.id);

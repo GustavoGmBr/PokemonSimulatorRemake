@@ -36,7 +36,12 @@ export function HabitatBoard({ habitat, slots, cursor, alertStars, disabled, onH
               key={slot.slot}
               type="button"
               className={`gb-wild${mark ? ` gb-wild--${mark}` : ''}`}
-              style={{ left: `${(x / COLS) * 100}%`, top: `${(y / ROWS) * 100}%`, zIndex: Math.round(y * 10) }}
+              style={{
+                left: `${(x / COLS) * 100}%`, top: `${(y / ROWS) * 100}%`, zIndex: Math.round(y * 10),
+                ['--dur' as string]: `${7 + ((slot.slot * 37) % 50) / 10}s`,
+                ['--delay' as string]: `-${((slot.slot * 53) % 70) / 10}s`,
+                ['--dx' as string]: slot.slot % 2 === 0 ? 1 : -1,
+              }}
               aria-current={cursor === slot.slot}
               aria-label={`${slot.name}, nível ${slot.level}, ${slot.ivStars} estrelas${slot.shiny ? ', brilhante' : ''}`}
               disabled={disabled}
@@ -44,11 +49,13 @@ export function HabitatBoard({ habitat, slots, cursor, alertStars, disabled, onH
               onFocus={() => onHover(slot.slot)}
               onClick={() => onPick(slot.slot)}
             >
-              <span className="gb-wild__tag">
-                <b>{slot.shiny ? '✦ ' : ''}{slot.name}</b>
-                <span>Nv{slot.level} · <span className="gb-stars">{stars(slot.ivStars)}</span></span>
+              <span className="gb-wild__body">
+                <span className="gb-wild__tag">
+                  <b>{slot.shiny ? '✦ ' : ''}{slot.name}</b>
+                  <span>Nv{slot.level} · <span className="gb-stars">{stars(slot.ivStars)}</span></span>
+                </span>
+                <span className="gb-wild__walk"><Sprite speciesId={slot.speciesId} shiny={slot.shiny} alt="" size={96} /></span>
               </span>
-              <Sprite speciesId={slot.speciesId} shiny={slot.shiny} alt="" size={96} />
             </button>
           );
         })}

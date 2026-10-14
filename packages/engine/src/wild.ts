@@ -5,6 +5,9 @@ export const BOARD_SIZE = 10;
 export const BOARD_SPINS = 3;
 /** Preço para renovar o mapa quando os giros acabam. */
 export const REFRESH_COST = 1000;
+export const MIN_WILD_LEVEL = 1;
+export const MAX_WILD_LEVEL = 100;
+export const GYMS_PER_REGION = 8;
 /** Chance de cada vaga do mapa ser lendário/mítico, quando a Elite dos 4 da região já caiu. */
 export const LEGENDARY_SLOT_CHANCE = 0.04;
 

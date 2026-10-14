@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
+import { HABITATS, MAX_WILD_LEVEL, MIN_WILD_LEVEL, REGIONS, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
+import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { BallIcon, HpBar, KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
@@ -43,6 +44,8 @@ export function WildScreen({ saveId, onBack }: Props) {
   const [caught, setCaught] = useState<PokemonView | null>(null);
   const [index, setIndex] = useState<SpeciesIndexEntry[]>([]);
   const [filter, setFilter] = useState('');
+  const [levels, setLevels] = useState<[number, number] | null>(null);
+  const [habitatPick, setHabitatPick] = useState('');
   const alive = useRef(true);
 
   useEffect(() => {
@@ -82,7 +85,10 @@ export function WildScreen({ saveId, onBack }: Props) {
   };
 
   const search = (region: string, speciesId?: number) => run(async () => {
-    const next = await api.wildSearch(saveId, speciesId ? { region: region as never, speciesId } : { region: region as never });
+    const [minLevel, maxLevel] = levels ?? state?.defaultLevels ?? [MIN_WILD_LEVEL, MIN_WILD_LEVEL + 9];
+    const option = state?.regions.find((r) => r.id === region);
+    const request = { region: region as never, minLevel, maxLevel, ...(speciesId ? { speciesId } : option?.chooseHabitat && habitatPick ? { habitat: habitatPick } : {}) };
+    const next = await api.wildSearch(saveId, request);
     setState(next);
     setCaught(null);
     setCursor(0);
@@ -179,6 +185,17 @@ export function WildScreen({ saveId, onBack }: Props) {
 
   const regionOf = (id: string): WildRegionOption | undefined => state.regions.find((region) => region.id === id);
   const selected = regionOf(step === 'regions' ? hoverRegion : regionId) ?? (state.regions[0] as WildRegionOption);
+  const cycleRow = (id: string, d: number) => {
+    const [lo, hi] = levels ?? state.defaultLevels;
+    const clamp = (n: number) => Math.max(MIN_WILD_LEVEL, Math.min(MAX_WILD_LEVEL, n));
+    if (id === 'min') { const v = clamp(lo + d); setLevels([v, Math.max(v, hi)]); }
+    else if (id === 'max') { const v = clamp(hi + d); setLevels([Math.min(lo, v), v]); }
+    else if (id === 'habitat') {
+      if (!selected.chooseHabitat) { setMessage(`Vença os 8 ginásios de ${selected.name} para escolher o mapa.`); playSound('error'); return; }
+      const ids = ['', ...HABITATS.map((h) => h.id)];
+      setHabitatPick(ids[(ids.indexOf(habitatPick) + Math.sign(d) + ids.length) % ids.length] as string);
+    }
+  };
   const previous = REGIONS[Math.max(0, REGIONS.findIndex((region) => region.id === selected.id) - 1)];
 
   return (
@@ -236,21 +253,25 @@ export function WildScreen({ saveId, onBack }: Props) {
                   {step === 'region' ? (
                     <>
                       <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>{selected.name}</h2>
-                      <Menu
-                        label="Ações"
+                      <FilterPanel
+                        title="Procura"
                         active={!busy}
-                        items={[
-                          { id: 'search', label: 'Procurar selvagem' },
-                          { id: 'specific', label: 'Procurar POKÉMON específico', extra: selected.specific ? '' : '🔒', disabled: !selected.specific },
-                          { id: 'back', label: 'Voltar' },
-                        ]}
-                        onSelect={(id) => {
+                        rows={actionRows(selected, levels ?? state.defaultLevels, habitatPick)}
+                        onBigCycle={(id, d) => cycleRow(id, d * 10)}
+                        onCycle={(id, d) => cycleRow(id, d)}
+                        onAction={(id) => {
                           if (id === 'search') void search(regionId);
-                          else if (id === 'specific') { setFilter(''); setStep('species'); setMessage('Digite o nome e escolha o POKÉMON.'); }
-                          else setStep('regions');
+                          else if (id === 'specific') {
+                            if (!selected.specific) { setMessage(`Derrote o campeão de ${selected.name} para procurar um POKÉMON específico.`); playSound('error'); return; }
+                            setFilter(''); setStep('species'); setMessage('Digite o nome e escolha o POKÉMON.');
+                          } else setStep('regions');
                         }}
                         onBack={() => setStep('regions')}
                       />
+                      <p className="gb-hint" style={{ margin: '8px 0 0' }}>
+                        ←→ mudam o valor (Q/E de 10 em 10). Os níveis valem para este mapa e para os giros.
+                        {selected.chooseHabitat && habitatPick ? ` ${HABITATS.find((h) => h.id === habitatPick)?.description ?? ''}` : ''}
+                      </p>
                     </>
                   ) : null}
                   {step === 'species' ? (
@@ -364,6 +385,18 @@ export function WildScreen({ saveId, onBack }: Props) {
       </div>
     </main>
   );
+}
+
+function actionRows(region: WildRegionOption, levels: [number, number], habitatPick: string): FilterRow[] {
+  const habitat = HABITATS.find((h) => h.id === habitatPick);
+  return [
+    { id: 'search', label: 'Procurar selvagem', value: '', kind: 'action' },
+    { id: 'specific', label: 'POKÉMON específico', value: region.specific ? '' : '🔒 campeão', kind: 'action' },
+    { id: 'min', label: 'Nível mínimo', value: String(levels[0]), kind: 'cycle' },
+    { id: 'max', label: 'Nível máximo', value: String(levels[1]), kind: 'cycle' },
+    { id: 'habitat', label: 'Mapa', value: region.chooseHabitat ? (habitat ? habitat.name : 'Aleatório') : '🔒 8 ginásios', kind: 'cycle' },
+    { id: 'back', label: 'Voltar', value: '', kind: 'action' },
+  ];
 }
 
 function useSpeciesChoices(index: SpeciesIndexEntry[], regionId: string, filter: string): SpeciesIndexEntry[] {

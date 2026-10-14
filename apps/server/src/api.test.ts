@@ -439,6 +439,32 @@ test('regiões: só Kanto no início; progresso libera regiões, giros, lendári
   assert.ok([144, 145, 146, 150, 151].some((id) => legends.has(id)), 'lendários de Kanto aparecem com a Elite dos 4');
 });
 
+test('nível escolhido e mapa escolhido após os 8 ginásios', async () => {
+  const save = await newSave();
+  const base = `/api/saves/${save.id}`;
+  const levelled = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', minLevel: 20, maxLevel: 25 })).json;
+  assert.deepEqual(levelled.board?.levelRange, [20, 25]);
+  assert.ok(levelled.board?.slots.every((slot) => slot.level >= 20 && slot.level <= 25));
+  const spun = (await call<WildState>('POST', `${base}/wild/spin`)).json;
+  assert.deepEqual(spun.board?.levelRange, [20, 25], 'o giro mantém a faixa');
+  assert.ok(spun.board?.slots.every((slot) => slot.level >= 20 && slot.level <= 25));
+  assert.deepEqual(levelled.defaultLevels, [3, 12]);
+  for (const bad of [{ minLevel: 0 }, { minLevel: 30, maxLevel: 20 }, { maxLevel: 101 }, { minLevel: 2.5 }]) {
+    assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', ...bad })).status, 400, JSON.stringify(bad));
+  }
+
+  assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', habitat: 'coast' })).status, 400, 'mapa escolhido exige 8 ginásios');
+  for (let i = 0; i < 8; i++) await call('POST', `${base}/dev/progress`);
+  const state = (await call<WildState>('GET', `${base}/wild`)).json;
+  assert.ok(state.regions[0]?.chooseHabitat);
+  for (const habitat of HABITATS) {
+    const board = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', habitat: habitat.id })).json.board;
+    assert.equal(board?.habitat, habitat.id);
+    assert.ok(board?.slots.every((slot) => slot.types.some((t) => habitat.types.includes(t))), habitat.id);
+  }
+  assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', habitat: 'lua' })).status, 400);
+});
+
 test('mapas: cada procura usa um habitat e os Pokémon combinam com ele', async () => {
   const save = await newSave();
   const base = `/api/saves/${save.id}`;
