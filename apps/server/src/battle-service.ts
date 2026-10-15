@@ -1,5 +1,7 @@
 import { randomInt } from 'node:crypto';
 import {
+  NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
+  type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
   levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, rollPrizeItems, regionOfSpecies, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
@@ -29,6 +31,33 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     chart: data.typeChart,
   };
 
+  const ngList = buildNgChallenges(data.challenges, data.speciesById);
+  const ngById = new Map(ngList.map((entry) => [entry.id, entry]));
+  const itemName = (item: string) => data.itemsByName.get(item)?.displayName ?? item;
+
+  function ngWins(saveId: string, id: string): number {
+    return (db.prepare('SELECT wins FROM ng_wins WHERE save_id = ? AND challenge_id = ?').get(saveId, id) as { wins: number } | undefined)?.wins ?? 0;
+  }
+
+  function ngState(saveId: string, won: Set<string>): NgPlusState {
+    const unlocked = ngUnlocked(data.challenges, won);
+    const missing = ngRequiredIds(data.challenges).filter((id) => !won.has(id)).map((id) => {
+      const champion = data.challengesById.get(id);
+      return champion ? `${champion.name} (${REGIONS.find((r) => r.id === champion.region)?.name ?? champion.region})` : id;
+    });
+    const entries: NgChallengeView[] = ngList.map((entry) => {
+      const base = ngRewards(entry, false);
+      const first = ngRewards(entry, true).items.filter((it) => !base.items.some((b) => b.item === it.item && b.quantity === it.quantity));
+      const region = entry.region ? REGIONS.find((r) => r.id === entry.region) : undefined;
+      return {
+        id: entry.id, kind: entry.kind, region: entry.region, regionName: region?.name ?? null, name: entry.name, title: entry.title, level: entry.level,
+        team: entry.team.map((id) => ({ speciesId: id, name: ctxBase.species(id).displayName })), blurb: entry.blurb, wins: ngWins(saveId, entry.id),
+        money: base.money, rewards: base.items.map((it) => ({ ...it, name: itemName(it.item) })), firstWinBonus: first.map((it) => ({ ...it, name: itemName(it.item) })),
+      };
+    });
+    return { unlocked, missing, entries };
+  }
+
   function assertSave(saveId: string): void {
     if (!db.prepare('SELECT 1 FROM saves WHERE id = ?').get(saveId)) throw notFound('Save não encontrado.');
   }
@@ -44,9 +73,17 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     return { ...ctxBase, expMultiplier: egg };
   }
 
+  /** Há qualquer batalha aberta (1×1 ou em dupla)? */
+  function hasBattle(saveId: string): boolean {
+    return Boolean(db.prepare('SELECT 1 FROM battles WHERE save_id = ?').get(saveId));
+  }
+
+  /** A batalha 1×1 em andamento (as batalhas em dupla ficam com o serviço de duplas). */
   function load(saveId: string): BattleState | null {
     const row = db.prepare('SELECT state FROM battles WHERE save_id = ?').get(saveId) as { state: string } | undefined;
-    return row ? (JSON.parse(row.state) as BattleState) : null;
+    if (!row) return null;
+    const parsed = JSON.parse(row.state) as BattleState | { kind: 'doubles' };
+    return parsed.kind === 'doubles' ? null : (parsed as BattleState);
   }
 
   function save(saveId: string, state: BattleState): void {
@@ -208,6 +245,10 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
         rewards.push({ item: reward.item, name, quantity: reward.quantity });
         events.push({ k: 'text', text: `Você ganhou ${reward.quantity}× ${name}!` });
       }
+      if (trainer.ng) {
+        db.prepare('INSERT INTO ng_wins (save_id, challenge_id, wins, first_at) VALUES (?, ?, 1, ?) ON CONFLICT (save_id, challenge_id) DO UPDATE SET wins = wins + 1').run(saveId, trainer.ng.id, new Date().toISOString());
+        events.push({ k: 'text', text: trainer.ng.first ? `Novo Ciclo: primeira vitória sobre ${trainer.name}! Bônus especial liberado.` : `Novo Ciclo: ${trainer.name} derrotado de novo!` });
+      }
       if (trainer.challengeId) {
         const added = db.prepare('INSERT OR IGNORE INTO badges (save_id, challenge_id, won_at) VALUES (?, ?, ?)').run(saveId, trainer.challengeId, new Date().toISOString());
         if (Number(added.changes) > 0) {
@@ -246,7 +287,35 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     return { events, view: view(saveId, state, outcome) };
   }
 
+  /** Novo Ciclo: campeões reforçados e treinadores icônicos, nível 100, IVs perfeitos e IA máxima. */
+  function startNg(saveId: string, id: string): BattleTurnResult {
+    const entry: NgChallenge | undefined = ngById.get(id);
+    if (!entry) throw notFound('Desafio não encontrado.');
+    const won = wonIds(saveId);
+    if (!ngUnlocked(data.challenges, won)) throw badRequest('O Novo Ciclo abre depois de vencer todos os campeões.');
+    return transaction(db, () => {
+      const rng = rngFrom(randomInt);
+      const perfect = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+      const foes = entry.team.map((speciesId) => {
+        const species = ctxBase.species(speciesId);
+        return combatantFrom(createPokemon({ species, level: NG_LEVEL, rng, moves: data.movesByName, ivs: perfect }), species, species.displayName);
+      });
+      const first = ngWins(saveId, id) === 0;
+      const rewards = ngRewards(entry, first);
+      const trainer: TrainerInfo = {
+        name: entry.name, title: entry.title, skill: 3, bag: ngLeaderBag(), lastSwitch: -9, money: rewards.money, rewards: rewards.items, ng: { id, first },
+      };
+      const player = playerTeam(saveId, null);
+      const { state, events } = createBattle({ player, foe: foes, seed: seedOf(), kind: 'trainer', trainer });
+      save(saveId, state);
+      return { events, view: view(saveId, state, null) };
+    });
+  }
+
   return {
+    /** Peças compartilhadas com o serviço de duplas. */
+    shared: { playerTeam, settleTournament, monView, contextFor, extraGenerations, wonIds, hasBattle },
+
     /** A batalha em andamento (null se não há). */
     current(saveId: string): BattleView | null {
       assertSave(saveId);
@@ -257,7 +326,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     /** Começa a luta contra o selvagem escolhido no mapa. */
     start(saveId: string): BattleTurnResult {
       assertSave(saveId);
-      if (load(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
       const foe = wild.encounter(saveId);
       return transaction(db, () => {
         const player = playerTeam(saveId, null);
@@ -272,7 +341,8 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     /** Começa a luta contra um líder, membro da Elite ou campeão. */
     startChallenge(saveId: string, challengeId: unknown): BattleTurnResult {
       assertSave(saveId);
-      if (load(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      if (typeof challengeId === 'string' && isNgId(challengeId)) return startNg(saveId, challengeId);
       const challenge = typeof challengeId === 'string' ? data.challengesById.get(challengeId) : undefined;
       if (!challenge) throw notFound('Desafio não encontrado.');
       const reason = challengeLockReason(challenge, wonIds(saveId));
@@ -302,7 +372,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     /** Começa a luta contra um treinador aleatório da dificuldade escolhida. */
     startTrainer(saveId: string, difficulty: unknown): BattleTurnResult {
       assertSave(saveId);
-      if (load(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
       if (typeof difficulty !== 'string' || !(DIFFICULTIES as readonly string[]).includes(difficulty)) throw badRequest('Escolha Fácil, Médio ou Difícil.');
       const level = difficulty as Difficulty;
       return transaction(db, () => {
@@ -327,7 +397,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     /** Começa a batalha da rodada atual do torneio em andamento. */
     startTournamentRound(saveId: string): BattleTurnResult {
       assertSave(saveId);
-      if (load(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
       const row = db.prepare('SELECT tier, round, members FROM tournaments WHERE save_id = ?').get(saveId) as { tier: string; round: number; members: string } | undefined;
       const tier = tournamentTier(row?.tier);
       if (!row || !tier) throw badRequest('Você não está em nenhum torneio.');
@@ -373,14 +443,14 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
           rewards: rules.rewards.map((r) => ({ item: r.item, quantity: r.quantity, name: r.item === 'random-ball' ? 'Poké Bola especial (sorteada)' : data.itemsByName.get(r.item)?.displayName ?? r.item })),
         };
       });
-      return { challenges: list, trainers, unlockedRegions: unlockedRegionIds([...won]), badges: [...won].filter((id) => id.includes(':gym')).length };
+      return { challenges: list, trainers, unlockedRegions: unlockedRegionIds([...won]), badges: [...won].filter((id) => id.includes(':gym')).length, ngplus: ngState(saveId, won) };
     },
 
     /** Uma ação do jogador: golpe, troca, fuga, bola ou item de cura. */
     act(saveId: string, request: unknown): BattleTurnResult {
       assertSave(saveId);
       const state = load(saveId);
-      if (!state) throw badRequest('Não há batalha em andamento.');
+      if (!state) throw badRequest(hasBattle(saveId) ? 'A batalha em andamento é em dupla.' : 'Não há batalha em andamento.');
       const input = (request ?? {}) as Partial<BattleActRequest> & { [key: string]: unknown };
       const ctx = contextFor(saveId);
       try {

@@ -189,6 +189,15 @@ const MIGRATIONS: string[] = [
   );
   ALTER TABLE pokemon ADD COLUMN invested INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  CREATE TABLE ng_wins (
+    save_id      TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    challenge_id TEXT NOT NULL,
+    wins         INTEGER NOT NULL DEFAULT 0,
+    first_at     TEXT NOT NULL,
+    PRIMARY KEY (save_id, challenge_id)
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;

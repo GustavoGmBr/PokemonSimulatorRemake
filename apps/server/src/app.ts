@@ -16,6 +16,7 @@ import { createItemService } from './item-service.ts';
 import { badRequest, notFound } from './errors.ts';
 import { createCasinoService } from './casino-service.ts';
 import { createTournamentService } from './tournament-service.ts';
+import { createDoublesService } from './doubles-service.ts';
 import { createJournal } from './journal.ts';
 import { createJourneyService } from './journey-service.ts';
 import { createAutoWildService } from './auto-wild-service.ts';
@@ -82,7 +83,8 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
   const autoWild = createAutoWildService(wild, battle);
   const teams = createTeamService(db, store);
   const casino = createCasinoService(db, store, inventory);
-  const tournaments = createTournamentService(db, store, battle);
+  const doubles = createDoublesService(db, store, inventory, journal, battle);
+  const tournaments = createTournamentService(db, store, battle, doubles);
   const journey = createJourneyService(db, inventory);
   const market = createMarketService(db, store, inventory, journal);
   const data = loadGameData();
@@ -123,6 +125,9 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     .get('/api/saves/:id/challenges', ({ params }) => battle.challenges(params.id as string))
     .post('/api/saves/:id/battle/challenge', ({ params, body }) => battle.startChallenge(params.id as string, (body as { challengeId?: unknown } | null)?.challengeId))
     .post('/api/saves/:id/battle/trainer', ({ params, body }) => battle.startTrainer(params.id as string, (body as { difficulty?: unknown } | null)?.difficulty))
+    .get('/api/saves/:id/battle2', ({ params }) => doubles.current(params.id as string))
+    .post('/api/saves/:id/battle2/trainer', ({ params, body }) => doubles.startTrainer(params.id as string, (body as { difficulty?: unknown } | null)?.difficulty))
+    .post('/api/saves/:id/battle2/act', ({ params, body }) => doubles.act(params.id as string, body))
     .post('/api/saves/:id/battle/act', ({ params, body }) => battle.act(params.id as string, body))
     .post('/api/saves/:id/pokemon/:pid/evolve', ({ params, body }) => store.evolve(params.id as string, params.pid as string, (body as { speciesId?: unknown } | null)?.speciesId))
     .post('/api/saves/:id/pokemon/:pid/transform', ({ params, body }) => store.transform(params.id as string, params.pid as string, (body as { form?: unknown } | null)?.form))

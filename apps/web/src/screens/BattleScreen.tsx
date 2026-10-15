@@ -15,8 +15,8 @@ import { useMusic } from '../music.ts';
 import { TrainerSprite } from '../ui/TrainerSprite.tsx';
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-const STATUS_SHORT: Record<StatusKind, string> = { burn: 'QUE', poison: 'ENV', paralysis: 'PAR', sleep: 'SONO', freeze: 'GEL', confusion: 'CONF' };
-const STAGE_SHORT: Record<StageKey, string> = { atk: 'ATQ', def: 'DEF', spa: 'A.ESP', spd: 'D.ESP', spe: 'VEL', acc: 'PREC', eva: 'ESQ' };
+export const STATUS_SHORT: Record<StatusKind, string> = { burn: 'QUE', poison: 'ENV', paralysis: 'PAR', sleep: 'SONO', freeze: 'GEL', confusion: 'CONF' };
+export const STAGE_SHORT: Record<StageKey, string> = { atk: 'ATQ', def: 'DEF', spa: 'A.ESP', spd: 'D.ESP', spe: 'VEL', acc: 'PREC', eva: 'ESQ' };
 const percent = (chance: number | null) => (chance === null ? '' : chance >= 1 ? '100%' : chance < 0.01 ? '<1%' : `${Math.round(chance * 100)}%`);
 
 type Mode = 'playing' | 'command' | 'fight' | 'bag' | 'balls' | 'heals' | 'target' | 'team' | 'ended';
@@ -456,18 +456,18 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   );
 }
 
-function BackSprite({ speciesId, shiny, name }: { speciesId: number; shiny: boolean; name: string }) {
+export function BackSprite({ speciesId, shiny, name }: { speciesId: number; shiny: boolean; name: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return <Sprite speciesId={speciesId} shiny={shiny} alt={name} size={200} className="gb-bob gb-flip" />;
   return <Sprite speciesId={speciesId} view="back" shiny={shiny} alt={name} size={200} className="gb-bob" onFail={() => setFailed(true)} />;
 }
 
-function Popup({ text, kind }: { text: string; kind: 'up' | 'down' | 'heal' | 'level' }) {
+export function Popup({ text, kind }: { text: string; kind: string }) {
   return <span className={`gb-popup gb-popup--${kind}`}>{text}</span>;
 }
 
 /** Texto que "digita" letra por letra, como nos jogos de GBA. */
-function TypeText({ text, instant }: { text: string; instant: boolean }) {
+export function TypeText({ text, instant }: { text: string; instant: boolean }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (instant || reducedMotion()) { setShown(text.length); return; }
@@ -514,12 +514,12 @@ function InfoBox({ side, mon, xpGain }: { side: SideKey; mon: BattleMonView; xpG
 }
 
 /** Aura que fica no Pokémon enquanto ele estiver com status (queimadura, veneno…). */
-function auraOf(mon: BattleMonView): string {
+export function auraOf(mon: BattleMonView): string {
   if (mon.status) return ` gb-aura gb-aura--${mon.status}`;
   return mon.confused ? ' gb-aura gb-aura--confusion' : '';
 }
 
-function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; trainer: BattleView['trainer'] }) {
+export function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; trainer: BattleView['trainer'] }) {
   return (
     <div className="gb-outcome">
       {outcome.trainerName && trainer ? <TrainerSprite name={trainer.name} title={trainer.title} size={96} /> : null}

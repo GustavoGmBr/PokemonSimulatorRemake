@@ -6,6 +6,7 @@ import type { Gender, MoveCategory, Stats, TypeName } from './types.ts';
 import type { IvStars } from './ivs.ts';
 import type { RegionId } from './regions.ts';
 import type { PokemonLocation, SortKey } from './collection.ts';
+import type { DuelEvent, Pos, SlotRef } from './battle2.ts';
 import type { BattleEvent, BattlePhase, BattleResult, StageKey, StatusKind } from './battle.ts';
 import type { EvolutionChoice } from './evolution.ts';
 import type { TransformChoice } from './transform.ts';
@@ -490,6 +491,33 @@ export interface ChallengesState {
   unlockedRegions: string[];
   /** nível máximo que o desafio permite ao seu time (nível do líder) é mostrado em cada desafio */
   badges: number;
+  /** Novo Ciclo (New Game+) */
+  ngplus: NgPlusState;
+}
+
+export interface NgChallengeView {
+  id: string;
+  kind: 'champion' | 'iconic';
+  region: string | null;
+  regionName: string | null;
+  name: string;
+  title: string;
+  level: number;
+  team: { speciesId: number; name: string }[];
+  blurb: string;
+  /** vezes que você já venceu */
+  wins: number;
+  money: number;
+  rewards: { item: string; name: string; quantity: number }[];
+  /** bônus que só vale na primeira vitória */
+  firstWinBonus: { item: string; name: string; quantity: number }[];
+}
+
+export interface NgPlusState {
+  unlocked: boolean;
+  /** quantos campeões faltam e quais */
+  missing: string[];
+  entries: NgChallengeView[];
 }
 
 // ---------------------------------------------------------------- equipes nomeadas
@@ -595,6 +623,8 @@ export interface TournamentTierView {
   teamSize: [number, number];
   /** quantas vezes você já ganhou esta copa */
   wins: number;
+  /** copa em duplas (2×2) */
+  doubles?: boolean;
 }
 
 export interface TournamentRun {
@@ -723,3 +753,44 @@ export interface AutoWildResult {
   report: AutoWildReport;
   state: WildState;
 }
+
+// ---------------------------------------------------------------- batalhas em dupla (2×2)
+
+export interface DoublesMoveView extends Omit<MoveView, 'pp' | 'maxPp'> {
+  slot: number;
+  /** como o golpe escolhe alvo */
+  target: string;
+  /** atinge mais de um alvo (dano ×0,75) */
+  spread: boolean;
+  /** precisa de alvo escolhido (golpes de um alvo) */
+  needsTarget: boolean;
+  /** efetividade contra o adversário de cada posição (null = status ou posição vazia) */
+  effectiveness: [number | null, number | null];
+}
+
+export interface DoublesView {
+  trainer: { name: string; title: string; skill: number };
+  phase: BattlePhase;
+  turn: number;
+  player: {
+    team: BattleMonView[];
+    /** índice na equipe de cada posição (-1 = vazia) */
+    active: [number, number];
+    /** golpes de quem está em cada posição (null = vazia ou desmaiado) */
+    moves: [DoublesMoveView[] | null, DoublesMoveView[] | null];
+  };
+  foe: { team: BattleMonView[]; active: [number, number] };
+  /** quantos Pokémon você precisa escolher na fase de troca */
+  replacements: number;
+  outcome: BattleOutcome | null;
+}
+
+export interface DoublesTurnResult {
+  doubles: true;
+  events: DuelEvent[];
+  view: DoublesView;
+}
+
+export type DoublesActRequest =
+  | { actions: ({ kind: 'move'; slot: number; target?: SlotRef } | { kind: 'switch'; to: number } | null)[] }
+  | { replace: { pos: Pos; to: number }[] };

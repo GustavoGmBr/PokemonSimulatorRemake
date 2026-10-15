@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import type { BattleOutcome, BattleTurnResult, TeamMemberView, TournamentState, TournamentTierView } from '@pokesim/engine';
+import type { BattleOutcome, BattleTurnResult, DoublesTurnResult, TeamMemberView, TournamentState, TournamentTierView } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { ItemIcon, KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 import { BattleScreen } from './BattleScreen.tsx';
+import { DoublesBattleScreen } from './DoublesBattleScreen.tsx';
 
 interface Props {
   saveId: string;
@@ -15,7 +16,8 @@ interface Props {
 export function TournamentScreen({ saveId, onBack }: Props) {
   const [state, setState] = useState<TournamentState | null>(null);
   const [hover, setHover] = useState('');
-  const [battle, setBattle] = useState<BattleTurnResult | null>(null);
+  const [battle, setBattle] = useState<BattleTurnResult | DoublesTurnResult | null>(null);
+  const [mode, setMode] = useState<'solo' | 'duo'>('solo');
   const [picking, setPicking] = useState<TournamentTierView | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [message, setMessage] = useState('Escolha uma categoria. Vença 8 rodadas para levar a taça.');
@@ -26,6 +28,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
   useEffect(() => {
     void load();
     api.battle(saveId).then((running) => { if (running) setBattle({ events: [], view: running }); }, () => undefined);
+    api.battle2(saveId).then((running) => { if (running) setBattle({ doubles: true, events: [], view: running }); }, () => undefined);
   }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useKeys((key) => {
@@ -34,7 +37,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
     }
   }, !battle && !busy && state !== null && !state.active);
 
-  const run = async (work: () => Promise<BattleTurnResult>) => {
+  const run = async (work: () => Promise<BattleTurnResult | DoublesTurnResult>) => {
     setBusy(true);
     try {
       setBattle(await work());
@@ -56,6 +59,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
     void load();
   };
 
+  if (battle && 'doubles' in battle) return <DoublesBattleScreen key="battle2" saveId={saveId} start={battle} onExit={afterBattle} />;
   if (battle) return <BattleScreen key="battle" saveId={saveId} start={battle} habitat="forest" onExit={afterBattle} />;
   if (error) {
     return (
@@ -97,7 +101,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
     body = (
       <section className="gb-window" aria-label="Escolher Pokémon">
         <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>Copa {picking.name} · inscrição {formatMoney(picking.entry)}</h2>
-        <p className="gb-muted" style={{ margin: '4px 0' }}>Escolha de 1 a 6 Pokémon da equipe. Eles lutam até o nível {picking.cap}, com vida cheia a cada rodada e sem ganhar XP.</p>
+        <p className="gb-muted" style={{ margin: '4px 0' }}>{picking.doubles ? 'Escolha de 2 a 6 Pokémon da equipe; dois lutam por vez.' : 'Escolha de 1 a 6 Pokémon da equipe.'} Eles lutam até o nível {picking.cap}, com vida cheia a cada rodada e sem ganhar XP.</p>
         <div className="gb-teampick">
           {state.team.map((m) => (
             <button key={m.id} type="button" className={`gb-teampick__mon${picked.includes(m.id) ? ' is-on' : ''}`} aria-pressed={picked.includes(m.id)} onClick={() => toggle(m)}>
@@ -107,7 +111,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
           ))}
         </div>
         <div className="gb-row" style={{ marginTop: 12 }}>
-          <button type="button" className="gb-button" disabled={busy || picked.length === 0} onClick={() => void run(() => api.tournamentEnter(saveId, picking.id, picked))}>
+          <button type="button" className="gb-button" disabled={busy || picked.length < (picking.doubles ? 2 : 1)} onClick={() => void run(() => api.tournamentEnter(saveId, picking.id, picked))}>
             Inscrever ({picked.length})
           </button>
           <button type="button" className="gb-button" onClick={() => setPicking(null)}>Cancelar</button>
@@ -115,12 +119,17 @@ export function TournamentScreen({ saveId, onBack }: Props) {
       </section>
     );
   } else {
-    const items: MenuItem[] = state.tiers.map((t) => ({ id: t.id, label: t.name, extra: formatMoney(t.entry), disabled: state.money < t.entry }));
-    const tier = state.tiers.find((t) => t.id === hover) ?? state.tiers[0];
+    const shown = state.tiers.filter((t) => Boolean(t.doubles) === (mode === 'duo'));
+    const items: MenuItem[] = shown.map((t) => ({ id: t.id, label: t.name, extra: formatMoney(t.entry), disabled: state.money < t.entry }));
+    const tier = shown.find((t) => t.id === hover) ?? shown[0];
     body = (
       <div className="gb-row" style={{ alignItems: 'flex-start' }}>
         <section className="gb-window gb-grow" aria-label="Categorias">
-          <Menu label="Categorias" items={items} active={!busy} onMove={setHover} onBack={onBack}
+          <div className="gb-row" style={{ gap: 6, marginBottom: 8 }}>
+            <button type="button" className="gb-button" aria-pressed={mode === 'solo'} onClick={() => setMode('solo')}>Individual</button>
+            <button type="button" className="gb-button" aria-pressed={mode === 'duo'} onClick={() => setMode('duo')}>Em duplas</button>
+          </div>
+          <Menu key={mode} label="Categorias" items={items} active={!busy} onMove={setHover} onBack={onBack}
             onSelect={(id) => { const t = state.tiers.find((x) => x.id === id); if (t) { setPicked(state.team.map((m) => m.id)); setPicking(t); } }} />
         </section>
         <aside className="gb-window gb-grow" aria-label="Detalhes">

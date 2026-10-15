@@ -20,3 +20,5 @@ export * from './casino.ts';
 export * from './tournaments.ts';
 export * from './journey.ts';
 export * from './sprites.ts';
+export * from './ngplus.ts';
+export * from './battle2.ts';

@@ -80,7 +80,8 @@ test('torneio: validações da inscrição', async () => {
   assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'muito-facil', members: ['x'] })).status, 400);
   assert.equal(moneyOf(save.id), 500);
   const state = (await call<TournamentState>('GET', `${url}/tournaments`)).json;
-  assert.equal(state.tiers.length, 6);
+  assert.equal(state.tiers.filter((t) => !t.doubles).length, 6);
+  assert.equal(state.tiers.filter((t) => t.doubles).length, 6);
   assert.equal(state.active, null);
   assert.equal(state.team.length, 2);
 });

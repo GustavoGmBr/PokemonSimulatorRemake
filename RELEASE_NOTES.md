@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.16
+## Pokémon Simulator (remake) 2.0.0-alpha.17
+
+- **Novo Ciclo** (Batalhar → Novo Ciclo): abre ao vencer os 10 campeões. Eles voltam no Nv 100, equipe de 6, IVs perfeitos e Full Restore; mais 11 treinadores lendários (Red, Ash, Gold, Steven, Wallace, Cynthia, N, Iris, Diantha, Leon, Geeta). Prêmio em dinheiro e Doces Raros/EXP GG, e na 1ª vitória Master Ball e Essências de IV. Sem limite de nível.
+- **Batalhas em dupla (2×2)**: Batalhar → Aleatórios → Dupla (prêmio em dobro). Golpes em área (×0,75), escolha de alvo, troca e reposição de desmaiados. Sem itens, captura ou fuga.
+- **Copas em duplas**: 6 categorias novas na tela de Torneios (inscrição 2,5×, dinheiro 3×, itens 1,5× e +1 Essência).
+
+## Anteriores: 2.0.0-alpha.16
 
 - Retratos pixel-art de líderes, Elite, Campeões e treinadores (desenhados no jogo; o mesmo treinador é sempre igual).
 - Batalha: números de dano, aviso de crítico e auras de status; trilha sonora procedural por tela (volume em Opções).

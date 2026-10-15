@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.17', items: [
+    'Novo Ciclo: depois de vencer os 10 campeões, eles voltam no Nv 100 com equipe completa, e surgem treinadores lendários (Red, Ash, Gold, Cynthia, N, Leon…). Prêmios maiores e bônus na primeira vitória.',
+    'Batalhas em dupla (2×2): golpes em área, alvo por Pokémon, troca e reposição. Em Batalhar → Aleatórios → Dupla.',
+    'Copas em duplas: inscrição mais cara, prêmio em dinheiro 3× e mais itens e essências.',
+  ] },
   { version: '2.0.0-alpha.16', items: [
     'Líderes, Elite, Campeões e treinadores ganharam retrato pixel-art (na lista de desafios e na batalha).',
     'Batalha: números de dano, aviso de crítico e auras que ficam no Pokémon com status.',

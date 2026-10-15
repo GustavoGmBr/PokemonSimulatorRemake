@@ -8,7 +8,8 @@ import { REWARD_BALLS } from './challenges.ts';
 /** Torneios por categoria: 8 rodadas eliminatórias, com nível máximo para o seu time e inscrição em Pokédólares. */
 export const TOURNAMENT_ROUNDS = 8;
 
-export type TournamentTierId = 'muito-facil' | 'facil' | 'intermediario' | 'dificil' | 'muito-dificil' | 'copa-prime';
+type SinglesTierId = 'muito-facil' | 'facil' | 'intermediario' | 'dificil' | 'muito-dificil' | 'copa-prime';
+export type TournamentTierId = SinglesTierId | `dupla-${SinglesTierId}`;
 
 export interface TournamentPrize {
   money: number;
@@ -29,6 +30,10 @@ export interface TournamentTier {
   minTeam: number;
   maxTeam: number;
   prize: TournamentPrize;
+  /** copa em duplas (2×2) */
+  doubles?: boolean;
+  /** categoria de singles que serve de base (filtros de Pokémon e IA) */
+  base?: SinglesTierId;
 }
 
 /** Valores do jogo antigo (inscrição, prêmio, níveis e tamanho dos times). */
@@ -47,7 +52,25 @@ export const TOURNAMENT_TIERS: readonly TournamentTier[] = [
     prize: { money: 20_000, essences: 3, items: [{ item: 'master-ball', min: 0, max: 1 }, { item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 4, max: 4 }, { item: 'rare-candy', min: 3, max: 4 }] } },
 ];
 
-export const tournamentTier = (id: unknown): TournamentTier | undefined => TOURNAMENT_TIERS.find((tier) => tier.id === id);
+/** Copas em duplas: inscrição 2,5× maior; dinheiro 3×, itens 1,5× e uma Essência a mais. */
+export const DOUBLES_TOURNAMENT_TIERS: readonly TournamentTier[] = TOURNAMENT_TIERS.map((tier) => ({
+  ...tier,
+  id: `dupla-${tier.id}` as TournamentTierId,
+  base: tier.id as SinglesTierId,
+  doubles: true,
+  name: `Duplas · ${tier.name}`,
+  description: `Em duplas (2×2). ${tier.description}`,
+  entry: Math.round((tier.entry * 2.5) / 5) * 5,
+  prize: {
+    money: tier.prize.money * 3,
+    essences: tier.prize.essences + 1,
+    items: tier.prize.items.map((line) => ({ item: line.item, min: Math.ceil(line.min * 1.5), max: Math.ceil(line.max * 1.5) })),
+  },
+}));
+
+export const ALL_TOURNAMENT_TIERS: readonly TournamentTier[] = [...TOURNAMENT_TIERS, ...DOUBLES_TOURNAMENT_TIERS];
+
+export const tournamentTier = (id: unknown): TournamentTier | undefined => ALL_TOURNAMENT_TIERS.find((tier) => tier.id === id);
 
 export const MAX_TOURNAMENT_PICKS = 6;
 
@@ -69,7 +92,7 @@ export function tournamentPool(tier: TournamentTier, species: readonly Species[]
     const total = bst(entry);
     const stage = evolutionStage(entry);
     const legendary = isLegendary(entry);
-    switch (tier.id) {
+    switch (tier.base ?? tier.id) {
       case 'muito-facil': return stage === 0 && total <= 350;
       case 'facil': return !legendary && total <= 480;
       case 'intermediario': return !legendary && (stage >= 1 || total >= 440);
@@ -89,7 +112,8 @@ export function rollOpponent(tier: TournamentTier, round: number, species: reado
     team.push({ speciesId: id as number, level: tier.minLevel + rng.int(tier.cap - tier.minLevel + 1) });
   }
   const base = round <= 3 ? 1 : round <= 6 ? 2 : 3;
-  const skill = (tier.id === 'copa-prime' || tier.id === 'muito-dificil') ? Math.max(base, 2) : base;
+  const kind = tier.base ?? tier.id;
+  const skill = (kind === 'copa-prime' || kind === 'muito-dificil') ? Math.max(base, 2) : base;
   const items: FoeBagItem[] = [];
   if (round >= 5) items.push(bag('super-potion', 'Super Potion', 60, 1));
   if (round === TOURNAMENT_ROUNDS) items.push(tier.cap >= 70 ? bag('full-restore', 'Full Restore', 9999, 1, true) : bag('hyper-potion', 'Hyper Potion', 120, 1));

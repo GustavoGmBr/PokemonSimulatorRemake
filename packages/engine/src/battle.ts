@@ -95,6 +95,8 @@ export interface TrainerInfo {
   rewards?: { item: string; quantity: number }[];
   /** batalha de torneio: copa e rodada */
   tournament?: { tier: string; round: number };
+  /** Novo Ciclo: id do desafio (`ng:...`) e se é a primeira vitória */
+  ng?: { id: string; first: boolean };
 }
 
 export interface BattleState {
@@ -377,6 +379,10 @@ interface Run {
   events: BattleEvent[];
   /** quem já teve o desmaio tratado neste turno */
   fainted: Set<Combatant>;
+  /** duplas: golpe que atinge vários alvos causa só uma fração do dano */
+  spread?: number;
+  /** duplas: já preparou o golpe (canAct e anúncio) para o primeiro alvo */
+  skipPrep?: boolean;
 }
 
 const push = (run: Run, event: BattleEvent) => { run.events.push(event); };
@@ -512,8 +518,10 @@ function useMove(run: Run, side: SideKey, choice: { slot: number } | { struggle:
     if (!slot || !found) { push(run, { k: 'text', text: `${who} não sabe usar esse golpe!` }); return; }
     move = found;
   }
-  if (!canAct(run, side, move)) return;
-  push(run, { k: 'move', side, move: move.name, moveName: move.displayName, type: move.type, category: move.category, text: `${who} usou ${move.displayName}!` });
+  if (!run.skipPrep) {
+    if (!canAct(run, side, move)) return;
+    push(run, { k: 'move', side, move: move.name, moveName: move.displayName, type: move.type, category: move.category, text: `${who} usou ${move.displayName}!` });
+  }
 
   const targetsSelf = move.target === 'user';
   const target = activeOf(state, foeSide);
@@ -555,6 +563,7 @@ function useMove(run: Run, side: SideKey, choice: { slot: number } | { struggle:
     const crit = rng.int(CRIT_DENOMINATOR[Math.min(3, Math.max(0, move.critRate))] as number) === 0;
     const roll = 85 + rng.int(16);
     const result = rawDamage(me, target, move, ctx.chart, roll, crit);
+    if (run.spread && run.spread !== 1 && result.effectiveness > 0) result.damage = Math.max(1, Math.floor(result.damage * run.spread));
     if (result.effectiveness === 0) {
       push(run, { k: 'text', text: `Não afeta ${targetWho}...` });
       return;
@@ -836,3 +845,43 @@ export function estimateDamage(state: BattleState, ctx: BattleContext, side: Sid
   if (!move || move.category === 'status') return null;
   return damageRange(activeOf(state, side), activeOf(state, other(side)), move, ctx.chart);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// peças para o motor de duplas (battle2.ts): cada golpe é resolvido como um duelo 1×1 entre dois Combatentes
+
+export type DuelChoice = { slot: number } | { struggle: true };
+
+function duelState(a: Combatant, d: Combatant): BattleState {
+  return {
+    kind: 'trainer', trainer: null, turn: 0, phase: 'choose', result: null, rng: 0, runAttempts: 0,
+    player: { team: [a], active: 0 }, foe: { team: [d], active: 0 },
+  };
+}
+
+/**
+ * Executa um golpe de `attacker` em `defender` (os dois são alterados). Nos eventos devolvidos, `side: 'player'` é o
+ * atacante e `side: 'foe'` o alvo. `skipPrep` pula o anúncio e os testes de ação (para o 2º alvo de um golpe em área).
+ */
+export function duelMove(attacker: Combatant, defender: Combatant, choice: DuelChoice, ctx: BattleContext, rng: Rng, options: { spread?: number; skipPrep?: boolean } = {}): BattleEvent[] {
+  const run: Run = { state: duelState(attacker, defender), ctx, rng, events: [], fainted: new Set(), ...options };
+  useMove(run, 'player', choice);
+  return run.events;
+}
+
+/** Veneno e queimadura do fim do turno (eventos com `side: 'player'`). */
+export function duelResidual(c: Combatant, ctx: BattleContext, rng: Rng): BattleEvent[] {
+  const run: Run = { state: duelState(c, c), ctx, rng, events: [], fainted: new Set() };
+  residual(run, 'player');
+  return run.events;
+}
+
+export const battleAi = {
+  scoreMoves,
+  chooseMove: (scores: ReturnType<typeof scoreMoves>, skill: 1 | 2 | 3, rng: Rng): { slot: number } | { struggle: true } => {
+    const choice = chooseMove(scores, skill, rng);
+    return 'slot' in choice ? { slot: choice.slot } : { struggle: true };
+  },
+  effectiveSpeed,
+  matchup,
+  struggle: STRUGGLE,
+};

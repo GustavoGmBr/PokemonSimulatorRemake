@@ -1,7 +1,7 @@
 import { REGIONS } from './regions.ts';
 import { REWARD_BALLS } from './challenges.ts';
 import { IV_ESSENCES } from './transform.ts';
-import { TOURNAMENT_TIERS } from './tournaments.ts';
+import { ALL_TOURNAMENT_TIERS } from './tournaments.ts';
 
 /** Missões, mercado de Pokémon e valor de venda (regras do jogo antigo). */
 
@@ -53,7 +53,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
   const pickRegion = (offset: number) => regions[(bytes[offset] as number) % regions.length] ?? REGIONS[0]!;
   const tiers = gymsWon < 4 ? ['muito-facil'] : gymsWon < 16 ? ['muito-facil', 'facil'] : gymsWon < 32 ? ['facil', 'intermediario'] : ['intermediario', 'dificil', 'muito-dificil', 'copa-prime'];
   const missions: Mission[] = [];
-  const tierName = (id: string) => TOURNAMENT_TIERS.find((tier) => tier.id === id)?.name ?? id;
+  const tierName = (id: string) => ALL_TOURNAMENT_TIERS.find((tier) => tier.id === id)?.name ?? id;
   for (let i = 0; i < 3; i++) {
     const region = pickRegion(i);
     const goal = i + 1 + (period % 3);

@@ -728,3 +728,19 @@ html[data-contrast='high'] .gb-screen > .gb-stage > .gb-hint, html[data-contrast
 html[data-contrast='high'] .gb-menu__item[aria-current='true'], html[data-contrast='high'] button.gb-mon[aria-current='true'], html[data-contrast='high'] .gb-filter-row[aria-current='true'] { background: #000; color: #fff; }
 html[data-contrast='high'] .gb-filter-row[aria-current='true'] .gb-filter-row__value { color: #ffd800; }
 html[data-contrast='high'] .gb-menu__item[aria-current='true'] *, html[data-contrast='high'] button.gb-mon[aria-current='true'] *, html[data-contrast='high'] .gb-filter-row[aria-current='true'] .gb-muted { color: #fff; }
+
+/* ---- Batalha em dupla ---- */
+.gb-battle2 { height: 520px; display: flex; flex-direction: column; justify-content: space-between; padding: 8px 12px; }
+.gb-b2row { position: relative; z-index: 3; display: flex; justify-content: space-around; align-items: flex-end; gap: 12px; }
+.gb-b2row--foe { align-items: flex-start; }
+.gb-b2slot { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 46%; max-width: 300px; min-height: 150px; }
+.gb-b2slot--foe { flex-direction: column; }
+.gb-b2slot--player { flex-direction: column-reverse; }
+.gb-b2sprite { position: relative; display: flex; justify-content: center; align-items: flex-end; min-height: 100px; }
+.gb-b2sprite img.pixel { width: 112px; height: 112px; }
+.gb-b2sprite .gb-sprite-missing { width: 100px !important; height: 100px !important; }
+.gb-b2info { background: var(--paper); border: 4px solid var(--ink); box-shadow: inset 0 0 0 3px var(--rim); padding: 4px 10px; width: 100%; font-size: 20px; }
+.gb-b2info--empty { visibility: hidden; min-height: 54px; }
+.gb-b2info.is-active { outline: 4px solid var(--red); }
+.gb-b2slot.is-target .gb-b2sprite { outline: 4px dashed var(--red); outline-offset: 4px; }
+@media (max-width: 860px) { .gb-battle2 { height: 560px; } .gb-b2slot { width: 48%; } }
