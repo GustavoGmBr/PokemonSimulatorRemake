@@ -93,6 +93,8 @@ export interface TrainerInfo {
   difficulty?: string;
   money?: number;
   rewards?: { item: string; quantity: number }[];
+  /** batalha de torneio: copa e rodada */
+  tournament?: { tier: string; round: number };
 }
 
 export interface BattleState {

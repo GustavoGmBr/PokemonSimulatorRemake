@@ -222,7 +222,8 @@ async function fightToEnd(url: string, first: BattleTurnResult): Promise<BattleV
       view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'switch', to: next.index })).json.view;
       continue;
     }
-    const best = [...view.player.moves].sort((a, b) => b.power - a.power)[0];
+    const score = (m: { power: number; effectiveness: number | null }) => m.power * (m.effectiveness ?? 1);
+    const best = [...view.player.moves].sort((a, b) => score(b) - score(a))[0];
     view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: best?.slot ?? 0 })).json.view;
   }
   return view;

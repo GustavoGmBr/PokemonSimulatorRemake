@@ -135,6 +135,31 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX teams_by_save ON teams (save_id);
   `,
+  // 11 — rodada em andamento no Pokécassino (Voltorb Flip, Pokejack, Pula Piplup)
+  `
+  CREATE TABLE casino_rounds (
+    save_id    TEXT PRIMARY KEY REFERENCES saves(id) ON DELETE CASCADE,
+    game       TEXT NOT NULL,
+    state      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
+  // 12 — torneio em andamento (uma copa por vez) e vitórias por categoria
+  `
+  CREATE TABLE tournaments (
+    save_id    TEXT PRIMARY KEY REFERENCES saves(id) ON DELETE CASCADE,
+    tier       TEXT NOT NULL,
+    round      INTEGER NOT NULL,
+    members    TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE tournament_wins (
+    save_id TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    tier    TEXT NOT NULL,
+    wins    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (save_id, tier)
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;

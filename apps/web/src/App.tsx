@@ -6,6 +6,8 @@ import { PcScreen } from './screens/PcScreen.tsx';
 import { PokedexScreen } from './screens/PokedexScreen.tsx';
 import { WildScreen } from './screens/WildScreen.tsx';
 import { ChallengesScreen } from './screens/ChallengesScreen.tsx';
+import { CasinoScreen } from './screens/CasinoScreen.tsx';
+import { TournamentScreen } from './screens/TournamentScreen.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
@@ -20,6 +22,8 @@ export type Screen =
   | { name: 'wild'; saveId: string }
   | { name: 'shop'; saveId: string }
   | { name: 'challenges'; saveId: string }
+  | { name: 'casino'; saveId: string }
+  | { name: 'tournament'; saveId: string }
   | { name: 'options'; back: Screen };
 
 function saveIdOf(screen: Screen): string | null {
@@ -63,6 +67,8 @@ export function App() {
           onOpenWild={() => setScreen({ name: 'wild', saveId })}
           onOpenShop={() => setScreen({ name: 'shop', saveId })}
           onOpenBattle={() => setScreen({ name: 'challenges', saveId })}
+          onOpenCasino={() => setScreen({ name: 'casino', saveId })}
+          onOpenTournament={() => setScreen({ name: 'tournament', saveId })}
         />
       );
     }
@@ -76,6 +82,10 @@ export function App() {
       return <ShopScreen key={`shop-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'shop' })} />;
     case 'challenges':
       return <ChallengesScreen key={`ch-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'battle' })} />;
+    case 'casino':
+      return <CasinoScreen key={`cs-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'casino' })} />;
+    case 'tournament':
+      return <TournamentScreen key={`tn-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'tournament' })} />;
     case 'options':
       return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }

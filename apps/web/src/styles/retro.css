@@ -619,3 +619,45 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-chrow { display: inline-flex; gap: 8px; align-items: baseline; }
 .gb-chdetail { display: flex; flex-direction: column; gap: 2px; }
 .gb-menu__item:disabled { opacity: .55; }
+
+/* ---------- torneios ---------- */
+.gb-tourbar { display: flex; gap: 6px; margin: 8px 0; }
+.gb-tourbar span { flex: 1; height: 14px; border: var(--px) solid var(--ink); background: var(--paper-2); }
+.gb-tourbar .is-done { background: var(--green); }
+.gb-tourbar .is-now { background: var(--yellow); }
+.gb-teampick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.gb-teampick__mon { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; font: inherit; font-size: 20px; color: var(--ink); background: var(--paper); border: var(--px) solid var(--rim); cursor: pointer; }
+.gb-teampick__mon.is-on { border-color: var(--ink); background: var(--paper-2); box-shadow: inset 0 0 0 var(--px) var(--yellow); }
+
+/* ---------- pokécassino ---------- */
+.gb-tab.is-on { background: var(--yellow); }
+.gb-casino-panel, .gb-stake, .gb-pick { display: flex; flex-direction: column; gap: 10px; }
+.gb-input { font: inherit; font-size: 22px; padding: 2px 6px; border: var(--px) solid var(--ink); background: var(--paper); color: var(--ink); }
+.gb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gb-prizes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gb-prizes li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gb-slotgrid { display: grid; grid-template-columns: repeat(3, 64px); gap: 4px; padding: 8px; background: var(--night); width: max-content; border: var(--px) solid var(--ink); }
+.gb-slotcell { width: 64px; height: 64px; display: grid; place-items: center; background: var(--paper); }
+.gb-roulette-ball { width: 80px; height: 80px; border-radius: 50%; display: grid; place-items: center; font-size: 36px; color: var(--paper); border: var(--px) solid var(--ink); }
+.gb-roulette-ball--red { background: var(--red); } .gb-roulette-ball--black { background: var(--ink); } .gb-roulette-ball--green { background: var(--green); } .gb-roulette-ball--none { background: var(--muted); }
+.gb-track { display: flex; flex-direction: column; gap: 4px; }
+.gb-lane { display: flex; align-items: center; gap: 6px; }
+.gb-lane__pick { border: var(--px) solid var(--rim); background: var(--paper); cursor: pointer; padding: 0; }
+.gb-lane__pick.is-on { border-color: var(--ink); background: var(--yellow); }
+.gb-lane__road { position: relative; flex: 1; height: 36px; background: var(--grass-2); border: var(--px) solid var(--ink); }
+.gb-lane__road span { position: absolute; top: 0; transform: translateX(-100%); transition: left .1s linear; }
+.gb-lane.is-win .gb-lane__road { background: var(--yellow); }
+.gb-wheel { display: flex; flex-wrap: wrap; gap: 2px; max-width: 420px; }
+.gb-wheel__cell { width: 24px; height: 24px; border: 2px solid var(--ink); }
+.gb-wheel__cell--lo { background: var(--rim); } .gb-wheel__cell--mid { background: var(--sky); } .gb-wheel__cell--hi { background: var(--gold); }
+.gb-wheel__cell.is-at { outline: 4px solid var(--red); }
+.gb-vgrid { display: grid; grid-template-columns: repeat(6, 64px); gap: 4px; }
+.gb-vcard { height: 56px; font: inherit; font-size: 20px; border: var(--px) solid var(--ink); background: var(--night); color: var(--paper); cursor: pointer; }
+.gb-vcard.is-open { background: var(--paper-2); color: var(--ink); } .gb-vcard.is-bomb { background: var(--red); }
+.gb-cards { display: flex; gap: 6px; min-height: 52px; }
+.gb-card { display: inline-grid; place-items: center; width: 44px; height: 52px; font-size: 24px; background: var(--paper); border: var(--px) solid var(--ink); }
+.gb-card.is-red { color: var(--red); } .gb-card--back { background: var(--blue); color: var(--paper); }
+.gb-pads { display: flex; gap: 6px; }
+.gb-pad { width: 44px; height: 44px; display: grid; place-items: center; background: var(--sky); border: var(--px) solid var(--ink); }
+.gb-pad.is-done { background: var(--green); }
+@media (max-width: 560px) { .gb-vgrid { grid-template-columns: repeat(6, 1fr); } .gb-slotgrid { grid-template-columns: repeat(3, 56px); } }

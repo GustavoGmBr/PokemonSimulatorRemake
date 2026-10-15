@@ -2,8 +2,8 @@ import { randomInt } from 'node:crypto';
 import {
   DIFFICULTIES, HEAL_EFFECTS, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
-  levelProgress, luckyEggMultiplier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
-  type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
+  levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, resolvePrizeItem, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
+  type TournamentProgress, type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
   type BallOption, type BattleActRequest, type BattleContext, type BattleEvent, type BattleMonView, type BattleMoveView,
   type BattleOutcome, type BattleState, type BattleTurnResult, type BattleView, type CaptureInput, type Combatant, type PokemonInstance,
   type PokemonView,
@@ -85,14 +85,14 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     return new Set((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((row) => row.challenge_id));
   }
 
-  /** Equipe do jogador como combatentes; com `cap`, quem passa desse nível luta reduzido a ele (e não ganha XP). */
-  function playerTeam(saveId: string, cap: number | null): Combatant[] {
-    const team = store.team(saveId);
+  /** Equipe do jogador como combatentes; com `cap`, quem passa desse nível luta reduzido a ele (e não ganha XP). `tournament` usa só os Pokémon indicados, sempre limitados, com vida cheia. */
+  function playerTeam(saveId: string, cap: number | null, tournament?: string[]): Combatant[] {
+    const team = tournament ? tournament.map((id) => store.view(saveId, id)) : store.team(saveId);
     if (team.length === 0) throw badRequest('Você não tem Pokémon na equipe.');
     const player = team.map((mon) => {
       const species = ctxBase.species(mon.speciesId);
-      const capped = cap !== null && mon.level > cap;
-      const level = capped ? (cap as number) : mon.level;
+      const capped = tournament ? true : cap !== null && mon.level > cap;
+      const level = cap !== null && mon.level > cap ? cap : mon.level;
       const instance: PokemonInstance = {
         speciesId: mon.speciesId, nickname: mon.nickname, level, exp: capped ? expForLevel(species.growthRate, level) : mon.exp, shiny: mon.shiny, gender: mon.gender, ivs: mon.ivs,
         moves: mon.moves.map((m) => ({ name: m.name, pp: m.pp, maxPp: m.maxPp })), currentHp: mon.currentHp, friendship: mon.friendship, ball: mon.ball, form: mon.form,
@@ -100,12 +100,48 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       const combatant = combatantFrom(instance, species, mon.name, mon.id);
       if (capped) {
         combatant.capped = true;
-        combatant.hp = mon.currentHp <= 0 ? 0 : Math.max(1, Math.round((combatant.stats.hp * mon.currentHp) / mon.stats.hp));
+        combatant.hp = tournament ? combatant.stats.hp : mon.currentHp <= 0 ? 0 : Math.max(1, Math.round((combatant.stats.hp * mon.currentHp) / mon.stats.hp));
       }
       return combatant;
     });
     if (!player.some((c) => c.hp > 0)) throw badRequest('Nenhum Pokémon da equipe pode lutar. Use poções ou revivers.');
     return player;
+  }
+
+  /** Acerta o torneio ao fim de uma batalha: avança de rodada, paga a taça ou elimina. */
+  function settleTournament(saveId: string, info: { tier: string; round: number }, result: string, events: BattleEvent[]): TournamentProgress | null {
+    const tier = tournamentTier(info.tier);
+    if (!tier) return null;
+    const progress: TournamentProgress = { tierName: tier.name, round: info.round, rounds: TOURNAMENT_ROUNDS, champion: false, eliminated: false, prizeMoney: 0, prizeItems: [] };
+    if (result !== 'win') {
+      db.prepare('DELETE FROM tournaments WHERE save_id = ?').run(saveId);
+      progress.eliminated = true;
+      events.push({ k: 'text', text: `Você foi eliminado na rodada ${info.round} da Copa ${tier.name}.` });
+      return progress;
+    }
+    if (info.round < TOURNAMENT_ROUNDS) {
+      db.prepare('UPDATE tournaments SET round = ? WHERE save_id = ?').run(info.round + 1, saveId);
+      events.push({ k: 'text', text: `Rodada ${info.round} vencida! Próxima: rodada ${info.round + 1} de ${TOURNAMENT_ROUNDS}.` });
+      return progress;
+    }
+    const rng = rngFrom(randomInt);
+    db.prepare('DELETE FROM tournaments WHERE save_id = ?').run(saveId);
+    db.prepare('INSERT INTO tournament_wins (save_id, tier, wins) VALUES (?, ?, 1) ON CONFLICT (save_id, tier) DO UPDATE SET wins = wins + 1').run(saveId, tier.id);
+    db.prepare('UPDATE saves SET money = money + ?, updated_at = ? WHERE id = ?').run(tier.prize.money, new Date().toISOString(), saveId);
+    progress.champion = true;
+    progress.prizeMoney = tier.prize.money;
+    events.push({ k: 'text', text: `CAMPEÃO da Copa ${tier.name}! Prêmio: ₽ ${tier.prize.money.toLocaleString('pt-BR')}.` });
+    for (const prize of tier.prize.items) {
+      for (let i = 0; i < prize.quantity; i++) {
+        const item = resolvePrizeItem(prize.item, rng);
+        inventory.add(saveId, item, 1);
+        const name = data.itemsByName.get(item)?.displayName ?? item;
+        const found = progress.prizeItems.find((entry) => entry.item === item);
+        if (found) found.quantity += 1; else progress.prizeItems.push({ item, name, quantity: 1 });
+      }
+    }
+    for (const entry of progress.prizeItems) events.push({ k: 'text', text: `Você ganhou ${entry.quantity}× ${entry.name}!` });
+    return progress;
   }
 
   function view(saveId: string, state: BattleState, outcome: BattleOutcome | null): BattleView {
@@ -156,6 +192,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     const rewards: BattleOutcome['rewards'] = [];
     const trainer = state.kind === 'trainer' ? state.trainer ?? null : null;
     const foe = activeOf(state, 'foe');
+    const tournament = trainer?.tournament ? settleTournament(saveId, trainer.tournament, result, events) : null;
     if (result === 'captured') {
       const original = wild.encounter(saveId);
       const species = ctxBase.species(original.speciesId);
@@ -184,7 +221,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     }
     if (result === 'win') {
       db.prepare('UPDATE saves SET money = money + ?, updated_at = ? WHERE id = ?').run(money, new Date().toISOString(), saveId);
-      events.push({ k: 'money', amount: money, text: `Você ganhou ₽ ${money.toLocaleString('pt-BR')}!` });
+      if (money > 0) events.push({ k: 'money', amount: money, text: `Você ganhou ₽ ${money.toLocaleString('pt-BR')}!` });
     }
     store.applyBattle(saveId, state.player.team);
     if (!trainer) wild.finishEncounter(saveId, result);
@@ -192,7 +229,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     if (caught) caught = store.view(saveId, caught.id);
     const levels = state.player.team.filter((c) => c.ref && !c.capped && c.level > (before.get(c.ref) ?? c.level)).map((c) => ({ name: c.name, level: c.level }));
     const pending = state.player.team.filter((c) => c.pendingMoves.length > 0).map((c) => c.name);
-    return { result, money, caught, levels, pending, rewards, badge, trainerName: trainer?.name ?? null };
+    return { result, money, caught, levels, pending, rewards, badge, trainerName: trainer?.name ?? null, tournament };
   }
 
   function commit(saveId: string, state: BattleState, events: BattleEvent[], ball: string | null = null): BattleTurnResult {
@@ -273,6 +310,31 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
           difficulty: level, money: rolled.money, rewards: rolled.rewards,
         };
         const player = playerTeam(saveId, null);
+        const { state, events } = createBattle({ player, foe: foes, seed: seedOf(), kind: 'trainer', trainer });
+        save(saveId, state);
+        return { events, view: view(saveId, state, null) };
+      });
+    },
+
+    /** Começa a batalha da rodada atual do torneio em andamento. */
+    startTournamentRound(saveId: string): BattleTurnResult {
+      assertSave(saveId);
+      if (load(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      const row = db.prepare('SELECT tier, round, members FROM tournaments WHERE save_id = ?').get(saveId) as { tier: string; round: number; members: string } | undefined;
+      const tier = tournamentTier(row?.tier);
+      if (!row || !tier) throw badRequest('Você não está em nenhum torneio.');
+      return transaction(db, () => {
+        const rng = rngFrom(randomInt);
+        const opponent = rollOpponent(tier, row.round, data.species, rng);
+        const foes = opponent.team.map((member) => {
+          const species = ctxBase.species(member.speciesId);
+          return combatantFrom(createPokemon({ species, level: member.level, rng, moves: data.movesByName }), species, species.displayName);
+        });
+        const trainer: TrainerInfo = {
+          name: opponent.name, title: `Rodada ${row.round}/${TOURNAMENT_ROUNDS}`, skill: opponent.skill, bag: opponent.bag, lastSwitch: -9,
+          money: 0, rewards: [], tournament: { tier: tier.id, round: row.round },
+        };
+        const player = playerTeam(saveId, tier.cap, JSON.parse(row.members) as string[]);
         const { state, events } = createBattle({ player, foe: foes, seed: seedOf(), kind: 'trainer', trainer });
         save(saveId, state);
         return { events, view: view(saveId, state, null) };

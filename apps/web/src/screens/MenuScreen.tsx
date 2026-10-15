@@ -8,7 +8,7 @@ import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -20,7 +20,8 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
-  { id: 'casino', label: 'Pokécassino', info: 'Fichas, caça-níqueis e outros jogos.', phase: 'Fase 4' },
+  { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
+  { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
   { id: 'missions', label: 'Missões', info: 'Objetivos renovados com recompensas.', phase: 'Fase 3' },
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },
   { id: 'options', label: 'Opções', info: 'Velocidade do texto e volume dos sons.' },
@@ -46,9 +47,11 @@ interface Props {
   onOpenWild: () => void;
   onOpenShop: () => void;
   onOpenBattle: () => void;
+  onOpenCasino: () => void;
+  onOpenTournament: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
@@ -107,6 +110,8 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'wild') return onOpenWild();
     if (id === 'battle') return onOpenBattle();
     if (id === 'shop') return onOpenShop();
+    if (id === 'casino') return onOpenCasino();
+    if (id === 'tournament') return onOpenTournament();
     if (id === 'devkit') {
       return void act(async () => {
         const result = await api.devKit(saveId);

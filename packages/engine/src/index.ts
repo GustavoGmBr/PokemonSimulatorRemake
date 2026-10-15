@@ -16,3 +16,5 @@ export * from './items.ts';
 export type * from './contracts.ts';
 export * from './transform.ts';
 export * from './teams.ts';
+export * from './casino.ts';
+export * from './tournaments.ts';

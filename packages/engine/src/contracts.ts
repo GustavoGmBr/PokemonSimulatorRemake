@@ -9,6 +9,7 @@ import type { PokemonLocation, SortKey } from './collection.ts';
 import type { BattleEvent, BattlePhase, BattleResult, StageKey, StatusKind } from './battle.ts';
 import type { EvolutionChoice } from './evolution.ts';
 import type { TransformChoice } from './transform.ts';
+import type { CasinoGame, Card, RouletteColor, RouletteGroup, SlotLine, SlotSymbol } from './casino.ts';
 
 export interface SaveSummary {
   id: string;
@@ -380,6 +381,8 @@ export interface BattleOutcome {
   /** insígnia/troféu do desafio vencido (id), se foi a primeira vez */
   badge: string | null;
   trainerName: string | null;
+  /** batalha de torneio: andamento da copa */
+  tournament?: TournamentProgress | null;
 }
 
 export interface BattleView {
@@ -504,4 +507,120 @@ export interface TeamView {
   members: TeamMemberView[];
   /** é a equipe que está montada agora */
   active: boolean;
+}
+
+// ---------------------------------------------------------------- Pokécassino
+
+
+export interface CasinoPrize {
+  item: string;
+  displayName: string;
+  /** preço em fichas */
+  price: number;
+  owned: number;
+}
+
+/** Aposta em fichas ou em um Pokémon da coleção. */
+export interface CasinoStakeInput {
+  bet?: number;
+  pokemonId?: string;
+}
+
+export interface CasinoStakeResult {
+  kind: 'chips' | 'pokemon';
+  /** fichas apostadas (0 quando a aposta é um Pokémon) */
+  bet: number;
+  /** retorno total em fichas (aposta em fichas) */
+  payout: number;
+  /** ganho líquido em fichas */
+  net: number;
+  multiplier: number;
+  pokemon: null | { name: string; speciesId: number; spriteId: number; value: number; lost: boolean; prizeMoney: number; prizeChips: number };
+}
+
+export type CasinoDetail =
+  | { game: 'slots'; grid: SlotSymbol[]; lines: SlotLine[] }
+  | { game: 'roulette'; number: number; color: RouletteColor; group: RouletteGroup }
+  | { game: 'race'; frames: number[][]; winner: number; pick: number }
+  | { game: 'wheel'; index: number; multiplier: number }
+  | { game: 'voltorb'; board: number[]; revealed: number[]; hit: boolean }
+  | { game: 'jack'; player: Card[]; dealer: Card[]; result: string | null; doubled: boolean }
+  | { game: 'piplup'; jumps: number; fell: boolean };
+
+export interface CasinoResult {
+  game: CasinoGame;
+  stake: CasinoStakeResult;
+  detail: CasinoDetail;
+  chips: number;
+  money: number;
+}
+
+export interface CasinoStakeView { kind: 'chips' | 'pokemon'; bet: number; pokemonName: string | null }
+
+export type CasinoRoundView =
+  | { game: 'voltorb'; stake: CasinoStakeView; revealed: { index: number; value: number }[]; picksLeft: number; multiplier: number }
+  | { game: 'jack'; stake: CasinoStakeView; player: Card[]; dealer: Card[]; playerTotal: number; canDouble: boolean }
+  | { game: 'piplup'; stake: CasinoStakeView; jumps: number; multiplier: number; nextOdds: number; nextMultiplier: number };
+
+export interface CasinoState {
+  chips: number;
+  money: number;
+  chipPrice: number;
+  prizes: CasinoPrize[];
+  round: CasinoRoundView | null;
+}
+
+export interface CasinoActResult {
+  round: CasinoRoundView | null;
+  result: CasinoResult | null;
+  chips: number;
+  money: number;
+}
+
+// ---------------------------------------------------------------- torneios
+
+export interface TournamentTierView {
+  id: string;
+  name: string;
+  description: string;
+  entry: number;
+  cap: number;
+  rounds: number;
+  prizeMoney: number;
+  prizeItems: { item: string; name: string; quantity: number }[];
+  /** quantas vezes você já ganhou esta copa */
+  wins: number;
+}
+
+export interface TournamentRun {
+  tier: string;
+  tierName: string;
+  /** rodada em disputa (1–8) */
+  round: number;
+  rounds: number;
+  cap: number;
+  members: TeamMemberView[];
+  /** true = há uma batalha aberta; false = pronto para a próxima rodada */
+  inBattle: boolean;
+}
+
+export interface TournamentState {
+  tiers: TournamentTierView[];
+  active: TournamentRun | null;
+  money: number;
+  /** Pokémon da equipe que podem se inscrever */
+  team: TeamMemberView[];
+}
+
+/** Resultado de uma batalha de torneio (dentro do BattleOutcome). */
+export interface TournamentProgress {
+  tierName: string;
+  /** rodada que acabou de ser vencida/perdida */
+  round: number;
+  rounds: number;
+  /** campeão: prêmio pago */
+  champion: boolean;
+  eliminated: boolean;
+  prizeMoney: number;
+  prizeItems: { item: string; name: string; quantity: number }[];
 }

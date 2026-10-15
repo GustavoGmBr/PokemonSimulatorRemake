@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.9**, batalhas e progressão prontas, mais evolução por item, formas, Essências, Doces e equipes nomeadas; Pokécassino e torneios a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.10**, batalhas e progressão prontas, mais Pokécassino (7 jogos, fichas e aposta de Pokémon) e torneios por categoria; mapa pixel e missões a seguir. Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -133,8 +133,15 @@ packages/
    - ✅ **Essências de IV** (+1 no atributo, máx. 31; não gasta se já está no máximo) e **Doces** (Doce Raro +1 nível;
      EXP P/M/G/GG = 800 / 3.000 / 10.000 / 30.000 XP), pela Mochila ou por "Doces e Essências" no perfil.
    - ✅ **Equipes nomeadas:** menu **Equipes** guarda até 20 equipes de 6; montar troca equipe e PC sozinho.
+   - ✅ **Pokécassino (alpha.10):** fichas a ₽ 5, sete jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
+     Wheel of Fortune e Pula Piplup) e loja de prêmios (Master Bola, Pedra Brilhante, Doces, Essências). Dá para apostar
+     um **Pokémon** em vez de fichas: se ganhar, recebe o prêmio em ₽ e o mesmo valor em fichas; se perder, ele vai embora
+     (favoritos e o seu último Pokémon ficam protegidos). Rodadas de Voltorb Flip, Pokejack e Pula Piplup ficam salvas.
+   - ✅ **Torneios por categoria:** Muito Fácil, Fácil, Intermediário, Difícil, Muito Difícil e Copa Prime. Oito rodadas
+     eliminatórias, inscrição em ₽, nível máximo da categoria, vida cheia entre rodadas, sem XP; prêmio (₽, Doces e
+     Essências) só para o campeão.
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
-4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
+4. **Extras** — launcher Windows e releases.
 
 ## Controles
 

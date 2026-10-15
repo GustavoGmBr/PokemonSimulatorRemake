@@ -13,6 +13,8 @@ import { createBattleService } from './battle-service.ts';
 import { createWildService } from './wild-service.ts';
 import { createItemService } from './item-service.ts';
 import { badRequest, notFound } from './errors.ts';
+import { createCasinoService } from './casino-service.ts';
+import { createTournamentService } from './tournament-service.ts';
 
 export interface AppOptions {
   db: Db;
@@ -67,6 +69,8 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   const items = createItemService(db, store, inventory);
   const battle = createBattleService(db, store, inventory, wild);
   const teams = createTeamService(db, store);
+  const casino = createCasinoService(db, store, inventory);
+  const tournaments = createTournamentService(db, store, battle);
   const data = loadGameData();
   const speciesIndex: SpeciesIndexEntry[] = data.species.map((s) => ({
     id: s.id, name: s.displayName, types: s.types, generation: s.generation,
@@ -109,6 +113,17 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .patch('/api/saves/:id/teams/:tid', ({ params, body }) => teams.update(params.id as string, params.tid as string, (body ?? {}) as { name?: unknown; useCurrent?: unknown }))
     .delete('/api/saves/:id/teams/:tid', ({ params }) => teams.remove(params.id as string, params.tid as string))
     .post('/api/saves/:id/teams/:tid/apply', ({ params }) => teams.apply(params.id as string, params.tid as string))
+    .get('/api/saves/:id/casino', ({ params }) => casino.state(params.id as string))
+    .post('/api/saves/:id/casino/chips', ({ params, body }) => casino.buyChips(params.id as string, (body ?? {}) as { amount?: unknown }))
+    .post('/api/saves/:id/casino/prize', ({ params, body }) => casino.buyPrize(params.id as string, (body ?? {}) as { item?: unknown; quantity?: unknown }))
+    .post('/api/saves/:id/casino/round/act', ({ params, body }) => casino.act(params.id as string, (body ?? {}) as { action?: unknown; index?: unknown }))
+    .post('/api/saves/:id/casino/round/abandon', ({ params }) => casino.abandon(params.id as string))
+    .post('/api/saves/:id/casino/:game/play', ({ params, body }) => casino.play(params.id as string, params.game as string, (body ?? {}) as Record<string, unknown>))
+    .post('/api/saves/:id/casino/:game/start', ({ params, body }) => casino.start(params.id as string, params.game as string, (body ?? {}) as Record<string, unknown>))
+    .get('/api/saves/:id/tournaments', ({ params }) => tournaments.state(params.id as string))
+    .post('/api/saves/:id/tournaments/enter', ({ params, body }) => tournaments.enter(params.id as string, (body ?? {}) as { tier?: unknown; members?: unknown }))
+    .post('/api/saves/:id/tournaments/next', ({ params }) => tournaments.next(params.id as string))
+    .post('/api/saves/:id/tournaments/abandon', ({ params }) => tournaments.abandon(params.id as string))
     .get('/api/saves/:id/pokemon/:pid/moves', ({ params }) => store.moveOptions(params.id as string, params.pid as string))
     .post('/api/saves/:id/pokemon/:pid/tm', ({ params, body }) => store.buyTm(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/teach', ({ params, body }) => store.teachMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; slot?: unknown }))

@@ -313,6 +313,25 @@ export function createPokemonStore(db: Db) {
       });
     },
 
+    /** Remove um Pokémon do save para sempre (aposta perdida no cassino) e fecha o buraco da equipe. */
+    remove(saveId: string, pokemonId: string): void {
+      getRow(saveId, pokemonId);
+      transaction(db, () => {
+        db.prepare('DELETE FROM pokemon WHERE id = ? AND save_id = ?').run(pokemonId, saveId);
+        compactTeam(saveId);
+        if (teamRows(saveId).length === 0) {
+          // a equipe nunca fica vazia: o primeiro Pokémon do PC sobe
+          const next = db.prepare('SELECT id FROM pokemon WHERE save_id = ? ORDER BY box, box_slot LIMIT 1').get(saveId) as { id: string } | undefined;
+          if (next) writeLocation(next.id, { kind: 'team', slot: 0 });
+        }
+      });
+    },
+
+    /** Quantos Pokémon o save tem (equipe + PC). */
+    count(saveId: string): number {
+      return (db.prepare('SELECT COUNT(*) AS n FROM pokemon WHERE save_id = ?').get(saveId) as { n: number }).n;
+    },
+
     /** Um Pokémon do save, já no formato da API. */
     view(saveId: string, pokemonId: string): PokemonView {
       return rowToView(getRow(saveId, pokemonId));

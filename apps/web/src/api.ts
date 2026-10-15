@@ -1,5 +1,5 @@
 import type {
-  BattleActRequest, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest,
@@ -58,6 +58,18 @@ export const api = {
   challenges: (id: string) => request<ChallengesState>('GET', `/api/saves/${encodeURIComponent(id)}/challenges`),
   challengeStart: (id: string, challengeId: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/challenge`, { challengeId }),
   trainerStart: (id: string, difficulty: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/trainer`, { difficulty }),
+  casino: (id: string) => request<CasinoState>('GET', `/api/saves/${encodeURIComponent(id)}/casino`),
+  casinoChips: (id: string, amount: number) => request<CasinoState>('POST', `/api/saves/${encodeURIComponent(id)}/casino/chips`, { amount }),
+  casinoPrize: (id: string, item: string, quantity = 1) => request<CasinoState>('POST', `/api/saves/${encodeURIComponent(id)}/casino/prize`, { item, quantity }),
+  casinoPlay: (id: string, game: string, body: CasinoStakeInput & Record<string, unknown>) =>
+    request<CasinoResult>('POST', `/api/saves/${encodeURIComponent(id)}/casino/${game}/play`, body),
+  casinoStart: (id: string, game: string, body: CasinoStakeInput) => request<CasinoActResult>('POST', `/api/saves/${encodeURIComponent(id)}/casino/${game}/start`, body),
+  casinoAct: (id: string, action: string, index?: number) => request<CasinoActResult>('POST', `/api/saves/${encodeURIComponent(id)}/casino/round/act`, { action, index }),
+  casinoAbandon: (id: string) => request<CasinoActResult>('POST', `/api/saves/${encodeURIComponent(id)}/casino/round/abandon`),
+  tournaments: (id: string) => request<TournamentState>('GET', `/api/saves/${encodeURIComponent(id)}/tournaments`),
+  tournamentEnter: (id: string, tier: string, members: string[]) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/enter`, { tier, members }),
+  tournamentNext: (id: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/next`),
+  tournamentAbandon: (id: string) => request<TournamentState>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/abandon`),
   transform: (id: string, pokemonId: string, form: string) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/transform`, { form }),
   teams: (id: string) => request<TeamView[]>('GET', `/api/saves/${encodeURIComponent(id)}/teams`),
