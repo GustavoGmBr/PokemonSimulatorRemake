@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { TYPE_LABELS, type RegionId, type StarterOption, type StarterRegion } from '@pokesim/engine';
+import { TYPE_LABELS, type RegionId, type SaveDifficulty, type StarterOption, type StarterRegion } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { DialogBox } from '../ui/DialogBox.tsx';
 import { Menu } from '../ui/Menu.tsx';
 import { KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-type Step = 'intro' | 'name' | 'region' | 'starter' | 'confirm' | 'creating';
+type Step = 'intro' | 'name' | 'mode' | 'region' | 'starter' | 'confirm' | 'creating';
 
 const MAX_NAME = 12;
 
@@ -20,6 +20,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
   const [name, setName] = useState('');
   const [regions, setRegions] = useState<StarterRegion[] | null>(null);
   const [regionId, setRegionId] = useState<RegionId>('kanto');
+  const [difficulty, setDifficulty] = useState<SaveDifficulty>('normal');
   const [starter, setStarter] = useState<StarterOption | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +35,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
     if (!starter) return;
     setStep('creating');
     try {
-      const save = await api.createSave({ trainerName: name.trim(), starterSpeciesId: starter.speciesId });
+      const save = await api.createSave({ trainerName: name.trim(), starterSpeciesId: starter.speciesId, difficulty });
       onCreated(save.id, `${starter.name.toUpperCase()} entrou para a sua equipe! Boa jornada, ${trainer}!`);
     } catch (e) {
       setError((e as Error).message);
@@ -53,6 +54,9 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
       break;
     case 'name':
       dialog = [error ?? 'Digite seu nome e confirme com ENTER.'];
+      break;
+    case 'mode':
+      dialog = ['Como você quer jogar? No modo DIFÍCIL, todo POKÉMON que desmaiar numa batalha é perdido para sempre, menos o seu inicial.'];
       break;
     case 'region':
       dialog = [`Prazer, ${trainer}! De qual região vem o seu primeiro parceiro?`];
@@ -78,9 +82,27 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
             <NameEntry
               value={name}
               onChange={(value) => { setName(value); setError(null); }}
-              onConfirm={() => (name.trim() ? setStep(regions && regions.length === 1 ? 'starter' : 'region') : setError('O nome não pode ficar vazio.'))}
+              onConfirm={() => (name.trim() ? setStep('mode') : setError('O nome não pode ficar vazio.'))}
               onBack={() => setStep('intro')}
             />
+          ) : null}
+          {step === 'mode' ? (
+            <div className="gb-window" style={{ width: '100%', maxWidth: 560 }}>
+              <h2 className="gb-title" style={{ marginBottom: 8 }}>Dificuldade</h2>
+              <Menu
+                label="Dificuldade"
+                initialId={difficulty}
+                items={[{ id: 'normal', label: 'Normal' }, { id: 'hard', label: 'Difícil ☠' }]}
+                onMove={(id) => setDifficulty(id as SaveDifficulty)}
+                onSelect={(id) => { setDifficulty(id as SaveDifficulty); setStep(regions && regions.length === 1 ? 'starter' : 'region'); }}
+                onBack={() => setStep('name')}
+              />
+              <p className="gb-muted" style={{ margin: '8px 0 0', fontSize: 20 }}>
+                {difficulty === 'hard'
+                  ? 'Difícil: Pokémon que desmaia numa batalha (selvagem, treinador ou copa) é apagado do save. Só o inicial é poupado. A auto-batalha para quando alguém cai.'
+                  : 'Normal: nada se perde; a equipe é curada ao fim de cada batalha.'}
+              </p>
+            </div>
           ) : null}
           {step === 'region' && regions ? (
             <div className="gb-window" style={{ width: '100%', maxWidth: 560 }}>
@@ -92,7 +114,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
                 items={regions.map((entry) => ({ id: entry.region, label: entry.name }))}
                 onMove={setRegionId}
                 onSelect={(id) => { setRegionId(id); setStep('starter'); }}
-                onBack={() => setStep('name')}
+                onBack={() => setStep('mode')}
               />
             </div>
           ) : null}
@@ -103,7 +125,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
               active={step === 'starter'}
               initialId={starter?.speciesId}
               onPick={(option) => { setStarter(option); setStep('confirm'); }}
-              onBack={() => setStep(regions && regions.length === 1 ? 'name' : 'region')}
+              onBack={() => setStep(regions && regions.length === 1 ? 'mode' : 'region')}
             />
           ) : null}
           {step === 'intro' ? (

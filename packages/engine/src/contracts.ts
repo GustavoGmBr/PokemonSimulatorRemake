@@ -12,7 +12,11 @@ import type { EvolutionChoice } from './evolution.ts';
 import type { TransformChoice } from './transform.ts';
 import type { CasinoGame, Card, RouletteColor, RouletteGroup, SlotLine, SlotSymbol } from './casino.ts';
 
+/** Normal: nada se perde. Difícil: Pokémon que desmaia numa batalha é apagado (menos o inicial). */
+export type SaveDifficulty = 'normal' | 'hard';
+
 export interface SaveSummary {
+  difficulty: SaveDifficulty;
   id: string;
   trainerName: string;
   money: number;
@@ -29,6 +33,7 @@ export interface SaveSummary {
 export interface CreateSaveRequest {
   trainerName: string;
   starterSpeciesId: number;
+  difficulty?: SaveDifficulty;
 }
 
 export interface MoveView {
@@ -384,6 +389,8 @@ export interface BattleOutcome {
   /** insígnia/troféu do desafio vencido (id), se foi a primeira vez */
   badge: string | null;
   trainerName: string | null;
+  /** modo difícil: Pokémon perdidos para sempre nesta batalha */
+  fallen?: string[];
   /** batalha de torneio: andamento da copa */
   tournament?: TournamentProgress | null;
 }

@@ -30,7 +30,7 @@ async function setup(money = 500_000, size = 6) {
   db.prepare('UPDATE saves SET money = ? WHERE id = ?').run(money, save.id);
   const first = save.team[0]?.id as string;
   const moves = ['psychic', 'ice-beam', 'thunderbolt', 'shadow-ball'].map((name) => ({ name, pp: 10, maxPp: 10 }));
-  db.prepare('UPDATE pokemon SET species_id = 150, level = 100, exp = 1000000, moves = ? WHERE id = ?').run(JSON.stringify(moves), first);
+  db.prepare('UPDATE pokemon SET species_id = 150, level = 100, exp = 1000000, moves = ?, current_hp = 9999 WHERE id = ?').run(JSON.stringify(moves), first);
   const ids = [first];
   for (let slot = 1; slot < size; slot++) {
     const id = randomUUID();

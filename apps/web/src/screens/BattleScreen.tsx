@@ -540,6 +540,7 @@ export function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; tra
       {outcome.badge ? <p style={{ margin: 0, color: 'var(--red)' }}>★ Conquista registrada: {outcome.badge}</p> : null}
       {outcome.rewards.map((r) => <p key={r.item} style={{ margin: 0 }}>Recebeu {r.quantity}× {r.name}</p>)}
       {outcome.money > 0 ? <p style={{ margin: 0 }}>Ganhou ₽ {outcome.money.toLocaleString('pt-BR')}</p> : null}
+      {outcome.fallen?.map((name) => <p key={`f-${name}`} style={{ margin: 0, color: 'var(--red)' }}>☠ {name} desmaiou e foi perdido para sempre.</p>)}
       {outcome.levels.map((entry) => <p key={entry.name} style={{ margin: 0 }}>▲ {entry.name} está no nível {entry.level}</p>)}
       {outcome.pending.length > 0 ? <p style={{ margin: 0, color: 'var(--red)' }}>Golpes novos esperando: {outcome.pending.join(', ')} (veja no perfil)</p> : null}
       <p className="gb-muted" style={{ margin: 0 }}>Sua equipe foi curada. Z continua.</p>

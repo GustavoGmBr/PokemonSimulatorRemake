@@ -271,13 +271,15 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     if (result === 'win' && !trainer) journal.record(saveId, { kind: 'derrotar', region: regionOfSpecies(foe.speciesId)?.id ?? null, speciesId: foe.speciesId });
     if (result === 'win' && trainer?.difficulty) journal.record(saveId, { kind: 'vencer_treinador', difficulty: trainer.difficulty });
     if (tournament?.champion && trainer?.tournament) journal.record(saveId, { kind: 'vencer_torneio', tournament: trainer.tournament.tier, text: `Campeão da Copa ${tournament.tierName}!` });
-    store.applyBattle(saveId, state.player.team);
+    const fallen = store.applyBattle(saveId, state.player.team);
+    for (const name of fallen) journal.record(saveId, { kind: 'perda', text: `${name} desmaiou e foi perdido (modo difícil).` });
+    if (fallen.length > 0) events.push({ k: 'text', text: `Modo difícil: ${fallen.join(', ')} não voltou${fallen.length > 1 ? 'ram' : ''}...` });
     if (!trainer) wild.finishEncounter(saveId, result);
     db.prepare('DELETE FROM battles WHERE save_id = ?').run(saveId);
     if (caught) caught = store.view(saveId, caught.id);
     const levels = state.player.team.filter((c) => c.ref && !c.capped && c.level > (before.get(c.ref) ?? c.level)).map((c) => ({ name: c.name, level: c.level }));
     const pending = state.player.team.filter((c) => c.pendingMoves.length > 0).map((c) => c.name);
-    return { result, money, caught, levels, pending, rewards, badge, trainerName: trainer?.name ?? null, tournament };
+    return { result, money, caught, levels, pending, rewards, badge, trainerName: trainer?.name ?? null, tournament, ...(fallen.length ? { fallen } : {}) };
   }
 
   function commit(saveId: string, state: BattleState, events: BattleEvent[], ball: string | null = null): BattleTurnResult {

@@ -99,11 +99,13 @@ export function createDoublesService(db: Db, store: PokemonStore, inventory: Inv
     });
     if (result === 'win' && trainer.difficulty) journal.record(saveId, { kind: 'vencer_treinador', difficulty: trainer.difficulty });
     if (tournament?.champion && trainer.tournament) journal.record(saveId, { kind: 'vencer_torneio', tournament: trainer.tournament.tier, text: `Campeão da Copa ${tournament.tierName}!` });
-    store.applyBattle(saveId, state.player.team);
+    const fallen = store.applyBattle(saveId, state.player.team);
+    for (const name of fallen) journal.record(saveId, { kind: 'perda', text: `${name} desmaiou e foi perdido (modo difícil).` });
+    if (fallen.length > 0) events.push({ k: 'text', text: `Modo difícil: ${fallen.join(', ')} não voltou${fallen.length > 1 ? 'ram' : ''}...` });
     db.prepare('DELETE FROM battles WHERE save_id = ?').run(saveId);
     const levels = state.player.team.filter((c) => c.ref && !c.capped && c.level > (before.get(c.ref) ?? c.level)).map((c) => ({ name: c.name, level: c.level }));
     const pending = state.player.team.filter((c) => c.pendingMoves.length > 0).map((c) => c.name);
-    return { result, money, caught: null, levels, pending, rewards, badge: null, trainerName: trainer.name, tournament };
+    return { result, money, caught: null, levels, pending, rewards, badge: null, trainerName: trainer.name, tournament, ...(fallen.length ? { fallen } : {}) };
   }
 
   function commit(saveId: string, state: DoublesState, events: DuelEvent[]): DoublesTurnResult {

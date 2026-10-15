@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.17
+## Pokémon Simulator (remake) 2.0.0-alpha.18
+
+- **Dificuldade do save** (criação da jornada): Normal ou Difícil ☠. No Difícil, todo Pokémon que desmaia em qualquer batalha (selvagem, treinador, dupla ou copa) é apagado do save; o inicial nunca é apagado. A auto-batalha para quando alguém cai. A tela de resultado lista os perdidos. Saves antigos continuam Normal.
+
+## Anteriores: 2.0.0-alpha.17
 
 - **Novo Ciclo** (Batalhar → Novo Ciclo): abre ao vencer os 10 campeões. Eles voltam no Nv 100, equipe de 6, IVs perfeitos e Full Restore; mais 11 treinadores lendários (Red, Ash, Gold, Steven, Wallace, Cynthia, N, Iris, Diantha, Leon, Geeta). Prêmio em dinheiro e Doces Raros/EXP GG, e na 1ª vitória Master Ball e Essências de IV. Sem limite de nível.
 - **Batalhas em dupla (2×2)**: Batalhar → Aleatórios → Dupla (prêmio em dobro). Golpes em área (×0,75), escolha de alvo, troca e reposição de desmaiados. Sem itens, captura ou fuga.

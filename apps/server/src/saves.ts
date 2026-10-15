@@ -20,6 +20,7 @@ interface SaveRow {
   trainer_name: string;
   money: number;
   chips: number;
+  difficulty: string;
   play_time_seconds: number;
   created_at: string;
   updated_at: string;
@@ -41,6 +42,7 @@ export function createSaveService(db: Db, store: PokemonStore) {
       trainerName: row.trainer_name,
       money: row.money,
       chips: row.chips,
+      difficulty: row.difficulty === 'hard' ? 'hard' : 'normal',
       badges: badges.n,
       pokedexCaught: caught.n,
       playTimeSeconds: row.play_time_seconds,
@@ -77,10 +79,12 @@ export function createSaveService(db: Db, store: PokemonStore) {
       };
     },
 
-    create(input: { trainerName: unknown; starterSpeciesId: unknown }): SaveDetail {
+    create(input: { trainerName: unknown; starterSpeciesId: unknown; difficulty?: unknown }): SaveDetail {
       const trainerName = typeof input.trainerName === 'string' ? input.trainerName.trim().replace(/\s+/g, ' ') : '';
       if (!trainerName) throw badRequest('Digite o nome do treinador.');
       if (trainerName.length > MAX_TRAINER_NAME) throw badRequest(`O nome pode ter até ${MAX_TRAINER_NAME} letras.`);
+      if (input.difficulty !== undefined && input.difficulty !== 'normal' && input.difficulty !== 'hard') throw badRequest('Escolha a dificuldade: normal ou difícil.');
+      const difficulty = input.difficulty === 'hard' ? 'hard' : 'normal';
       const starterId = Number(input.starterSpeciesId);
       if (!ALL_STARTERS.has(starterId)) throw badRequest('Escolha um dos Pokémon iniciais.');
       const count = db.prepare('SELECT COUNT(*) AS n FROM saves').get() as { n: number };
@@ -95,10 +99,11 @@ export function createSaveService(db: Db, store: PokemonStore) {
       const now = new Date().toISOString();
       transaction(db, () => {
         db.prepare(`
-          INSERT INTO saves (id, trainer_name, money, chips, play_time_seconds, created_at, updated_at, unlocked_regions)
-          VALUES (?, ?, ?, 0, 0, ?, ?, ?)
-        `).run(id, trainerName, STARTING_MONEY, now, now, regionOfSpecies(starterId)?.id ?? 'kanto');
-        store.insert(id, starter, { kind: 'team', slot: 0 }, now, true); // o inicial já nasce favorito
+          INSERT INTO saves (id, trainer_name, money, chips, play_time_seconds, created_at, updated_at, unlocked_regions, difficulty)
+          VALUES (?, ?, ?, 0, 0, ?, ?, ?, ?)
+        `).run(id, trainerName, STARTING_MONEY, now, now, regionOfSpecies(starterId)?.id ?? 'kanto', difficulty);
+        const starterRow = store.insert(id, starter, { kind: 'team', slot: 0 }, now, true); // o inicial já nasce favorito
+        db.prepare('UPDATE pokemon SET is_starter = 1 WHERE id = ?').run(starterRow);
         const addItem = db.prepare('INSERT INTO inventory (save_id, item, quantity) VALUES (?, ?, ?)');
         for (const entry of STARTING_ITEMS) addItem.run(id, entry.item, entry.quantity);
       });

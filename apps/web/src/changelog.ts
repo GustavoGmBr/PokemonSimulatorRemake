@@ -2,6 +2,9 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.18', items: [
+    'Novo save com dificuldade: Normal ou Difícil. No Difícil, Pokémon que desmaia numa batalha é apagado para sempre (só o inicial é poupado).',
+  ] },
   { version: '2.0.0-alpha.17', items: [
     'Novo Ciclo: depois de vencer os 10 campeões, eles voltam no Nv 100 com equipe completa, e surgem treinadores lendários (Red, Ash, Gold, Cynthia, N, Leon…). Prêmios maiores e bônus na primeira vitória.',
     'Batalhas em dupla (2×2): golpes em área, alvo por Pokémon, troca e reposição. Em Batalhar → Aleatórios → Dupla.',

@@ -79,7 +79,7 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
   const items = useMemo<MenuItem[]>(() => [
     ...(saves ?? []).map((save) => ({
       id: save.id,
-      label: save.trainerName,
+      label: save.difficulty === 'hard' ? `${save.trainerName} ☠` : save.trainerName,
       extra: `${save.badges} insígnias`,
     })),
     { id: NEW_GAME, label: 'Novo jogo' },
@@ -202,7 +202,7 @@ function SavePreview({ save }: { save: SaveSummary }) {
   return (
     <div className="gb-stack">
       <div className="gb-spread">
-        <h2 className="gb-title" style={{ fontSize: 30 }}>{save.trainerName}</h2>
+        <h2 className="gb-title" style={{ fontSize: 30 }}>{save.trainerName}{save.difficulty === 'hard' ? ' ☠' : ''}</h2>
         <span className="gb-muted">{formatPlayTime(save.playTimeSeconds)}</span>
       </div>
       <div className="gb-grid-3" style={{ fontSize: 24 }}>

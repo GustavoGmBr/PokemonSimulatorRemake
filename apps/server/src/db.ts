@@ -198,6 +198,11 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (save_id, challenge_id)
   );
   `,
+  // 15 — dificuldade do save (normal ou difícil) e marca do Pokémon inicial
+  `
+  ALTER TABLE saves ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'normal';
+  ALTER TABLE pokemon ADD COLUMN is_starter INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export type Db = DatabaseSync;
