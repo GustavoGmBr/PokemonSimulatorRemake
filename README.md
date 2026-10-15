@@ -4,9 +4,22 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.12**, batalhas e progressão prontas, Pokécassino, torneios, missões, mercado e histórico; mapa pixel e distribuição a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.13**, batalhas e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
-## Como rodar
+## Jogar no Windows (sem instalar nada)
+
+1. Em **Releases**, baixe `PokemonSimulator-vX.Y.Z-compact-win-x64.zip` e extraia **todos** os arquivos.
+2. Abra **`PokemonSimulator.exe`**. O Node.js já vem junto; o jogo abre no navegador em http://127.0.0.1:34600.
+3. As imagens são baixadas em segundo plano na primeira vez (o progresso aparece na janela do inicializador).
+   Enquanto isso o jogo busca cada imagem direto da origem; depois de baixadas, funciona sem internet.
+4. Seus saves ficam em `saves\game.db`, ao lado do executável. **Faça backup dessa pasta** se quiser guardar o progresso.
+5. A cada abertura o inicializador consulta as releases do GitHub; se houver versão nova, baixa o pacote `update`,
+   confere o SHA-256, instala preservando `saves\` e reabre o jogo.
+
+Verificação sem abrir o navegador: `.\PokemonSimulator.exe --check` (código de saída 0 = servidor e API OK).
+Para não atualizar naquela abertura: `--skip-update`. Logs em `logs\latest.log` e `logs\update.log`.
+
+## Como rodar (desenvolvimento)
 
 Requisitos: **Node.js 22.13 ou mais novo** (o banco usa o `node:sqlite` que já vem no Node).
 
@@ -22,9 +35,10 @@ npm run dev
 
 Abra http://127.0.0.1:35300.
 
-**Sprites:** o jogo usa as sprites que a versão anterior já baixou, em
-`..\PokemonSimulator Sqlite\backend\public`. Se estiverem em outro lugar, copie
-`apps/server/.env.example` para `apps/server/.env` e ajuste `ASSETS_DIR`.
+**Sprites:** por padrão o jogo usa as sprites que a versão anterior já baixou, em
+`..\PokemonSimulator Sqlite\backend\public`. Para baixar as suas (PokeAPI/sprites), rode `npm run sprites -- --dir=assets`
+(ou `--perfil=basico` para só frente/costas e itens, ~40 MB) e aponte `ASSETS_DIR` para essa pasta em `apps/server/.env`
+(copie de `apps/server/.env.example`). Sem a imagem local, a API redireciona para a origem enquanto houver internet.
 
 ### Outros comandos
 
@@ -34,6 +48,8 @@ Abra http://127.0.0.1:35300.
 | `npm start` | Compila a interface e serve tudo pela API em http://127.0.0.1:34600 |
 | `npm test` | Testes do engine, do catálogo e da API |
 | `npm run typecheck` | Checagem de tipos de todos os pacotes |
+| `npm run sprites` | Baixa as imagens (Pokémon e itens) para a pasta de sprites; só baixa o que falta |
+| `npm run release:build` | Monta os pacotes `compact` e `update` (Windows) em `dist/release/vX` |
 | `npm run data:import` | Reimporta o catálogo do projeto antigo (opcional, já vem pronto) |
 
 ### Controles
@@ -155,7 +171,21 @@ packages/
      Treinador ganhou estatísticas e histórico. **Torneios** agora usam os valores do jogo antigo (inscrição ₽ 150 a
      25.000, níveis e times por categoria).
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
-4. **Extras** — launcher Windows e releases.
+4. **Extras** — ✅ **Distribuição (alpha.13):** `PokemonSimulator.exe` (launcher C# compilado com o csc do Windows, Node
+   embutido), download de sprites em segundo plano, atualização automática pelas releases do GitHub (SHA-256,
+   instalador com rollback, saves preservados) e GitHub Actions (CI + release por tag).
+
+## Publicar uma versão (para quem mantém o repositório)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-repositorio.ps1   # só na primeira vez (usa o gh)
+# aumente "version" em package.json e descreva as novidades em RELEASE_NOTES.md, faça o commit, então:
+powershell -ExecutionPolicy Bypass -File .\scripts\publicar-versao.ps1
+```
+
+A tag `vX.Y.Z` dispara `.github/workflows/release.yml`: compila, roda os testes, testa o executável com `--check` e cria
+a release com os `.zip` e `.sha256`. Versões com sufixo (`-alpha.N`) saem como pré-lançamento; quem está numa alpha recebe
+as próximas alphas, quem está numa estável só recebe estáveis. O repositório de atualização fica em `release-config.json`.
 
 ## Controles
 

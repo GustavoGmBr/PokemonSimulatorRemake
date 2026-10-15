@@ -1,0 +1,9 @@
+Pokémon Simulator (remake) é um projeto de fã, sem vínculo com Nintendo, Game Freak ou The Pokémon Company.
+Pokémon e os nomes dos personagens são marcas de seus respectivos titulares.
+
+Componentes de terceiros distribuídos ou usados pelo jogo
+- Node.js (runtime/node.exe) — licença MIT; texto em runtime/LICENSE.
+- PokéAPI e PokeAPI/sprites — dados de referência e imagens baixadas pelo jogo a partir de
+  https://github.com/PokeAPI/sprites (as imagens pertencem aos titulares dos direitos).
+- React e React DOM — licença MIT.
+- Pixelify Sans e VT323 — SIL Open Font License 1.1 (arquivos de fonte incluídos na interface).

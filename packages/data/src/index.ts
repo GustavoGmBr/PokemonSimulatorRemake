@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type PokeapiItem, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
 
-export const CATALOG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../catalog');
+/** POKESIM_CATALOG_DIR é usado pelo pacote empacotado, onde este arquivo vira um único bundle. */
+export const CATALOG_DIR = process.env.POKESIM_CATALOG_DIR
+  ? path.resolve(process.env.POKESIM_CATALOG_DIR)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../catalog');
 
 export interface GameData {
   species: Species[];

@@ -1,6 +1,6 @@
 {
   "name": "pokemon-simulator-remake",
-  "version": "2.0.0-alpha.12",
+  "version": "2.0.0-alpha.13",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,18 +14,21 @@
     "dev": "concurrently -k -n api,web -c yellow,cyan \"npm run dev -w @pokesim/server\" \"npm run dev -w @pokesim/web\"",
     "build": "npm run build -w @pokesim/web",
     "start": "npm run build && npm run start -w @pokesim/server",
-    "typecheck": "tsc -p packages/engine && tsc -p packages/data && tsc -p apps/server && tsc -p apps/web",
+    "typecheck": "tsc -p packages/engine && tsc -p packages/data && tsc -p apps/server && tsc -p scripts && tsc -p apps/web",
     "test": "tsx --disable-warning=ExperimentalWarning --test \"packages/**/*.test.ts\" \"apps/server/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "data:import": "tsx packages/data/scripts/import-legacy.ts",
     "data:pokeapi": "tsx packages/data/scripts/import-pokeapi-items.ts",
     "fonts": "tsx scripts/fetch-fonts.ts",
     "postinstall": "tsx scripts/fetch-fonts.ts",
-    "predev": "tsx scripts/fetch-fonts.ts"
+    "predev": "tsx scripts/fetch-fonts.ts",
+    "sprites": "tsx --disable-warning=ExperimentalWarning scripts/sprites.ts",
+    "release:build": "tsx --disable-warning=ExperimentalWarning scripts/build-release.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "concurrently": "^9.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "esbuild": ">=0.24.0"
   }
 }

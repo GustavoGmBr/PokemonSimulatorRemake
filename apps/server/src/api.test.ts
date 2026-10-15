@@ -75,7 +75,11 @@ test('valida nome e inicial', async () => {
 
 test('serve sprites e bloqueia caminhos fora da pasta', async () => {
   assert.equal((await fetch(`${base}/assets/pokemon/1-front.png`)).status, 200);
-  assert.equal((await fetch(`${base}/assets/pokemon/999-front.png`)).status, 404);
+  // imagem do jogo que ainda não foi baixada: redireciona para a origem; nomes fora do padrão continuam 404
+  const missing = await fetch(`${base}/assets/pokemon/999-front.png`, { redirect: 'manual' });
+  assert.equal(missing.status, 302);
+  assert.equal(missing.headers.get('location'), 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/999.png');
+  assert.equal((await fetch(`${base}/assets/pokemon/qualquer.png`, { redirect: 'manual' })).status, 404);
   assert.equal((await fetch(`${base}/assets/..%2f..%2fetc%2fpasswd`)).status, 404);
 });
 

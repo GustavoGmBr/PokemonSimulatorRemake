@@ -138,14 +138,7 @@ export function spriteUrl(speciesId: number, view: SpriteView = 'front', shiny =
   return `/assets/pokemon/${speciesId}-${view}${shiny ? 'Shiny' : ''}.${ext}`;
 }
 
-/** Itens do jogo que não existem no PokéAPI usam o sprite de um item parecido. */
-const ITEM_SPRITE_ALIAS: Record<string, string> = {
-  'exp-candy-p': 'exp-candy-xs', 'exp-candy-g': 'exp-candy-l', 'exp-candy-gg': 'exp-candy-xl',
-  'iv-hp': 'hp-up', 'iv-attack': 'protein', 'iv-defense': 'iron', 'iv-special-attack': 'calcium', 'iv-special-defense': 'zinc', 'iv-speed': 'carbos',
-  'ultra-burst-stone': 'ultranecrozium-z', 'gmax-stone': 'max-mushrooms',
-};
-
 /** Sprite oficial do item (repositório PokeAPI/sprites); se não carregar, a interface mostra um quadrado. */
 export function itemSpriteUrl(name: string): string {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${ITEM_SPRITE_ALIAS[name] ?? name}.png`;
+  return `/assets/items/${name}.png`;
 }

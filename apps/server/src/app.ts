@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { loadGameData } from '@pokesim/data';
+import { remoteSpriteUrl } from '@pokesim/engine';
 import type { Db } from './db.ts';
 import { Router, sendJson, serveFile } from './http.ts';
 import type { HealthInfo, SearchPokemonQuery, SortKey, SpeciesIndexEntry } from '@pokesim/engine';
@@ -173,7 +174,14 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     if (url.pathname.startsWith('/api/')) return sendJson(res, 404, { error: 'Rota não encontrada.' });
 
     if (url.pathname.startsWith('/assets/') && req.method === 'GET') {
-      if (serveFile(res, assetsDir, url.pathname.slice('/assets/'.length))) return;
+      const file = url.pathname.slice('/assets/'.length);
+      if (serveFile(res, assetsDir, file)) return;
+      // Sprite ainda não baixada: com internet, a imagem vem direto da origem (npm run sprites guarda tudo local).
+      const remote = remoteSpriteUrl(file);
+      if (remote) {
+        res.writeHead(302, { Location: remote, 'Cache-Control': 'no-store' });
+        return void res.end();
+      }
       return sendJson(res, 404, { error: 'Sprite não encontrada.' });
     }
 

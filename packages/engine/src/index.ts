@@ -19,3 +19,4 @@ export * from './teams.ts';
 export * from './casino.ts';
 export * from './tournaments.ts';
 export * from './journey.ts';
+export * from './sprites.ts';
