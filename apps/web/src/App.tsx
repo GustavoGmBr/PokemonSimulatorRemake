@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { TitleScreen } from './screens/TitleScreen.tsx';
 import { SavesScreen } from './screens/SavesScreen.tsx';
 import { NewGameScreen } from './screens/NewGameScreen.tsx';
 import { MenuScreen, type MenuId } from './screens/MenuScreen.tsx';
@@ -14,9 +15,24 @@ import { PcSellScreen } from './screens/PcSellScreen.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
+import { useMusic, type Track } from './music.ts';
+import { useSettings } from './settings.ts';
+
+const TRACKS: Partial<Record<Screen['name'], Track>> = { wild: 'wild', shop: 'shop', market: 'shop', casino: 'casino' };
+
+/** Aplica tema (região) e contraste ao documento. */
+function useAppearance() {
+  const { theme, contrast } = useSettings();
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme) root.dataset.theme = theme; else delete root.dataset.theme;
+    root.dataset.contrast = contrast;
+  }, [theme, contrast]);
+}
 
 /** Telas do jogo. Sem URLs: a navegação é como num console. */
 export type Screen =
+  | { name: 'title' }
   | { name: 'saves' }
   | { name: 'new-game' }
   | { name: 'menu'; saveId: string; welcome?: string; focus?: MenuId }
@@ -37,10 +53,22 @@ function saveIdOf(screen: Screen): string | null {
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>({ name: 'saves' });
+  const [screen, setScreen] = useState<Screen>({ name: 'title' });
   usePlayTime(saveIdOf(screen));
+  useAppearance();
+  useMusic(TRACKS[screen.name] ?? 'menu');
 
   switch (screen.name) {
+    case 'title':
+      return (
+        <TitleScreen
+          key="title"
+          onContinue={(saveId) => setScreen({ name: 'menu', saveId })}
+          onSaves={() => setScreen({ name: 'saves' })}
+          onNewGame={() => setScreen({ name: 'new-game' })}
+          onOptions={() => setScreen({ name: 'options', back: screen })}
+        />
+      );
     case 'saves':
       return (
         <SavesScreen

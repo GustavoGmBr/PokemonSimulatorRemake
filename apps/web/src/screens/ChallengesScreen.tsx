@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { TrainerSprite } from '../ui/TrainerSprite.tsx';
 import { TYPE_LABELS, type BattleTurnResult, type ChallengesState, type ChallengeView, type TrainerOption, type TypeName } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
@@ -136,7 +137,10 @@ const titled = (c: ChallengeView) => (c.name.toLowerCase().startsWith(c.title.to
 function ChallengeDetail({ challenge: c }: { challenge: ChallengeView }) {
   return (
     <div className="gb-chdetail">
-      <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>{titled(c)}</h2>
+      <div className="gb-row" style={{ alignItems: 'flex-end', gap: 12 }}>
+        <TrainerSprite name={c.name} title={c.title} size={112} />
+        <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>{titled(c)}</h2>
+      </div>
       <p className="gb-muted" style={{ margin: '4px 0' }}>{c.circuitName} · {c.group} · tipo {TYPE_LABELS[c.type as TypeName] ?? c.type} · Nv {c.level}</p>
       {c.won ? <p style={{ margin: '4px 0' }}>★ Vencido</p> : null}
       {!c.unlocked && !c.won ? <p style={{ margin: '4px 0', color: 'var(--red)' }}>🔒 {c.lockReason}</p> : null}
@@ -157,7 +161,10 @@ function ChallengeDetail({ challenge: c }: { challenge: ChallengeView }) {
 function TrainerDetail({ option: t }: { option: TrainerOption }) {
   return (
     <div className="gb-chdetail">
-      <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>Treinador {t.name}</h2>
+      <div className="gb-row" style={{ alignItems: 'flex-end', gap: 12 }}>
+        <TrainerSprite name={t.name} role="trainer" size={96} />
+        <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>Treinador {t.name}</h2>
+      </div>
       <p style={{ margin: '4px 0' }}>{t.description}</p>
       <p className="gb-muted" style={{ margin: '4px 0', fontSize: 20 }}>
         {t.teamSize[0] === t.teamSize[1] ? t.teamSize[0] : `${t.teamSize[0]}–${t.teamSize[1]}`} Pokémon · Nv {t.levels[0] === t.levels[1] ? t.levels[0] : `${t.levels[0]}–${t.levels[1]}`}

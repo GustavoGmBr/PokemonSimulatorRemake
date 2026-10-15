@@ -177,6 +177,8 @@ export interface HealthInfo {
   species: number;
   /** ferramentas de teste habilitadas (apenas durante a alpha) */
   devTools: boolean;
+  /** versão do jogo em execução */
+  version?: string;
 }
 
 export interface DevGrantResult {

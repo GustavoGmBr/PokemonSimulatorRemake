@@ -1,4 +1,11 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.15
+## Pokémon Simulator (remake) 2.0.0-alpha.16
+
+- Retratos pixel-art de líderes, Elite, Campeões e treinadores (desenhados no jogo; o mesmo treinador é sempre igual).
+- Batalha: números de dano, aviso de crítico e auras de status; trilha sonora procedural por tela (volume em Opções).
+- Temas por região (cores e moldura) e modos Escuro e Alto contraste.
+- Tela de abertura com o resumo da última jornada e as novidades da versão.
+
+## Anteriores: 2.0.0-alpha.15
 
 Qualidade de vida:
 - **Exportar/importar save** (arquivo `.json`, tela de jornadas) e **backup automático** a cada abertura (últimos 5 em `saves\backups`). Para restaurar um backup, copie-o sobre `saves\game.db` com o jogo fechado.

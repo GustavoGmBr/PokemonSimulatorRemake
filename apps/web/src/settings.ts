@@ -39,13 +39,27 @@ export interface Settings {
   textSpeed: TextSpeed;
   /** 0 = mudo, 1–3 = volume dos efeitos */
   volume: 0 | 1 | 2 | 3;
+  /** 0 = sem música, 1–3 = volume da trilha */
+  music: 0 | 1 | 2 | 3;
+  /** tema de cores e moldura ('' = clássico, ou o id de uma região) */
+  theme: string;
+  contrast: Contrast;
 }
+
+export type Contrast = 'normal' | 'dark' | 'high';
+export const CONTRASTS: Contrast[] = ['normal', 'dark', 'high'];
+export const CONTRAST_LABEL: Record<Contrast, string> = { normal: 'Normal', dark: 'Escuro', high: 'Alto contraste' };
+export const THEMES: { id: string; label: string }[] = [
+  { id: '', label: 'Clássico' }, { id: 'kanto', label: 'Kanto' }, { id: 'johto', label: 'Johto' }, { id: 'hoenn', label: 'Hoenn' },
+  { id: 'sinnoh', label: 'Sinnoh' }, { id: 'unova', label: 'Unova' }, { id: 'kalos', label: 'Kalos' }, { id: 'alola', label: 'Alola' },
+  { id: 'galar', label: 'Galar' }, { id: 'paldea', label: 'Paldea' },
+];
 
 export const TEXT_SPEED_CPS: Record<TextSpeed, number> = { slow: 30, normal: 60, fast: 120, instant: 100_000 };
 export const TEXT_SPEED_LABEL: Record<TextSpeed, string> = { slow: 'Lenta', normal: 'Normal', fast: 'Rápida', instant: 'Instantânea' };
 export const TEXT_SPEEDS: TextSpeed[] = ['slow', 'normal', 'fast', 'instant'];
 
-const DEFAULTS: Settings = { keys: DEFAULT_KEYS, textSpeed: 'normal', volume: 2 };
+const DEFAULTS: Settings = { keys: DEFAULT_KEYS, textSpeed: 'normal', volume: 2, music: 1, theme: '', contrast: 'normal' };
 const STORAGE_KEY = 'pokesim.settings.v1';
 
 function load(): Settings {
@@ -62,6 +76,9 @@ function load(): Settings {
       keys,
       textSpeed: TEXT_SPEEDS.includes(parsed.textSpeed as TextSpeed) ? (parsed.textSpeed as TextSpeed) : DEFAULTS.textSpeed,
       volume: [0, 1, 2, 3].includes(parsed.volume as number) ? (parsed.volume as Settings['volume']) : DEFAULTS.volume,
+      music: [0, 1, 2, 3].includes(parsed.music as number) ? (parsed.music as Settings['music']) : DEFAULTS.music,
+      theme: THEMES.some((t) => t.id === parsed.theme) ? (parsed.theme as string) : DEFAULTS.theme,
+      contrast: CONTRASTS.includes(parsed.contrast as Contrast) ? (parsed.contrast as Contrast) : DEFAULTS.contrast,
     };
   } catch {
     return DEFAULTS; // armazenamento bloqueado: segue com o padrão

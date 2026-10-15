@@ -11,6 +11,8 @@ import { useKeys } from '../ui/useKeys.ts';
 import { keyLabel, useSettings, type BindAction } from '../settings.ts';
 import { playSound } from '../sound.ts';
 import { BattleFx, fxKindOf } from '../ui/BattleFx.tsx';
+import { useMusic } from '../music.ts';
+import { TrainerSprite } from '../ui/TrainerSprite.tsx';
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const STATUS_SHORT: Record<StatusKind, string> = { burn: 'QUE', poison: 'ENV', paralysis: 'PAR', sleep: 'SONO', freeze: 'GEL', confusion: 'CONF' };
@@ -37,6 +39,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   const [view, setView] = useState<BattleView>(start.view);
+  useMusic(start.view.trainer ? 'gym' : 'battle');
   const [mons, setMons] = useState<Record<SideKey, BattleMonView | null>>({ player: null, foe: null });
   const [anims, setAnims] = useState<Record<SideKey, string>>({ player: '', foe: '' });
   const [text, setText] = useState('');
@@ -79,7 +82,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     setText(line);
     await wait(Math.max(minimum, 350 + line.length * 22));
   };
-  const pop = (side: SideKey, label: string, kind: 'up' | 'down' | 'heal' | 'level') => {
+  const pop = (side: SideKey, label: string, kind: 'up' | 'down' | 'heal' | 'level' | 'dmg' | 'crit') => {
     counter.current += 1;
     setPopup({ id: counter.current, side, text: label, kind });
   };
@@ -115,6 +118,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
         target.hp = e.hp;
         showSide(e.side);
         playSound(e.cause !== 'move' ? 'hit' : e.effectiveness > 1 ? 'super' : e.effectiveness < 1 ? 'weak' : 'hit');
+        if (e.damage > 0) pop(e.side, e.crit ? `CRÍTICO! -${e.damage}` : `-${e.damage}`, e.crit ? 'crit' : 'dmg');
         if (e.crit || e.effectiveness > 1) setShake(e.effectiveness > 1 ? 'gb-shake-big' : 'gb-shake');
         await Promise.all([animate(e.side, 'gb-blink', 560), wait(650)]);
         setShake('');
@@ -356,15 +360,16 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
           <div className="gb-battle__ground gb-battle__ground--foe" />
           <div className="gb-battle__ground gb-battle__ground--player" />
 
+          {view.trainer ? <div className="gb-battle__trainer"><TrainerSprite name={view.trainer.name} title={view.trainer.title} size={132} /></div> : null}
           {foe ? <InfoBox side="foe" mon={foe} /> : null}
           {player ? <InfoBox side="player" mon={player} xpGain={xpShown} /> : null}
 
-          <div className="gb-battle__sprite gb-battle__sprite--foe">
+          <div className={`gb-battle__sprite gb-battle__sprite--foe${foe ? auraOf(foe) : ''}`}>
             {foe ? <div className={`gb-sprite-anim ${anims.foe}`}><Sprite speciesId={foe.spriteId} shiny={foe.shiny} alt={foe.name} size={176} className={anims.foe ? '' : 'gb-bob'} /></div> : null}
             {ball ? <BallIcon item={ball.item} className={`gb-battle-ball gb-battle-ball--${ball.stage}${ball.stage === 'shake' ? ` gb-battle-ball--n${ball.n % 2}` : ''}`} /> : null}
             {popup && popup.side === 'foe' ? <Popup key={popup.id} {...popup} /> : null}
           </div>
-          <div className="gb-battle__sprite gb-battle__sprite--player">
+          <div className={`gb-battle__sprite gb-battle__sprite--player${player ? auraOf(player) : ''}`}>
             {player ? <div className={`gb-sprite-anim ${anims.player}`}><BackSprite speciesId={player.spriteId} shiny={player.shiny} name={player.name} /></div> : null}
             {popup && popup.side === 'player' ? <Popup key={popup.id} {...popup} /> : null}
           </div>
@@ -442,7 +447,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
                 onBack={view.phase === 'replace' ? undefined : () => { setHealItem(null); setMode(mode === 'target' ? 'heals' : 'command'); }}
               />
             ) : null}
-            {mode === 'ended' && outcome ? <OutcomePanel outcome={outcome} /> : null}
+            {mode === 'ended' && outcome ? <OutcomePanel outcome={outcome} trainer={view.trainer} /> : null}
           </div>
         </div>
         <KeyHints hints={mode === 'ended' ? [['Z', 'continuar']] : mode === 'playing' ? [['Z', 'adiantar texto']] : [['↑↓←→', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar'], ...(mode === 'command' || mode === 'fight' ? [[`${keyLabel(settings.keys.move1[0] ?? '1')}–${keyLabel(settings.keys.move4[0] ?? '4')}`, 'golpe direto'] as [string, string]] : [])]} />
@@ -508,9 +513,16 @@ function InfoBox({ side, mon, xpGain }: { side: SideKey; mon: BattleMonView; xpG
   );
 }
 
-function OutcomePanel({ outcome }: { outcome: BattleOutcome }) {
+/** Aura que fica no Pokémon enquanto ele estiver com status (queimadura, veneno…). */
+function auraOf(mon: BattleMonView): string {
+  if (mon.status) return ` gb-aura gb-aura--${mon.status}`;
+  return mon.confused ? ' gb-aura gb-aura--confusion' : '';
+}
+
+function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; trainer: BattleView['trainer'] }) {
   return (
     <div className="gb-outcome">
+      {outcome.trainerName && trainer ? <TrainerSprite name={trainer.name} title={trainer.title} size={96} /> : null}
       {outcome.trainerName ? <p className="gb-muted" style={{ margin: 0 }}>{outcome.result === 'win' ? 'Você derrotou' : 'Você perdeu para'} {outcome.trainerName}</p> : null}
       <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>
         {outcome.result === 'win' ? 'Vitória!' : outcome.result === 'captured' ? 'Capturado!' : outcome.result === 'fled' ? 'Você fugiu' : 'Derrota'}

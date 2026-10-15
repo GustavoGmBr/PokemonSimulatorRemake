@@ -3,7 +3,7 @@ import { DialogBox } from '../ui/DialogBox.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { KeyHints } from '../ui/bits.tsx';
 import { playSound } from '../sound.ts';
-import { BIND_ACTIONS, DEFAULT_KEYS, TEXT_SPEEDS, TEXT_SPEED_LABEL, keyLabel, updateSettings, useSettings, type BindAction } from '../settings.ts';
+import { CONTRASTS, CONTRAST_LABEL, THEMES, BIND_ACTIONS, DEFAULT_KEYS, TEXT_SPEEDS, TEXT_SPEED_LABEL, keyLabel, updateSettings, useSettings, type BindAction } from '../settings.ts';
 
 const VOLUME_LABEL = ['Mudo', 'Baixo', 'Médio', 'Alto'] as const;
 
@@ -65,6 +65,9 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
   const rows: FilterRow[] = [
     { id: 'speed', label: 'Texto', value: TEXT_SPEED_LABEL[settings.textSpeed], kind: 'cycle' },
     { id: 'volume', label: 'Efeitos sonoros', value: VOLUME_LABEL[settings.volume], kind: 'cycle' },
+    { id: 'music', label: 'Música', value: VOLUME_LABEL[settings.music], kind: 'cycle' },
+    { id: 'theme', label: 'Tema (região)', value: THEMES.find((t) => t.id === settings.theme)?.label ?? 'Clássico', kind: 'cycle' },
+    { id: 'contrast', label: 'Visual', value: CONTRAST_LABEL[settings.contrast], kind: 'cycle' },
     { id: 'test', label: 'Testar som', value: '', kind: 'action' },
     { id: 'controls', label: 'Controles', value: 'Teclas', kind: 'action' },
     { id: 'back', label: 'Voltar', value: '', kind: 'action' },
@@ -74,6 +77,13 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
     if (id === 'speed') {
       const next = TEXT_SPEEDS[(TEXT_SPEEDS.indexOf(settings.textSpeed) + direction + TEXT_SPEEDS.length) % TEXT_SPEEDS.length];
       if (next) updateSettings({ textSpeed: next });
+    } else if (id === 'music') {
+      updateSettings({ music: ((settings.music + direction + 4) % 4) as 0 | 1 | 2 | 3 });
+    } else if (id === 'theme') {
+      const at = THEMES.findIndex((t) => t.id === settings.theme);
+      updateSettings({ theme: THEMES[(at + direction + THEMES.length) % THEMES.length]!.id });
+    } else if (id === 'contrast') {
+      updateSettings({ contrast: CONTRASTS[(CONTRASTS.indexOf(settings.contrast) + direction + CONTRASTS.length) % CONTRASTS.length]! });
     } else if (id === 'volume') {
       const next = ((settings.volume + direction + 4) % 4) as 0 | 1 | 2 | 3;
       updateSettings({ volume: next });

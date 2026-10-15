@@ -91,7 +91,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     baseStatTotal: Object.values(s.baseStats).reduce((sum, value) => sum + value, 0),
   }));
   const router = new Router()
-    .get('/api/health', (): HealthInfo => ({ ok: true, species: data.species.length, devTools }))
+    .get('/api/health', (): HealthInfo => ({ ok: true, species: data.species.length, devTools, version }))
     .get('/api/saves', () => saves.list())
     .post('/api/saves', ({ body }) => saves.create((body ?? {}) as { trainerName: unknown; starterSpeciesId: unknown }))
     .post('/api/saves/import', ({ body }) => saves.get(importSave(db, body)), 64 * 1024 * 1024)
