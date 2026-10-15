@@ -34,11 +34,14 @@ export function regionProgress(challengeIds: readonly string[], region: string):
   return { gyms, eliteMembers, elite: eliteMembers >= 4, champion: challengeIds.includes(championId(region)) };
 }
 
-/** Kanto começa liberada; cada região seguinte abre ao derrotar o campeão da anterior. */
+/** Kanto começa liberada; cada região seguinte abre ao derrotar o campeão da anterior (Kalos: os dois de Unova). */
 export function unlockedRegionIds(challengeIds: readonly string[]): string[] {
   const unlocked: string[] = [];
   for (const [index, region] of REGIONS.entries()) {
-    if (index === 0 || challengeIds.includes(championId((REGIONS[index - 1] as Region).id))) unlocked.push(region.id);
+    const previous = index === 0 ? null : (REGIONS[index - 1] as Region).id;
+    // Kalos pede os campeões dos dois circuitos de Unova (como no jogo antigo)
+    const needed = previous === 'unova' ? [championId('unova'), championId('unova2')] : previous ? [championId(previous)] : [];
+    if (needed.every((id) => challengeIds.includes(id))) unlocked.push(region.id);
     else break;
   }
   return unlocked;

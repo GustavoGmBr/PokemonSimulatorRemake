@@ -1,5 +1,5 @@
 import type {
-  BattleActRequest, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, ChallengesState, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest,
@@ -55,6 +55,9 @@ export const api = {
   battle: (id: string) => request<BattleView | null>('GET', `/api/saves/${encodeURIComponent(id)}/battle`),
   battleStart: (id: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/start`),
   battleAct: (id: string, action: BattleActRequest) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/act`, action),
+  challenges: (id: string) => request<ChallengesState>('GET', `/api/saves/${encodeURIComponent(id)}/challenges`),
+  challengeStart: (id: string, challengeId: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/challenge`, { challengeId }),
+  trainerStart: (id: string, difficulty: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/trainer`, { difficulty }),
   evolve: (id: string, pokemonId: string, speciesId: number) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/evolve`, { speciesId }),
   learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>

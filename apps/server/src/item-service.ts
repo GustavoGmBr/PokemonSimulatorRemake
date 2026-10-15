@@ -99,8 +99,9 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
     devProgress(saveId: string, all = false): DevProgressResult {
       money(saveId);
       const won = new Set((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((row) => row.challenge_id));
-      const order = REGIONS.flatMap((region) => [
-        ...Array.from({ length: 8 }, (_, i) => gymId(region.id, i + 1)), ...[1, 2, 3, 4].map((n) => eliteId(region.id, n)), championId(region.id),
+      const circuits = REGIONS.flatMap((region) => (region.id === 'unova' ? ['unova', 'unova2'] : [region.id]));
+      const order = circuits.flatMap((id) => [
+        ...Array.from({ length: 8 }, (_, i) => gymId(id, i + 1)), ...[1, 2, 3, 4].map((n) => eliteId(id, n)), championId(id),
       ]);
       const pending = order.filter((id) => !won.has(id));
       const grant = all ? pending : pending.slice(0, 1);

@@ -614,3 +614,8 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-team-strip__info { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
 .gb-team-strip__info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
 @media (max-width: 900px) { .gb-team-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Batalhar: lista de desafios e detalhes */
+.gb-chrow { display: inline-flex; gap: 8px; align-items: baseline; }
+.gb-chdetail { display: flex; flex-direction: column; gap: 2px; }
+.gb-menu__item:disabled { opacity: .55; }

@@ -4,7 +4,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
-import type { BattleTurnResult, BattleView, PokemonView, SaveDetail, WildState } from '@pokesim/engine';
+import type { BattleTurnResult, BattleView, ChallengesState, PokemonView, SaveDetail, WildState } from '@pokesim/engine';
 import { openDatabase } from './db.ts';
 import { createApp } from './app.ts';
 
@@ -211,4 +211,99 @@ test('golpes: lista permitidos, troca por nível (grátis) e TM comprada no Pok�
   assert.equal(taught.status, 201);
   assert.equal(taught.json.moves[1]?.name, tm?.move.name);
   assert.equal((db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money, 100000 - (tm?.price ?? 0), 'ensinar não cobra de novo');
+});
+
+async function fightToEnd(url: string, first: BattleTurnResult): Promise<BattleView> {
+  let view = first.view;
+  for (let i = 0; i < 120 && view.phase !== 'ended'; i++) {
+    if (view.phase === 'replace' || view.player.team[view.player.active]?.hp === 0) {
+      const next = view.player.team.find((m) => m.hp > 0);
+      if (!next) break;
+      view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'switch', to: next.index })).json.view;
+      continue;
+    }
+    const best = [...view.player.moves].sort((a, b) => b.power - a.power)[0];
+    view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: best?.slot ?? 0 })).json.view;
+  }
+  return view;
+}
+
+test('desafios: lista com bloqueios, ginásio em qualquer ordem, Elite só depois dos 8', async () => {
+  const { url } = await setup();
+  const state = (await call<ChallengesState>('GET', `${url}/challenges`)).json;
+  const byId = new Map(state.challenges.map((c) => [c.id, c]));
+  assert.equal(byId.get('kanto:gym3')?.unlocked, true);
+  assert.equal(byId.get('kanto:elite1')?.unlocked, false);
+  assert.match(byId.get('kanto:elite1')?.lockReason ?? '', /ginásio/i);
+  assert.equal(byId.get('johto:gym1')?.unlocked, false);
+  assert.equal(state.trainers.length, 3);
+  assert.equal((await call('POST', `${url}/battle/challenge`, { challengeId: 'kanto:elite1' })).status, 400);
+  assert.ok([400, 404].includes((await call('POST', `${url}/battle/challenge`, { challengeId: 'nada' })).status));
+  assert.equal((await call('POST', `${url}/battle/trainer`, { difficulty: 'impossivel' })).status, 400);
+});
+
+test('desafios: Pokémon de fora da região não entram; vitória dá insígnia, dinheiro e não repete XP acima do teto', async () => {
+  const { save, url } = await setup();
+  // inicial forte: o desafio o reduz ao nível do líder
+  db.prepare('UPDATE pokemon SET level = 80, exp = 512000 WHERE save_id = ?').run(save.id);
+  const before = db.prepare('SELECT level, exp FROM pokemon WHERE save_id = ?').get(save.id) as { level: number; exp: number };
+  const money0 = (await call<SaveDetail>('GET', url)).json.money;
+
+  const started = await call<BattleTurnResult>('POST', `${url}/battle/challenge`, { challengeId: 'kanto:gym1' });
+  assert.equal(started.status, 201);
+  assert.ok(started.json.view.trainer, 'batalha de treinador');
+  assert.equal(started.json.view.balls.length, 0);
+  assert.equal((await call('POST', `${url}/battle/act`, { kind: 'run' })).status, 400, 'não dá para fugir');
+  assert.equal((await call('POST', `${url}/battle/act`, { kind: 'ball', item: 'master-ball' })).status, 400);
+  assert.equal((await call('POST', `${url}/battle/challenge`, { challengeId: 'kanto:gym2' })).status, 400, 'já em batalha');
+  const level = started.json.view.player.team[0]?.level ?? 0;
+  assert.ok(level < 80, 'nível reduzido ao do líder');
+
+  const end = await fightToEnd(url, started.json);
+  assert.equal(end.phase, 'ended');
+  if (end.outcome?.result === 'win') {
+    assert.ok(end.outcome.badge);
+    assert.equal(end.outcome.trainerName === null, false);
+    const row = db.prepare('SELECT 1 AS ok FROM badges WHERE save_id = ? AND challenge_id = ?').get(save.id, 'kanto:gym1');
+    assert.ok(row, 'insígnia gravada');
+    assert.ok((await call<SaveDetail>('GET', url)).json.money > money0, 'dinheiro');
+    const state = (await call<ChallengesState>('GET', `${url}/challenges`)).json;
+    assert.equal(state.challenges.find((c) => c.id === 'kanto:gym1')?.won, true);
+  }
+  const after = db.prepare('SELECT level, exp FROM pokemon WHERE save_id = ?').get(save.id) as { level: number; exp: number };
+  assert.deepEqual(after, before, 'sem XP nem nível acima do teto');
+});
+
+test('desafios: equipe com Pokémon de outra região é recusada', async () => {
+  const { save, url } = await setup();
+  db.prepare('UPDATE pokemon SET species_id = 152 WHERE save_id = ?').run(save.id); // Chikorita (Johto) em Kanto
+  const r = await call<{ error: string }>('POST', `${url}/battle/challenge`, { challengeId: 'kanto:gym1' });
+  assert.equal(r.status, 400);
+  assert.match(r.json.error, /região/i);
+});
+
+test('treinador aleatório: recompensa em dinheiro e itens, sem bolas nem fuga', async () => {
+  const { save, url } = await setup();
+  db.prepare('UPDATE pokemon SET level = 80, exp = 512000 WHERE save_id = ?').run(save.id);
+  const money0 = (await call<SaveDetail>('GET', url)).json.money;
+  const started = await call<BattleTurnResult>('POST', `${url}/battle/trainer`, { difficulty: 'facil' });
+  assert.equal(started.status, 201);
+  assert.ok(started.json.view.foe.team.length >= 2 && started.json.view.foe.team.length <= 3);
+  assert.equal((await call('POST', `${url}/battle/act`, { kind: 'run' })).status, 400);
+  const end = await fightToEnd(url, started.json);
+  assert.equal(end.phase, 'ended');
+  if (end.outcome?.result === 'win') {
+    assert.equal(end.outcome.badge, null);
+    assert.ok(end.outcome.rewards.length > 0);
+    assert.ok((await call<SaveDetail>('GET', url)).json.money >= money0 + 1000);
+  }
+});
+
+test('dev: "vencer tudo" também conta o segundo circuito de Unova', async () => {
+  const { url } = await setup();
+  await call('POST', `${url}/dev/progress`, { all: true });
+  const state = (await call<ChallengesState>('GET', `${url}/challenges`)).json;
+  assert.ok(state.challenges.every((c) => c.won));
+  assert.ok(state.challenges.some((c) => c.id.startsWith('unova2:')));
+  assert.ok(state.unlockedRegions.includes('kalos'));
 });

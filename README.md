@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.7**, Fase 1 em andamento (PC, Pokédex, selvagens, captura, loja e batalha selvagem prontos; treinadores/ginásios a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.8**, Fases 1–2 prontas (PC, Pokédex, selvagens, captura, loja, batalha, ginásios, Elite dos 4, campeões e treinadores aleatórios; mapa das regiões a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -107,7 +107,21 @@ packages/
      Tela retrô com texto digitando, HP descendo, piscadas, XP, e animações de golpe por tipo.
      **Evolução é manual:** botão "Evoluir" no perfil do Pokémon da equipe (nível, amizade, horário,
      golpe de tipo; pedras/troca/local ficam para depois).
-2. **Batalhas** — ✅ engine e batalha selvagem; falta IA de treinador, ginásios, Elite 4 e campeões.
+2. **Batalhas** — ✅ (menu **Batalhar**)
+   - **Ginásios, Elite dos 4 e campeões das 9 regiões**, com os mesmos líderes, tipos, níveis e times do jogo
+     antigo (Unova tem dois circuitos: Unova 1 e Unova 2, esse abre ao vencer o campeão de Unova 1).
+     Ginásios em qualquer ordem; Elite dos 4 em ordem depois dos 8 ginásios; campeão (Nv 100) depois da Elite.
+     Cada vitória grava a **insígnia**; vencer o campeão libera a próxima região (Kalos exige os dois campeões
+     de Unova) e eleva o limite de nível dos selvagens.
+   - **Regras do desafio:** só vale equipe de Pokémon da região (faixa da Pokédex dela); seus Pokémon acima do
+     nível do líder lutam reduzidos a esse nível e **não ganham XP** (seus níveis não mudam). Não dá para fugir
+     nem capturar. XP ×1,5 contra treinador; dinheiro = soma dos níveis do time inimigo × 10 (Moeda Amuleto vale).
+   - **IA de treinador** (habilidade 1–3 conforme o líder): escolhe o golpe pela efetividade e dano esperado,
+     **troca** quando está em desvantagem de tipo (com intervalo mínimo de 3 turnos) e **usa itens** de cura
+     (Super/Hyper Potion, Full Restore) quando o HP está baixo, a menos que consiga nocautear primeiro.
+   - **Treinadores aleatórios** (aba "Aleatórios"): Fácil (2–3 Pokémon Nv 20–30, ₽ 1.000), Médio (3–4, Nv 40–50,
+     ₽ 3.000) e Difícil (6 Pokémon Nv 100, ₽ 10.000), cada um com times sorteados e itens de prêmio.
+   - Batalha selvagem: engine, captura e tela retrô (acima).
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
 

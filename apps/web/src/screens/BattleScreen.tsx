@@ -323,7 +323,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     { id: 'fight', label: 'LUTAR' },
     { id: 'bag', label: 'BOLSA' },
     { id: 'team', label: 'POKÉMON' },
-    { id: 'run', label: 'FUGIR' },
+    { id: 'run', label: 'FUGIR', disabled: Boolean(view.trainer) },
   ];
 
   const moveItems: MenuItem[] = view.player.moves.map((move) => ({
@@ -340,7 +340,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   }));
 
   const bagItems: MenuItem[] = [
-    { id: 'balls', label: 'BOLAS', extra: String(view.balls.reduce((n, b) => n + b.quantity, 0)) },
+    { id: 'balls', label: 'BOLAS', extra: view.trainer ? '—' : String(view.balls.reduce((n, b) => n + b.quantity, 0)), disabled: Boolean(view.trainer) },
     { id: 'heals', label: 'CURA', extra: String(view.heals.reduce((n, b) => n + b.quantity, 0)) },
     { id: 'back', label: 'Voltar' },
   ];
@@ -511,6 +511,7 @@ function InfoBox({ side, mon, xpGain }: { side: SideKey; mon: BattleMonView; xpG
 function OutcomePanel({ outcome }: { outcome: BattleOutcome }) {
   return (
     <div className="gb-outcome">
+      {outcome.trainerName ? <p className="gb-muted" style={{ margin: 0 }}>{outcome.result === 'win' ? 'Você derrotou' : 'Você perdeu para'} {outcome.trainerName}</p> : null}
       <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>
         {outcome.result === 'win' ? 'Vitória!' : outcome.result === 'captured' ? 'Capturado!' : outcome.result === 'fled' ? 'Você fugiu' : 'Derrota'}
       </h2>
@@ -524,6 +525,8 @@ function OutcomePanel({ outcome }: { outcome: BattleOutcome }) {
           </span>
         </div>
       ) : null}
+      {outcome.badge ? <p style={{ margin: 0, color: 'var(--red)' }}>★ Conquista registrada: {outcome.badge}</p> : null}
+      {outcome.rewards.map((r) => <p key={r.item} style={{ margin: 0 }}>Recebeu {r.quantity}× {r.name}</p>)}
       {outcome.money > 0 ? <p style={{ margin: 0 }}>Ganhou ₽ {outcome.money.toLocaleString('pt-BR')}</p> : null}
       {outcome.levels.map((entry) => <p key={entry.name} style={{ margin: 0 }}>▲ {entry.name} está no nível {entry.level}</p>)}
       {outcome.pending.length > 0 ? <p style={{ margin: 0, color: 'var(--red)' }}>Golpes novos esperando: {outcome.pending.join(', ')} (veja no perfil)</p> : null}

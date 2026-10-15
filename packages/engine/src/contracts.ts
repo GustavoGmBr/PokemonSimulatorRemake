@@ -364,9 +364,16 @@ export interface BattleOutcome {
   levels: { name: string; level: number }[];
   /** Pokémon que ficaram com golpes pendentes */
   pending: string[];
+  /** prêmios em itens (treinadores aleatórios) */
+  rewards: { item: string; name: string; quantity: number }[];
+  /** insígnia/troféu do desafio vencido (id), se foi a primeira vez */
+  badge: string | null;
+  trainerName: string | null;
 }
 
 export interface BattleView {
+  /** treinador do outro lado (null = selvagem: dá para fugir e capturar) */
+  trainer: { name: string; title: string; skill: number; bagLeft: number } | null;
   phase: BattlePhase;
   turn: number;
   player: { active: number; team: BattleMonView[]; moves: BattleMoveView[] };
@@ -421,4 +428,50 @@ export interface LearnMoveRequest {
   move: string;
   /** posição (0–3) do golpe que será esquecido; null descarta o golpe novo */
   replace: number | null;
+}
+
+// ---------------------------------------------------------------- desafios e treinadores
+
+export interface ChallengeView {
+  id: string;
+  region: string;
+  regionName: string;
+  circuit: string;
+  circuitName: string;
+  kind: 'gym' | 'elite' | 'champion';
+  number: number;
+  name: string;
+  title: string;
+  group: string;
+  type: string;
+  level: number;
+  team: { speciesId: number; name: string }[];
+  won: boolean;
+  unlocked: boolean;
+  lockReason: string | null;
+  /** o jogador só pode usar Pokémon dessa faixa da Pokédex */
+  dex: [number, number];
+  /** habilidade da IA do líder (1–3) */
+  skill: number;
+  /** itens de cura que o líder usa */
+  bag: { name: string; quantity: number }[];
+}
+
+export interface TrainerOption {
+  id: 'facil' | 'medio' | 'dificil';
+  name: string;
+  description: string;
+  money: number;
+  levels: [number, number];
+  teamSize: [number, number];
+  rewards: { item: string; name: string; quantity: number }[];
+}
+
+export interface ChallengesState {
+  challenges: ChallengeView[];
+  trainers: TrainerOption[];
+  /** regiões liberadas */
+  unlockedRegions: string[];
+  /** nível máximo que o desafio permite ao seu time (nível do líder) é mostrado em cada desafio */
+  badges: number;
 }

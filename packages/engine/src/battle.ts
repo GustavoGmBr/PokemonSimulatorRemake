@@ -60,6 +60,8 @@ export interface Combatant {
   friendship: number;
   /** já esteve em campo nesta batalha */
   fought: boolean;
+  /** nível reduzido pelo limite do desafio: não ganha XP e não muda no save */
+  capped?: boolean;
 }
 
 export interface BattleSide {
@@ -70,8 +72,29 @@ export interface BattleSide {
 export type BattlePhase = 'choose' | 'replace' | 'ended';
 export type BattleResult = 'win' | 'lose' | 'fled' | 'captured';
 
+/** Item de cura que o treinador carrega. `heal` = HP recuperado (9999 = tudo). */
+export interface FoeBagItem { item: string; name: string; heal: number; cures: boolean; qty: number }
+
+export interface TrainerInfo {
+  name: string;
+  /** "Líder de Ginásio", "Elite dos 4"… */
+  title: string;
+  /** 1 = básico, 2 = escolhe pela efetividade e usa itens, 3 = também troca de Pokémon e acerta quase sempre o melhor golpe */
+  skill: 1 | 2 | 3;
+  bag: FoeBagItem[];
+  /** turno da última troca (para não ficar trocando sem parar) */
+  lastSwitch: number;
+  /** desafio em disputa (`kanto:gym1`…); ausente nos treinadores aleatórios */
+  challengeId?: string;
+  /** treinador aleatório: dificuldade, dinheiro fixo e prêmios */
+  difficulty?: string;
+  money?: number;
+  rewards?: { item: string; quantity: number }[];
+}
+
 export interface BattleState {
-  kind: 'wild';
+  kind: 'wild' | 'trainer';
+  trainer?: TrainerInfo | null;
   turn: number;
   phase: BattlePhase;
   result: BattleResult | null;
@@ -140,24 +163,34 @@ export const activeOf = (state: BattleState, side: SideKey): Combatant => {
   return s.team[s.active] as Combatant;
 };
 const other = (side: SideKey): SideKey => (side === 'player' ? 'foe' : 'player');
-const labelOf = (state: BattleState, side: SideKey, c: Combatant): string => (side === 'foe' && state.kind === 'wild' ? `${c.name} selvagem` : c.name);
+const labelOf = (state: BattleState, side: SideKey, c: Combatant): string => {
+  if (side !== 'foe') return c.name;
+  if (state.kind === 'wild') return `${c.name} selvagem`;
+  return state.trainer ? `${c.name} de ${state.trainer.name}` : c.name;
+};
 
 /** Começa uma batalha: o primeiro Pokémon vivo da equipe entra em campo. */
-export function createBattle(input: { player: Combatant[]; foe: Combatant[]; seed: number; kind?: 'wild' }): { state: BattleState; events: BattleEvent[] } {
+export function createBattle(input: { player: Combatant[]; foe: Combatant[]; seed: number; kind?: 'wild' | 'trainer'; trainer?: TrainerInfo }): { state: BattleState; events: BattleEvent[] } {
   const lead = input.player.findIndex((c) => c.hp > 0);
   if (lead < 0) throw new Error('Nenhum Pokémon da equipe pode lutar.');
   if (input.foe.length === 0) throw new Error('Sem oponente.');
   const state: BattleState = {
-    kind: input.kind ?? 'wild', turn: 0, phase: 'choose', result: null, rng: input.seed >>> 0, runAttempts: 0,
+    kind: input.kind ?? 'wild', trainer: input.trainer ?? null, turn: 0, phase: 'choose', result: null, rng: input.seed >>> 0, runAttempts: 0,
     player: { team: input.player, active: lead }, foe: { team: input.foe, active: 0 },
   };
   (state.player.team[lead] as Combatant).fought = true;
   const foe = activeOf(state, 'foe');
   const me = activeOf(state, 'player');
-  const events: BattleEvent[] = [
-    { k: 'send', side: 'foe', index: 0, text: `Um ${foe.name} selvagem apareceu!` },
-    { k: 'send', side: 'player', index: lead, text: `Vai, ${me.name}!` },
-  ];
+  const events: BattleEvent[] = state.kind === 'trainer' && state.trainer
+    ? [
+      { k: 'text', text: `${state.trainer.title ? `${state.trainer.title} ` : ''}${state.trainer.name} quer batalhar!` },
+      { k: 'send', side: 'foe', index: 0, text: `${state.trainer.name} enviou ${foe.name}!` },
+      { k: 'send', side: 'player', index: lead, text: `Vai, ${me.name}!` },
+    ]
+    : [
+      { k: 'send', side: 'foe', index: 0, text: `Um ${foe.name} selvagem apareceu!` },
+      { k: 'send', side: 'player', index: lead, text: `Vai, ${me.name}!` },
+    ];
   return { state, events };
 }
 
@@ -204,24 +237,29 @@ const STRUGGLE: Move = {
   minHits: null, maxHits: null, statChanges: [], statChance: 0,
 };
 
-type FoeChoice = { slot: number } | { struggle: true };
+type FoeChoice = { slot: number } | { struggle: true } | { switchTo: number } | { item: number };
 
 function usableSlots(c: Combatant): number[] {
   // Sem PP: todos os golpes ficam sempre disponíveis.
   return c.moves.map((_, i) => i);
 }
 
-/** IA do oponente: pontua os golpes e sorteia entre os dois melhores. */
-function foeChoice(state: BattleState, ctx: BattleContext, rng: Rng): FoeChoice {
-  const me = activeOf(state, 'foe');
-  const target = activeOf(state, 'player');
-  const options = usableSlots(me).map((slot) => {
+interface Scored { slot: number; score: number; ko: boolean; priority: number }
+
+/** Pontua cada golpe de `me` contra `target` (dano esperado pela efetividade, KO, status úteis). */
+function scoreMoves(me: Combatant, target: Combatant, ctx: BattleContext): Scored[] {
+  return usableSlots(me).map((slot) => {
     const move = ctx.moves.get((me.moves[slot] as MoveSlot).name);
-    if (!move) return { slot, score: 1 };
+    if (!move) return { slot, score: 1, ko: false, priority: 0 };
     let score: number;
+    let ko = false;
     if (move.category !== 'status') {
-      const eff = effectiveness(ctx.chart, move.type, target.types);
-      score = move.power * (me.types.includes(move.type) ? 1.5 : 1) * eff * ((move.accuracy ?? 100) / 100) * (move.minHits ? (move.minHits + (move.maxHits ?? move.minHits)) / 2 : 1);
+      const range = damageRange(me, target, move, ctx.chart);
+      const hits = move.minHits ? (move.minHits + (move.maxHits ?? move.minHits)) / 2 : 1;
+      const accuracy = (move.accuracy ?? 100) / 100;
+      score = ((range.min + range.max) / 2) * hits * accuracy;
+      ko = range.max * hits >= target.hp && range.effectiveness > 0;
+      if (ko) score += 10_000 + move.priority * 500;
     } else if (move.healing > 0) score = me.hp < me.stats.hp / 2 ? 60 : 0;
     else if (move.ailment && AILMENTS.includes(move.ailment) && !target.status) score = 25;
     else if (move.ailment === 'confusion' && target.confusion === 0) score = 18;
@@ -234,14 +272,94 @@ function foeChoice(state: BattleState, ctx: BattleContext, rng: Rng): FoeChoice 
       });
       score = useful ? 15 : 0;
     } else score = 0;
-    return { slot, score };
+    return { slot, score, ko, priority: move.priority };
   });
-  if (options.length === 0) return { struggle: true };
-  options.sort((a, b) => b.score - a.score);
-  const top = options.slice(0, Math.min(2, options.length));
+}
+
+/** Melhor efetividade de um conjunto de tipos de golpe contra os tipos dados (0 se nenhum causa dano). */
+function bestEffectiveness(moveTypes: TypeName[], defender: TypeName[], chart: TypeChart): number {
+  return moveTypes.reduce((best, type) => Math.max(best, effectiveness(chart, type, defender)), 0);
+}
+
+function damagingTypes(c: Combatant, ctx: BattleContext): TypeName[] {
+  const types: TypeName[] = [];
+  for (const slot of c.moves) {
+    const move = ctx.moves.get(slot.name);
+    if (move && move.category !== 'status' && move.power > 0) types.push(move.type);
+  }
+  return types.length > 0 ? types : [...c.types];
+}
+
+/** Quão bom é `c` contra `target`: ataque que ele tem menos o perigo que corre, mais a saúde. */
+function matchup(c: Combatant, target: Combatant, ctx: BattleContext): number {
+  const offense = bestEffectiveness(damagingTypes(c, ctx), target.types, ctx.chart);
+  const danger = bestEffectiveness(damagingTypes(target, ctx), c.types, ctx.chart);
+  return offense - danger * 1.2 + c.hp / c.stats.hp;
+}
+
+/** Quem entra depois que o Pokémon do treinador cai: o melhor contra o que está em campo. */
+function nextFoe(state: BattleState, ctx: BattleContext): number {
+  const candidates = state.foe.team.map((c, i) => ({ c, i })).filter(({ c }) => c.hp > 0);
+  if (candidates.length === 0) return -1;
+  if (state.kind !== 'trainer' || (state.trainer?.skill ?? 1) < 2) return (candidates[0] as { i: number }).i;
+  const target = activeOf(state, 'player');
+  candidates.sort((a, b) => matchup(b.c, target, ctx) - matchup(a.c, target, ctx));
+  return (candidates[0] as { i: number }).i;
+}
+
+function chooseMove(scores: Scored[], skill: 1 | 2 | 3, rng: Rng): FoeChoice {
+  if (scores.length === 0) return { struggle: true };
+  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  if (skill === 3) return { slot: (sorted[0] as Scored).slot };
+  if (skill === 2) return { slot: ((rng.int(5) === 0 ? sorted[1] : undefined) ?? (sorted[0] as Scored)).slot };
+  const top = sorted.slice(0, Math.min(2, sorted.length));
   const best = top[0]?.score ?? 0;
   const pool = top.filter((o) => o.score >= best * 0.6);
-  return { slot: (pool[rng.int(pool.length)] ?? (options[0] as { slot: number })).slot };
+  return { slot: (pool[rng.int(pool.length)] ?? (sorted[0] as Scored)).slot };
+}
+
+/**
+ * IA do oponente. Selvagem: pontua os golpes e sorteia entre os dois melhores. Treinador: escolhe pela efetividade,
+ * garante KO quando pode, usa itens de cura com pouco HP e troca de Pokémon quando está em desvantagem.
+ */
+function foeChoice(state: BattleState, ctx: BattleContext, rng: Rng): FoeChoice {
+  const me = activeOf(state, 'foe');
+  const target = activeOf(state, 'player');
+  const scores = scoreMoves(me, target, ctx);
+  const trainer = state.kind === 'trainer' ? state.trainer : null;
+  if (!trainer) return chooseMove(scores, 1, rng);
+
+  const skill = trainer.skill;
+  const canKo = scores.some((o) => o.ko);
+  const quicker = effectiveSpeed(me) > effectiveSpeed(target) || scores.some((o) => o.ko && o.priority > 0);
+  if (!(canKo && quicker)) {
+    // 1) item de cura
+    const fraction = me.hp / me.stats.hp;
+    const chance = skill === 1 ? 40 : skill === 2 ? 70 : 100;
+    const wantsHeal = fraction < (skill === 1 ? 0.2 : 0.35) || (skill >= 2 && me.status !== null && fraction < 0.7);
+    if (wantsHeal && rng.int(100) < chance) {
+      const usable = trainer.bag
+        .map((b, index) => ({ b, index }))
+        .filter(({ b }) => b.qty > 0 && (b.heal >= me.stats.hp * 0.3 || (b.cures && me.status !== null)))
+        .sort((a, b) => a.b.heal - b.b.heal);
+      const pick = usable.find(({ b }) => me.hp + b.heal >= me.stats.hp * 0.6) ?? usable[usable.length - 1];
+      if (pick) return { item: pick.index };
+    }
+    // 2) troca quando está em desvantagem
+    const bench = state.foe.team.map((c, i) => ({ c, i })).filter(({ c, i }) => c.hp > 0 && i !== state.foe.active);
+    if (skill >= 2 && bench.length > 0 && state.turn - trainer.lastSwitch >= 3) {
+      const offense = bestEffectiveness(damagingTypes(me, ctx), target.types, ctx.chart);
+      const danger = bestEffectiveness(damagingTypes(target, ctx), me.types, ctx.chart);
+      const crippled = me.stages.atk <= -2 || me.stages.spa <= -2 || me.status === 'sleep' || me.status === 'freeze';
+      const bad = (danger >= 2 && offense <= 1) || offense === 0 || crippled;
+      if (bad && (skill === 3 || rng.int(2) === 0)) {
+        const here = matchup(me, target, ctx);
+        const best = bench.map(({ c, i }) => ({ i, value: matchup(c, target, ctx) })).sort((a, b) => b.value - a.value)[0];
+        if (best && best.value > here + 1) return { switchTo: best.i };
+      }
+    }
+  }
+  return chooseMove(scores, skill, rng);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -376,7 +494,7 @@ function hitCount(move: Move, rng: Rng): number {
   return move.minHits + rng.int(move.maxHits - move.minHits + 1);
 }
 
-function useMove(run: Run, side: SideKey, choice: FoeChoice | { slot: number }): void {
+function useMove(run: Run, side: SideKey, choice: { slot: number } | { struggle: true }): void {
   const { state, ctx, rng } = run;
   const me = activeOf(state, side);
   const foeSide = other(side);
@@ -503,7 +621,8 @@ export function awardFoeExp(run: { state: BattleState; ctx: BattleContext; event
   const foe = activeOf(run.state, 'foe');
   const index = run.state.player.active;
   if (!alive(run.state.player.team[index])) return;
-  const amount = expForDefeating(run.ctx.species(foe.speciesId), foe.level, run.ctx.expMultiplier ?? 1);
+  if (run.state.player.team[index]?.capped) return;
+  const amount = expForDefeating(run.ctx.species(foe.speciesId), foe.level, (run.ctx.expMultiplier ?? 1) * (run.state.kind === 'trainer' ? 1.5 : 1));
   awardExp(run, index, amount);
 }
 
@@ -530,6 +649,7 @@ function validate(state: BattleState, action: BattleAction): void {
   if (state.phase === 'replace') {
     if (action.kind !== 'switch') throw new Error('Escolha o próximo Pokémon.');
   }
+  if (action.kind === 'run' && state.kind === 'trainer') throw new Error('Não dá para fugir de uma batalha de treinador!');
   if (action.kind === 'move') {
     const slots = usableSlots(me);
     if (!slots.includes(action.slot)) throw new Error('Golpe indisponível.');
@@ -554,6 +674,35 @@ function doSwitch(run: Run, to: number) {
   push(run, { k: 'send', side: 'player', index: to, text: `Vai, ${entering.name}!` });
 }
 
+function doFoeSwitch(run: Run, to: number) {
+  const { state } = run;
+  const old = activeOf(state, 'foe');
+  push(run, { k: 'text', text: `${state.trainer?.name ?? 'O treinador'} recolheu ${old.name}!` });
+  old.stages = emptyStages();
+  old.confusion = 0;
+  old.flinch = false;
+  state.foe.active = to;
+  if (state.trainer) state.trainer.lastSwitch = state.turn;
+  push(run, { k: 'send', side: 'foe', index: to, text: `${state.trainer?.name ?? 'O treinador'} enviou ${activeOf(state, 'foe').name}!` });
+}
+
+function useFoeItem(run: Run, index: number) {
+  const { state } = run;
+  const item = state.trainer?.bag[index];
+  if (!item || item.qty <= 0) return;
+  item.qty -= 1;
+  const me = activeOf(state, 'foe');
+  push(run, { k: 'text', text: `${state.trainer?.name} usou ${item.name} em ${me.name}!` });
+  if (item.cures && me.status) {
+    const status = me.status;
+    me.status = null;
+    me.sleepTurns = 0;
+    push(run, { k: 'status-end', side: 'foe', status, text: `${me.name} se recuperou!` });
+  }
+  const amount = Math.min(item.heal, me.stats.hp - me.hp);
+  if (amount > 0) healBy(run, 'foe', amount, `${me.name} recuperou ${amount} HP!`);
+}
+
 /** Resolve um turno. `action` é a escolha do jogador; o oponente decide sozinho. */
 export function chooseAction(input: BattleState, action: BattleAction, ctx: BattleContext): { state: BattleState; events: BattleEvent[] } {
   validate(input, action);
@@ -572,7 +721,7 @@ export function chooseAction(input: BattleState, action: BattleAction, ctx: Batt
   const foeAction = foeChoice(state, ctx, rng);
   const playerMove = action.kind === 'move' ? (action.slot === -1 ? ({ struggle: true } as const) : { slot: action.slot }) : null;
   const moveOf = (side: SideKey, choice: FoeChoice | null): Move | null => {
-    if (!choice) return null;
+    if (!choice || 'switchTo' in choice || 'item' in choice) return null;
     if ('struggle' in choice) return ctx.moves.get('struggle') ?? STRUGGLE;
     const slot = activeOf(state, side).moves[choice.slot];
     return slot ? ctx.moves.get(slot.name) ?? null : null;
@@ -595,6 +744,10 @@ export function chooseAction(input: BattleState, action: BattleAction, ctx: Batt
     push(run, { k: 'run', ok: false, text: 'Não conseguiu fugir!' });
   }
 
+  // o treinador troca de Pokémon ou usa um item antes dos golpes
+  if ('switchTo' in foeAction) doFoeSwitch(run, foeAction.switchTo);
+  else if ('item' in foeAction) useFoeItem(run, foeAction.item);
+
   const order: SideKey[] = [];
   const foeMove = moveOf('foe', foeAction);
   if (playerMove) {
@@ -608,13 +761,14 @@ export function chooseAction(input: BattleState, action: BattleAction, ctx: Batt
       if (sp !== sf) order.push(...(sp > sf ? (['player', 'foe'] as const) : (['foe', 'player'] as const)));
       else order.push(...(rng.int(2) === 0 ? (['player', 'foe'] as const) : (['foe', 'player'] as const)));
     }
-  } else order.push('foe');
+  } else if (foeMove) order.push('foe');
+  if (playerMove && !foeMove) order.splice(0, order.length, 'player');
 
   for (const side of order) {
     if (done(run)) break;
     const actor = activeOf(state, side);
     if (!alive(actor)) continue;
-    useMove(run, side, side === 'player' ? (playerMove as { slot: number }) : foeAction);
+    useMove(run, side, side === 'player' ? (playerMove as { slot: number }) : (foeAction as { slot: number } | { struggle: true }));
     resolveFaintsAfterHit(run);
   }
   if (!done(run)) {
@@ -639,10 +793,10 @@ function resolveFaintsAfterHit(run: Run) {
     run.fainted.add(foe);
     push(run, { k: 'faint', side: 'foe', text: `${labelOf(state, 'foe', foe)} desmaiou!` });
     awardFoeExp(run);
-    const next = state.foe.team.findIndex((c) => c.hp > 0);
-    if (next < 0) { endBattle(run, 'win', 'Você venceu a batalha!'); return; }
+    const next = nextFoe(state, run.ctx);
+    if (next < 0) { endBattle(run, 'win', state.kind === 'trainer' && state.trainer ? `Você venceu ${state.trainer.name}!` : 'Você venceu a batalha!'); return; }
     state.foe.active = next;
-    push(run, { k: 'send', side: 'foe', index: next, text: `${activeOf(state, 'foe').name} entrou em batalha!` });
+    push(run, { k: 'send', side: 'foe', index: next, text: state.kind === 'trainer' && state.trainer ? `${state.trainer.name} enviou ${activeOf(state, 'foe').name}!` : `${activeOf(state, 'foe').name} entrou em batalha!` });
   }
   const me = activeOf(state, 'player');
   if (me.hp <= 0 && !run.fainted.has(me)) {

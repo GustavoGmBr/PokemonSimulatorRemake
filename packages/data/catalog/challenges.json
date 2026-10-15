@@ -1,0 +1,1677 @@
+{
+ "regions": [
+  {
+   "id": "kanto",
+   "circuits": [
+    {
+     "id": "kanto",
+     "name": "Kanto",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "brock",
+       "name": "Brock",
+       "type": "rock",
+       "level": 15,
+       "team": [
+        74,
+        95
+       ]
+      },
+      {
+       "slug": "misty",
+       "name": "Misty",
+       "type": "water",
+       "level": 22,
+       "team": [
+        120,
+        121
+       ]
+      },
+      {
+       "slug": "lt-surge",
+       "name": "Lt. Surge",
+       "type": "electric",
+       "level": 28,
+       "team": [
+        100,
+        25,
+        26
+       ]
+      },
+      {
+       "slug": "erika",
+       "name": "Erika",
+       "type": "grass",
+       "level": 30,
+       "team": [
+        114,
+        70,
+        45
+       ]
+      },
+      {
+       "slug": "koga",
+       "name": "Koga",
+       "type": "poison",
+       "level": 44,
+       "team": [
+        109,
+        89,
+        49,
+        110
+       ]
+      },
+      {
+       "slug": "sabrina",
+       "name": "Sabrina",
+       "type": "psychic",
+       "level": 50,
+       "team": [
+        64,
+        122,
+        49,
+        65
+       ]
+      },
+      {
+       "slug": "blaine",
+       "name": "Blaine",
+       "type": "fire",
+       "level": 55,
+       "team": [
+        58,
+        77,
+        78,
+        59
+       ]
+      },
+      {
+       "slug": "giovanni",
+       "name": "Giovanni",
+       "type": "ground",
+       "level": 60,
+       "team": [
+        53,
+        51,
+        34,
+        31,
+        112
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "lorelei",
+       "name": "Lorelei",
+       "type": "ice",
+       "level": 65,
+       "team": [
+        87,
+        91,
+        80,
+        124,
+        131
+       ]
+      },
+      {
+       "slug": "bruno",
+       "name": "Bruno",
+       "type": "fighting",
+       "level": 70,
+       "team": [
+        95,
+        107,
+        106,
+        95,
+        68
+       ]
+      },
+      {
+       "slug": "agatha",
+       "name": "Agatha",
+       "type": "ghost",
+       "level": 80,
+       "team": [
+        94,
+        42,
+        93,
+        24,
+        94
+       ]
+      },
+      {
+       "slug": "lance",
+       "name": "Lance",
+       "type": "dragon",
+       "level": 90,
+       "team": [
+        130,
+        148,
+        148,
+        142,
+        149
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "blue",
+      "name": "Blue",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       18,
+       65,
+       112,
+       59,
+       103,
+       9
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "johto",
+   "circuits": [
+    {
+     "id": "johto",
+     "name": "Johto",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "johto-falkner",
+       "name": "Falkner",
+       "type": "flying",
+       "level": 15,
+       "team": [
+        16,
+        17
+       ]
+      },
+      {
+       "slug": "johto-bugsy",
+       "name": "Bugsy",
+       "type": "bug",
+       "level": 22,
+       "team": [
+        11,
+        14,
+        123
+       ]
+      },
+      {
+       "slug": "johto-whitney",
+       "name": "Whitney",
+       "type": "normal",
+       "level": 28,
+       "team": [
+        35,
+        241
+       ]
+      },
+      {
+       "slug": "johto-morty",
+       "name": "Morty",
+       "type": "ghost",
+       "level": 35,
+       "team": [
+        92,
+        93,
+        94,
+        93
+       ]
+      },
+      {
+       "slug": "johto-chuck",
+       "name": "Chuck",
+       "type": "fighting",
+       "level": 44,
+       "team": [
+        57,
+        62
+       ]
+      },
+      {
+       "slug": "johto-jasmine",
+       "name": "Jasmine",
+       "type": "steel",
+       "level": 50,
+       "team": [
+        81,
+        81,
+        208
+       ]
+      },
+      {
+       "slug": "johto-pryce",
+       "name": "Pryce",
+       "type": "ice",
+       "level": 55,
+       "team": [
+        86,
+        87,
+        221
+       ]
+      },
+      {
+       "slug": "johto-clair",
+       "name": "Clair",
+       "type": "dragon",
+       "level": 60,
+       "team": [
+        148,
+        148,
+        130,
+        230
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "johto-will",
+       "name": "Will",
+       "type": "psychic",
+       "level": 65,
+       "team": [
+        178,
+        124,
+        103,
+        80,
+        178
+       ]
+      },
+      {
+       "slug": "johto-koga",
+       "name": "Koga",
+       "type": "poison",
+       "level": 70,
+       "team": [
+        168,
+        49,
+        205,
+        89,
+        169
+       ]
+      },
+      {
+       "slug": "johto-bruno",
+       "name": "Bruno",
+       "type": "fighting",
+       "level": 80,
+       "team": [
+        237,
+        106,
+        107,
+        95,
+        68
+       ]
+      },
+      {
+       "slug": "johto-karen",
+       "name": "Karen",
+       "type": "dark",
+       "level": 90,
+       "team": [
+        197,
+        45,
+        94,
+        198,
+        229
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "johto-lance",
+      "name": "Lance",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       130,
+       149,
+       149,
+       142,
+       6,
+       149
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "hoenn",
+   "circuits": [
+    {
+     "id": "hoenn",
+     "name": "Hoenn",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "hoenn-roxanne",
+       "name": "Roxanne",
+       "type": "rock",
+       "level": 15,
+       "team": [
+        74,
+        299
+       ]
+      },
+      {
+       "slug": "hoenn-brawly",
+       "name": "Brawly",
+       "type": "fighting",
+       "level": 22,
+       "team": [
+        66,
+        296
+       ]
+      },
+      {
+       "slug": "hoenn-wattson",
+       "name": "Wattson",
+       "type": "electric",
+       "level": 28,
+       "team": [
+        81,
+        100,
+        82
+       ]
+      },
+      {
+       "slug": "hoenn-flannery",
+       "name": "Flannery",
+       "type": "fire",
+       "level": 35,
+       "team": [
+        218,
+        322,
+        324
+       ]
+      },
+      {
+       "slug": "hoenn-norman",
+       "name": "Norman",
+       "type": "normal",
+       "level": 44,
+       "team": [
+        289,
+        288,
+        289
+       ]
+      },
+      {
+       "slug": "hoenn-winona",
+       "name": "Winona",
+       "type": "flying",
+       "level": 50,
+       "team": [
+        277,
+        279,
+        227,
+        334
+       ]
+      },
+      {
+       "slug": "hoenn-tate-liza",
+       "name": "Tate e Liza",
+       "type": "psychic",
+       "level": 55,
+       "team": [
+        338,
+        337
+       ]
+      },
+      {
+       "slug": "hoenn-wallace",
+       "name": "Wallace",
+       "type": "water",
+       "level": 60,
+       "team": [
+        370,
+        364,
+        119,
+        340,
+        350
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "hoenn-sidney",
+       "name": "Sidney",
+       "type": "dark",
+       "level": 65,
+       "team": [
+        262,
+        275,
+        332,
+        319,
+        359
+       ]
+      },
+      {
+       "slug": "hoenn-phoebe",
+       "name": "Phoebe",
+       "type": "ghost",
+       "level": 70,
+       "team": [
+        356,
+        354,
+        302,
+        354,
+        356
+       ]
+      },
+      {
+       "slug": "hoenn-glacia",
+       "name": "Glacia",
+       "type": "ice",
+       "level": 80,
+       "team": [
+        362,
+        364,
+        364,
+        362,
+        365
+       ]
+      },
+      {
+       "slug": "hoenn-drake",
+       "name": "Drake",
+       "type": "dragon",
+       "level": 90,
+       "team": [
+        372,
+        334,
+        330,
+        330,
+        373
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "hoenn-steven",
+      "name": "Steven",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       227,
+       306,
+       344,
+       346,
+       348,
+       376
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sinnoh",
+   "circuits": [
+    {
+     "id": "sinnoh",
+     "name": "Sinnoh",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "sinnoh-roark",
+       "name": "Roark",
+       "type": "rock",
+       "level": 15,
+       "team": [
+        74,
+        95,
+        408
+       ]
+      },
+      {
+       "slug": "sinnoh-gardenia",
+       "name": "Gardenia",
+       "type": "grass",
+       "level": 22,
+       "team": [
+        387,
+        421,
+        407
+       ]
+      },
+      {
+       "slug": "sinnoh-fantina",
+       "name": "Fantina",
+       "type": "ghost",
+       "level": 28,
+       "team": [
+        355,
+        93,
+        429
+       ]
+      },
+      {
+       "slug": "sinnoh-maylene",
+       "name": "Maylene",
+       "type": "fighting",
+       "level": 35,
+       "team": [
+        307,
+        67,
+        448
+       ]
+      },
+      {
+       "slug": "sinnoh-wake",
+       "name": "Crasher Wake",
+       "type": "water",
+       "level": 44,
+       "team": [
+        130,
+        195,
+        419
+       ]
+      },
+      {
+       "slug": "sinnoh-byron",
+       "name": "Byron",
+       "type": "steel",
+       "level": 50,
+       "team": [
+        82,
+        208,
+        411
+       ]
+      },
+      {
+       "slug": "sinnoh-candice",
+       "name": "Candice",
+       "type": "ice",
+       "level": 55,
+       "team": [
+        215,
+        221,
+        460,
+        478
+       ]
+      },
+      {
+       "slug": "sinnoh-volkner",
+       "name": "Volkner",
+       "type": "electric",
+       "level": 60,
+       "team": [
+        135,
+        26,
+        405,
+        466
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "sinnoh-aaron",
+       "name": "Aaron",
+       "type": "bug",
+       "level": 65,
+       "team": [
+        469,
+        212,
+        416,
+        214,
+        452
+       ]
+      },
+      {
+       "slug": "sinnoh-bertha",
+       "name": "Bertha",
+       "type": "ground",
+       "level": 70,
+       "team": [
+        340,
+        472,
+        76,
+        464,
+        450
+       ]
+      },
+      {
+       "slug": "sinnoh-flint",
+       "name": "Flint",
+       "type": "fire",
+       "level": 80,
+       "team": [
+        229,
+        136,
+        78,
+        392,
+        467
+       ]
+      },
+      {
+       "slug": "sinnoh-lucian",
+       "name": "Lucian",
+       "type": "psychic",
+       "level": 90,
+       "team": [
+        122,
+        196,
+        437,
+        65,
+        475
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "sinnoh-cynthia",
+      "name": "Cynthia",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       442,
+       407,
+       468,
+       448,
+       350,
+       445
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "unova",
+   "circuits": [
+    {
+     "id": "unova",
+     "name": "Unova (1)",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "unova1-cilan",
+       "name": "Cilan",
+       "type": "grass",
+       "level": 15,
+       "team": [
+        506,
+        511
+       ]
+      },
+      {
+       "slug": "unova1-lenora",
+       "name": "Lenora",
+       "type": "normal",
+       "level": 22,
+       "team": [
+        507,
+        505
+       ]
+      },
+      {
+       "slug": "unova1-burgh",
+       "name": "Burgh",
+       "type": "bug",
+       "level": 28,
+       "team": [
+        544,
+        557,
+        542
+       ]
+      },
+      {
+       "slug": "unova1-elesa",
+       "name": "Elesa",
+       "type": "electric",
+       "level": 35,
+       "team": [
+        587,
+        587,
+        523
+       ]
+      },
+      {
+       "slug": "unova1-clay",
+       "name": "Clay",
+       "type": "ground",
+       "level": 44,
+       "team": [
+        552,
+        536,
+        530
+       ]
+      },
+      {
+       "slug": "unova1-skyla",
+       "name": "Skyla",
+       "type": "flying",
+       "level": 50,
+       "team": [
+        528,
+        521,
+        581
+       ]
+      },
+      {
+       "slug": "unova1-brycen",
+       "name": "Brycen",
+       "type": "ice",
+       "level": 55,
+       "team": [
+        583,
+        615,
+        614
+       ]
+      },
+      {
+       "slug": "unova1-drayden",
+       "name": "Drayden",
+       "type": "dragon",
+       "level": 60,
+       "team": [
+        611,
+        621,
+        612
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "unova1-shauntal",
+       "name": "Shauntal",
+       "type": "ghost",
+       "level": 65,
+       "team": [
+        563,
+        593,
+        623,
+        609
+       ]
+      },
+      {
+       "slug": "unova1-grimsley",
+       "name": "Grimsley",
+       "type": "dark",
+       "level": 70,
+       "team": [
+        560,
+        510,
+        553,
+        625
+       ]
+      },
+      {
+       "slug": "unova1-caitlin",
+       "name": "Caitlin",
+       "type": "psychic",
+       "level": 80,
+       "team": [
+        579,
+        518,
+        561,
+        576
+       ]
+      },
+      {
+       "slug": "unova1-marshal",
+       "name": "Marshal",
+       "type": "fighting",
+       "level": 90,
+       "team": [
+        538,
+        539,
+        534,
+        620
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "unova1-alder",
+      "name": "Alder",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       617,
+       626,
+       621,
+       584,
+       589,
+       637
+      ]
+     }
+    },
+    {
+     "id": "unova2",
+     "name": "Unova (2)",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "unova2-cheren",
+       "name": "Cheren",
+       "type": "normal",
+       "level": 15,
+       "team": [
+        504,
+        506
+       ]
+      },
+      {
+       "slug": "unova2-roxie",
+       "name": "Roxie",
+       "type": "poison",
+       "level": 22,
+       "team": [
+        109,
+        544
+       ]
+      },
+      {
+       "slug": "unova2-burgh",
+       "name": "Burgh",
+       "type": "bug",
+       "level": 28,
+       "team": [
+        541,
+        557,
+        542
+       ]
+      },
+      {
+       "slug": "unova2-elesa",
+       "name": "Elesa",
+       "type": "electric",
+       "level": 35,
+       "team": [
+        587,
+        180,
+        523
+       ]
+      },
+      {
+       "slug": "unova2-clay",
+       "name": "Clay",
+       "type": "ground",
+       "level": 44,
+       "team": [
+        552,
+        28,
+        530
+       ]
+      },
+      {
+       "slug": "unova2-skyla",
+       "name": "Skyla",
+       "type": "flying",
+       "level": 50,
+       "team": [
+        528,
+        227,
+        581
+       ]
+      },
+      {
+       "slug": "unova2-drayden",
+       "name": "Drayden",
+       "type": "dragon",
+       "level": 55,
+       "team": [
+        621,
+        330,
+        612
+       ]
+      },
+      {
+       "slug": "unova2-marlon",
+       "name": "Marlon",
+       "type": "water",
+       "level": 60,
+       "team": [
+        565,
+        321,
+        593
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "unova2-shauntal",
+       "name": "Shauntal",
+       "type": "ghost",
+       "level": 65,
+       "team": [
+        563,
+        426,
+        623,
+        609
+       ]
+      },
+      {
+       "slug": "unova2-grimsley",
+       "name": "Grimsley",
+       "type": "dark",
+       "level": 70,
+       "team": [
+        510,
+        560,
+        553,
+        625
+       ]
+      },
+      {
+       "slug": "unova2-caitlin",
+       "name": "Caitlin",
+       "type": "psychic",
+       "level": 80,
+       "team": [
+        518,
+        561,
+        579,
+        576
+       ]
+      },
+      {
+       "slug": "unova2-marshal",
+       "name": "Marshal",
+       "type": "fighting",
+       "level": 90,
+       "team": [
+        538,
+        539,
+        620,
+        534
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "unova2-iris",
+      "name": "Iris",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       635,
+       621,
+       306,
+       567,
+       131,
+       612
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "kalos",
+   "circuits": [
+    {
+     "id": "kalos",
+     "name": "Kalos",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "kalos-viola",
+       "name": "Viola",
+       "type": "bug",
+       "level": 15,
+       "team": [
+        283,
+        666
+       ]
+      },
+      {
+       "slug": "kalos-grant",
+       "name": "Grant",
+       "type": "rock",
+       "level": 22,
+       "team": [
+        698,
+        696
+       ]
+      },
+      {
+       "slug": "kalos-korrina",
+       "name": "Korrina",
+       "type": "fighting",
+       "level": 28,
+       "team": [
+        619,
+        67,
+        701
+       ]
+      },
+      {
+       "slug": "kalos-ramos",
+       "name": "Ramos",
+       "type": "grass",
+       "level": 35,
+       "team": [
+        189,
+        70,
+        673
+       ]
+      },
+      {
+       "slug": "kalos-clemont",
+       "name": "Clemont",
+       "type": "electric",
+       "level": 44,
+       "team": [
+        587,
+        82,
+        695
+       ]
+      },
+      {
+       "slug": "kalos-valerie",
+       "name": "Valerie",
+       "type": "fairy",
+       "level": 50,
+       "team": [
+        303,
+        122,
+        700
+       ]
+      },
+      {
+       "slug": "kalos-olympia",
+       "name": "Olympia",
+       "type": "psychic",
+       "level": 55,
+       "team": [
+        561,
+        199,
+        678
+       ]
+      },
+      {
+       "slug": "kalos-wulfric",
+       "name": "Wulfric",
+       "type": "ice",
+       "level": 60,
+       "team": [
+        460,
+        615,
+        713
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "kalos-malva",
+       "name": "Malva",
+       "type": "fire",
+       "level": 65,
+       "team": [
+        668,
+        324,
+        609,
+        663
+       ]
+      },
+      {
+       "slug": "kalos-siebold",
+       "name": "Siebold",
+       "type": "water",
+       "level": 70,
+       "team": [
+        693,
+        121,
+        130,
+        689
+       ]
+      },
+      {
+       "slug": "kalos-wikstrom",
+       "name": "Wikstrom",
+       "type": "steel",
+       "level": 80,
+       "team": [
+        707,
+        476,
+        212,
+        681
+       ]
+      },
+      {
+       "slug": "kalos-drasna",
+       "name": "Drasna",
+       "type": "dragon",
+       "level": 90,
+       "team": [
+        691,
+        334,
+        621,
+        715
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "kalos-diantha",
+      "name": "Diantha",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       701,
+       706,
+       699,
+       711,
+       692,
+       282
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alola",
+   "circuits": [
+    {
+     "id": "alola",
+     "name": "Alola",
+     "gymLabel": "Provas Insulares",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "alola-ilima",
+       "name": "Ilima",
+       "type": "normal",
+       "level": 15,
+       "team": [
+        734,
+        735
+       ]
+      },
+      {
+       "slug": "alola-lana",
+       "name": "Lana",
+       "type": "water",
+       "level": 22,
+       "team": [
+        751,
+        752
+       ]
+      },
+      {
+       "slug": "alola-kiawe",
+       "name": "Kiawe",
+       "type": "fire",
+       "level": 28,
+       "team": [
+        757,
+        758
+       ]
+      },
+      {
+       "slug": "alola-mallow",
+       "name": "Mallow",
+       "type": "grass",
+       "level": 35,
+       "team": [
+        753,
+        754
+       ]
+      },
+      {
+       "slug": "alola-sophocles",
+       "name": "Sophocles",
+       "type": "electric",
+       "level": 44,
+       "team": [
+        737,
+        738
+       ]
+      },
+      {
+       "slug": "alola-acerola-trial",
+       "name": "Acerola",
+       "type": "ghost",
+       "level": 50,
+       "team": [
+        769,
+        770,
+        778
+       ]
+      },
+      {
+       "slug": "alola-mina",
+       "name": "Mina",
+       "type": "fairy",
+       "level": 55,
+       "team": [
+        742,
+        743,
+        764
+       ]
+      },
+      {
+       "slug": "alola-hapu",
+       "name": "Hapu",
+       "type": "ground",
+       "level": 60,
+       "team": [
+        749,
+        750,
+        770
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "alola-molayne",
+       "name": "Molayne",
+       "type": "steel",
+       "level": 65,
+       "team": [
+        227,
+        462,
+        707,
+        777,
+        476
+       ]
+      },
+      {
+       "slug": "alola-olivia",
+       "name": "Olivia",
+       "type": "rock",
+       "level": 70,
+       "team": [
+        348,
+        476,
+        713,
+        703,
+        745
+       ]
+      },
+      {
+       "slug": "alola-acerola",
+       "name": "Acerola",
+       "type": "ghost",
+       "level": 80,
+       "team": [
+        354,
+        478,
+        609,
+        778,
+        781
+       ]
+      },
+      {
+       "slug": "alola-kahili",
+       "name": "Kahili",
+       "type": "flying",
+       "level": 90,
+       "team": [
+        628,
+        741,
+        715,
+        227,
+        733
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "alola-hau",
+      "name": "Hau",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       26,
+       136,
+       715,
+       128,
+       745,
+       724
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "galar",
+   "circuits": [
+    {
+     "id": "galar",
+     "name": "Galar",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Copa dos Campeões",
+     "gyms": [
+      {
+       "slug": "galar-milo",
+       "name": "Milo",
+       "type": "grass",
+       "level": 15,
+       "team": [
+        829,
+        830
+       ]
+      },
+      {
+       "slug": "galar-nessa",
+       "name": "Nessa",
+       "type": "water",
+       "level": 22,
+       "team": [
+        118,
+        846,
+        834
+       ]
+      },
+      {
+       "slug": "galar-kabu",
+       "name": "Kabu",
+       "type": "fire",
+       "level": 28,
+       "team": [
+        38,
+        59,
+        851
+       ]
+      },
+      {
+       "slug": "galar-bea",
+       "name": "Bea",
+       "type": "fighting",
+       "level": 35,
+       "team": [
+        237,
+        675,
+        865,
+        68
+       ]
+      },
+      {
+       "slug": "galar-opal",
+       "name": "Opal",
+       "type": "fairy",
+       "level": 44,
+       "team": [
+        110,
+        303,
+        468,
+        869
+       ]
+      },
+      {
+       "slug": "galar-gordie",
+       "name": "Gordie",
+       "type": "rock",
+       "level": 50,
+       "team": [
+        689,
+        213,
+        874,
+        839
+       ]
+      },
+      {
+       "slug": "galar-piers",
+       "name": "Piers",
+       "type": "dark",
+       "level": 55,
+       "team": [
+        560,
+        687,
+        435,
+        862
+       ]
+      },
+      {
+       "slug": "galar-raihan",
+       "name": "Raihan",
+       "type": "dragon",
+       "level": 60,
+       "team": [
+        526,
+        330,
+        844,
+        884
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "galar-marnie",
+       "name": "Marnie",
+       "type": "dark",
+       "level": 65,
+       "team": [
+        510,
+        560,
+        877,
+        454,
+        861
+       ]
+      },
+      {
+       "slug": "galar-hop",
+       "name": "Hop",
+       "type": "normal",
+       "level": 70,
+       "team": [
+        832,
+        823,
+        871,
+        143,
+        815
+       ]
+      },
+      {
+       "slug": "galar-bede",
+       "name": "Bede",
+       "type": "fairy",
+       "level": 80,
+       "team": [
+        282,
+        303,
+        858,
+        869
+       ]
+      },
+      {
+       "slug": "galar-raihan-cup",
+       "name": "Raihan",
+       "type": "dragon",
+       "level": 90,
+       "team": [
+        330,
+        844,
+        776,
+        884,
+        526
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "galar-leon",
+      "name": "Leon",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       681,
+       887,
+       464,
+       812,
+       537,
+       6
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "paldea",
+   "circuits": [
+    {
+     "id": "paldea",
+     "name": "Paldea",
+     "gymLabel": "Ginásios",
+     "eliteLabel": "Elite dos 4",
+     "gyms": [
+      {
+       "slug": "paldea-katy",
+       "name": "Katy",
+       "type": "bug",
+       "level": 15,
+       "team": [
+        919,
+        917,
+        918
+       ]
+      },
+      {
+       "slug": "paldea-brassius",
+       "name": "Brassius",
+       "type": "grass",
+       "level": 22,
+       "team": [
+        548,
+        928,
+        185
+       ]
+      },
+      {
+       "slug": "paldea-iono",
+       "name": "Iono",
+       "type": "electric",
+       "level": 28,
+       "team": [
+        940,
+        939,
+        404,
+        429
+       ]
+      },
+      {
+       "slug": "paldea-kofu",
+       "name": "Kofu",
+       "type": "water",
+       "level": 35,
+       "team": [
+        976,
+        961,
+        740
+       ]
+      },
+      {
+       "slug": "paldea-larry",
+       "name": "Larry",
+       "type": "normal",
+       "level": 44,
+       "team": [
+        775,
+        982,
+        398
+       ]
+      },
+      {
+       "slug": "paldea-ryme",
+       "name": "Ryme",
+       "type": "ghost",
+       "level": 50,
+       "team": [
+        778,
+        354,
+        972,
+        849
+       ]
+      },
+      {
+       "slug": "paldea-tulip",
+       "name": "Tulip",
+       "type": "psychic",
+       "level": 55,
+       "team": [
+        981,
+        282,
+        956,
+        671
+       ]
+      },
+      {
+       "slug": "paldea-grusha",
+       "name": "Grusha",
+       "type": "ice",
+       "level": 60,
+       "team": [
+        873,
+        614,
+        975,
+        334
+       ]
+      }
+     ],
+     "elite": [
+      {
+       "slug": "paldea-rika",
+       "name": "Rika",
+       "type": "ground",
+       "level": 65,
+       "team": [
+        340,
+        323,
+        232,
+        51,
+        980
+       ]
+      },
+      {
+       "slug": "paldea-poppy",
+       "name": "Poppy",
+       "type": "steel",
+       "level": 70,
+       "team": [
+        879,
+        437,
+        462,
+        212,
+        959
+       ]
+      },
+      {
+       "slug": "paldea-larry-elite",
+       "name": "Larry",
+       "type": "flying",
+       "level": 80,
+       "team": [
+        357,
+        741,
+        334,
+        373,
+        398
+       ]
+      },
+      {
+       "slug": "paldea-hassel",
+       "name": "Hassel",
+       "type": "dragon",
+       "level": 90,
+       "team": [
+        621,
+        612,
+        691,
+        715,
+        998
+       ]
+      }
+     ],
+     "champion": {
+      "slug": "paldea-geeta",
+      "name": "Geeta",
+      "type": "champion",
+      "level": 100,
+      "team": [
+       956,
+       673,
+       976,
+       713,
+       983,
+       970
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

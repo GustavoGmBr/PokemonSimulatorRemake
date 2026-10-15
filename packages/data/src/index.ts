@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { buildTypeChart, type Item, type Move, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
+import { buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
 
 export const CATALOG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../catalog');
 
@@ -14,6 +14,9 @@ export interface GameData {
   movesByName: Map<string, Move>;
   itemsByName: Map<string, Item>;
   typeChart: TypeChart;
+  /** ginásios, Elite dos 4 e campeões de todas as regiões */
+  challenges: Challenge[];
+  challengesById: Map<string, Challenge>;
 }
 
 function readJson<T>(name: string): T {
@@ -33,6 +36,7 @@ export function loadGameData(): GameData {
   const moves = readJson<Move[]>('moves');
   const types = readJson<TypeInfo[]>('types');
   const items = readJson<Item[]>('items');
+  const challenges = listChallenges(readJson<ChallengeCatalog>('challenges'));
   cached = {
     species,
     moves,
@@ -42,6 +46,8 @@ export function loadGameData(): GameData {
     movesByName: new Map(moves.map((entry) => [entry.name, entry])),
     itemsByName: new Map(items.map((entry) => [entry.name, entry])),
     typeChart: buildTypeChart(types),
+    challenges,
+    challengesById: new Map(challenges.map((entry) => [entry.id, entry])),
   };
   return cached;
 }

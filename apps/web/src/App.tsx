@@ -5,6 +5,7 @@ import { MenuScreen, type MenuId } from './screens/MenuScreen.tsx';
 import { PcScreen } from './screens/PcScreen.tsx';
 import { PokedexScreen } from './screens/PokedexScreen.tsx';
 import { WildScreen } from './screens/WildScreen.tsx';
+import { ChallengesScreen } from './screens/ChallengesScreen.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
@@ -18,6 +19,7 @@ export type Screen =
   | { name: 'pokedex'; saveId: string }
   | { name: 'wild'; saveId: string }
   | { name: 'shop'; saveId: string }
+  | { name: 'challenges'; saveId: string }
   | { name: 'options'; back: Screen };
 
 function saveIdOf(screen: Screen): string | null {
@@ -60,6 +62,7 @@ export function App() {
           onOpenOptions={() => setScreen({ name: 'options', back: { name: 'menu', saveId, focus: 'options' } })}
           onOpenWild={() => setScreen({ name: 'wild', saveId })}
           onOpenShop={() => setScreen({ name: 'shop', saveId })}
+          onOpenBattle={() => setScreen({ name: 'challenges', saveId })}
         />
       );
     }
@@ -71,6 +74,8 @@ export function App() {
       return <WildScreen key={`wild-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'wild' })} />;
     case 'shop':
       return <ShopScreen key={`shop-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'shop' })} />;
+    case 'challenges':
+      return <ChallengesScreen key={`ch-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'battle' })} />;
     case 'options':
       return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }

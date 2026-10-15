@@ -11,5 +11,6 @@ export * from './evolution.ts';
 export * from './capture.ts';
 export * from './battle.ts';
 export * from './wild.ts';
+export * from './challenges.ts';
 export * from './items.ts';
 export type * from './contracts.ts';

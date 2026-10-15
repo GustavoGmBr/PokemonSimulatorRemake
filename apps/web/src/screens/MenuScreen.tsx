@@ -11,7 +11,7 @@ export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'sh
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
-  { id: 'battle', label: 'Batalhar', info: 'Ginásios, treinadores e campeões.', phase: 'Fase 2' },
+  { id: 'battle', label: 'Batalhar', info: 'Ginásios, Elite dos 4, campeões e treinadores aleatórios.' },
   { id: 'wild', label: 'Selvagens', info: 'Procure POKÉMON no mapa, gire, escolha e capture.' },
   { id: 'pokedex', label: 'Pokédex', info: 'Os 1.025 POKÉMON das nove regiões.' },
   { id: 'team', label: 'Equipe', info: 'Veja os POKÉMON que viajam com você.' },
@@ -43,9 +43,10 @@ interface Props {
   onOpenOptions: () => void;
   onOpenWild: () => void;
   onOpenShop: () => void;
+  onOpenBattle: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
@@ -102,6 +103,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     const entry = menu.find((m) => m.id === id);
     if (id === 'exit') return onExit();
     if (id === 'wild') return onOpenWild();
+    if (id === 'battle') return onOpenBattle();
     if (id === 'shop') return onOpenShop();
     if (id === 'devkit') {
       return void act(async () => {
@@ -352,7 +354,7 @@ function JourneyPanel({ save }: { save: SaveDetail }) {
       <div style={{ height: 12, border: '3px solid var(--ink)', background: '#e0d8b8', marginTop: 6 }}>
         <div style={{ height: '100%', width: `${(Math.min(save.badges, 8) / 8) * 100}%`, background: 'var(--red)' }} />
       </div>
-      <p className="gb-hint" style={{ margin: '8px 0 0' }}>As batalhas de ginásio chegam na Fase 2.</p>
+      <p className="gb-hint" style={{ margin: '8px 0 0' }}>Enfrente os líderes em BATALHAR.</p>
     </section>
   );
 }

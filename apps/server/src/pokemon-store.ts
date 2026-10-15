@@ -289,6 +289,10 @@ export function createPokemonStore(db: Db) {
           const row = db.prepare('SELECT * FROM pokemon WHERE id = ? AND save_id = ?').get(c.ref, saveId) as PokemonRow | undefined;
           if (!row) continue;
           const friendship = c.fought ? Math.min(255, row.friendship + 5) : row.friendship;
+          if (c.capped) {
+            db.prepare('UPDATE pokemon SET friendship = ? WHERE id = ?').run(friendship, row.id);
+            continue;
+          }
           const slots = c.moves.map((slot) => ({ ...slot, pp: slot.maxPp }));
           db.prepare('UPDATE pokemon SET level = ?, exp = ?, moves = ?, friendship = ? WHERE id = ?').run(c.level, c.exp, JSON.stringify(slots), friendship, row.id);
           for (const move of c.pendingMoves) db.prepare('INSERT OR IGNORE INTO pending_moves (pokemon_id, move) VALUES (?, ?)').run(row.id, move);
