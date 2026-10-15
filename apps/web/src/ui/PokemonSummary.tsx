@@ -10,7 +10,7 @@ export function locationLabel(mon: PokemonView): string {
   return mon.location.kind === 'team' ? `Equipe · posição ${mon.location.slot + 1}` : `Caixa ${mon.location.box + 1} · vaga ${mon.location.slot + 1}`;
 }
 
-type Panel = null | 'evolve' | 'learn' | 'slots' | { learn: string } | { teach: number };
+type Panel = null | 'evolve' | 'learn' | 'slots' | 'tms' | { learn: string } | { teach: number };
 
 /**
  * Ficha de um Pokémon do jogador: sprite, atributos, IVs e golpes.
@@ -37,6 +37,13 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     setBusy(true);
     try { await job(); } catch (e) { setNote((e as Error).message); playSound('error'); } finally { setBusy(false); }
   };
+
+  const openTms = () => run(async () => {
+    if (!saveId) return;
+    setOptions(await api.moveOptions(saveId, mon.id));
+    setPanel('tms');
+    playSound('confirm');
+  });
 
   const openSlots = () => run(async () => {
     if (!saveId) return;
@@ -66,12 +73,20 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     ...(mon.moves.length < 4 ? [{ id: String(mon.moves.length), label: 'Aprender em vaga livre', extra: `golpe ${mon.moves.length + 1}` } as MenuItem] : []),
     { id: '__back', label: 'Cancelar' },
   ];
-  const teachItems: MenuItem[] = [
-    ...(options?.learnable ?? []).filter((item) => !item.known).map((item): MenuItem => ({
+  const tmItems: MenuItem[] = [
+    ...(options?.learnable ?? []).filter((item) => item.source === 'machine').map((item): MenuItem => ({
       id: item.move.name,
       label: item.move.displayName,
-      extra: `${item.move.category === 'status' ? 'Status' : `Poder ${item.move.power}`} · ${item.source === 'level' ? `Nv${item.level}` : item.price > 0 ? `TM ₽ ${item.price.toLocaleString('pt-BR')}` : 'TM ✓'}`,
-      disabled: item.price > (options?.money ?? 0),
+      extra: `${item.move.category === 'status' ? 'Status' : `Poder ${item.move.power}`} · ${item.unlocked ? 'comprada ✓' : `₽ ${item.price.toLocaleString('pt-BR')}`}`,
+      disabled: item.unlocked || item.price > (options?.money ?? 0),
+    })),
+    { id: '__back', label: 'Voltar' },
+  ];
+  const teachItems: MenuItem[] = [
+    ...(options?.learnable ?? []).filter((item) => !item.known && item.unlocked).map((item): MenuItem => ({
+      id: item.move.name,
+      label: item.move.displayName,
+      extra: `${item.move.category === 'status' ? 'Status' : `Poder ${item.move.power}`} · ${item.source === 'level' ? `Nv${item.level}` : 'TM'}`,
     })),
     { id: '__back', label: 'Voltar' },
   ];
@@ -135,6 +150,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                   {canEvolve ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('evolve')}>Evoluir (E)</button> : null}
                   {canLearn ? <button type="button" className="gb-button gb-button--blue" onClick={() => setPanel('learn')}>Novos golpes ({mon.pendingMoves.length}) (G)</button> : null}
                   <button type="button" className="gb-button" disabled={busy} onClick={() => void openSlots()}>Trocar golpes (F)</button>
+                  <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void openTms()}>Comprar TMs</button>
                 </div>
               ) : null}
               {panel === 'evolve' ? (
@@ -162,9 +178,25 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                   />
                 </>
               ) : null}
+              {panel === 'tms' && saveId ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>TMs que {mon.name} pode aprender. Comprada, a TM fica com ele para sempre (depois ensine em "Trocar golpes"). Dinheiro: ₽ {(options?.money ?? 0).toLocaleString('pt-BR')}.</p>
+                  <Menu label="TMs" items={tmItems} active={!busy} onBack={() => setPanel(null)}
+                    onSelect={(id) => {
+                      if (id === '__back') { setPanel(null); return; }
+                      void run(async () => {
+                        const next = await api.buyTm(saveId, mon.id, id);
+                        playSound('save');
+                        setOptions(next);
+                        setNote(`TM de ${next.learnable.find((item) => item.move.name === id)?.move.displayName ?? id} comprada!`);
+                      });
+                    }}
+                  />
+                </>
+              ) : null}
               {teachSlot !== null && saveId ? (
                 <>
-                  <p style={{ margin: '0 0 6px' }}>Novo golpe para a vaga {teachSlot + 1}. Nível = já aprendido (grátis); TM = comprada uma vez e vale para sempre. Dinheiro: ₽ {(options?.money ?? 0).toLocaleString('pt-BR')}.</p>
+                  <p style={{ margin: '0 0 6px' }}>Novo golpe para a vaga {teachSlot + 1}. Nível = já aprendido; TM = as que você comprou para ele. Dinheiro: ₽ {(options?.money ?? 0).toLocaleString('pt-BR')}.</p>
                   <Menu label="Golpes permitidos" items={teachItems} active={!busy} onBack={() => setPanel('slots')}
                     onSelect={(id) => {
                       if (id === '__back') { setPanel('slots'); return; }

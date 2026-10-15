@@ -101,8 +101,9 @@ packages/
      **Sem PP:** os golpes são ilimitados. Ao fim da batalha você volta ao mapa; só o Pokémon derrotado ou
      capturado sai dele (limpe o mapa inteiro e gire para renovar). A tela de Selvagens mostra sua equipe.
      Golpes têm atalho **1–4** na batalha; **Opções → Controles** permite trocar todas as teclas.
-     **Trocar golpes** (F no perfil): golpes de nível já alcançados são grátis; golpes de TM permitidos
-     para a espécie são comprados uma vez (por save) e valem para sempre.
+     **Perfil do Pokémon:** "Comprar TMs" lista as TMs que a espécie pode aprender (status ₽ 1.500; dano
+     25 × poder, mín. ₽ 1.000); a TM comprada fica com aquele Pokémon. "Trocar golpes" (F) ensina golpes de
+     nível já alcançado (grátis) ou TMs que ele já tem, em qualquer vaga.
      Tela retrô com texto digitando, HP descendo, piscadas, XP, e animações de golpe por tipo.
      **Evolução é manual:** botão "Evoluir" no perfil do Pokémon da equipe (nível, amizade, horário,
      golpe de tipo; pedras/troca/local ficam para depois).

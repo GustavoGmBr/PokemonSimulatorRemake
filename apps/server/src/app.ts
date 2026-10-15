@@ -99,6 +99,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .post('/api/saves/:id/battle/act', ({ params, body }) => battle.act(params.id as string, body))
     .post('/api/saves/:id/pokemon/:pid/evolve', ({ params, body }) => store.evolve(params.id as string, params.pid as string, (body as { speciesId?: unknown } | null)?.speciesId))
     .get('/api/saves/:id/pokemon/:pid/moves', ({ params }) => store.moveOptions(params.id as string, params.pid as string))
+    .post('/api/saves/:id/pokemon/:pid/tm', ({ params, body }) => store.buyTm(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/teach', ({ params, body }) => store.teachMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; slot?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/learn', ({ params, body }) => store.learnMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; replace?: unknown }))
     .get('/api/saves/:id/shop', ({ params }) => items.shop(params.id as string))

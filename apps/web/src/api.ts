@@ -60,6 +60,8 @@ export const api = {
   learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/learn`, { move, replace }),
   moveOptions: (id: string, pokemonId: string) => request<MoveOptions>('GET', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/moves`),
+  buyTm: (id: string, pokemonId: string, move: string) =>
+    request<MoveOptions>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/tm`, { move }),
   teachMove: (id: string, pokemonId: string, move: string, slot: number) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/teach`, { move, slot }),
   wildThrow: (id: string, ball: string) => request<ThrowBallResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/throw`, { ball }),

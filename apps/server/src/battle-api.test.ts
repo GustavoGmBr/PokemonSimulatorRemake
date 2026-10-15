@@ -182,7 +182,7 @@ test('mapa limpo: derrotar/capturar todos deixa o mapa vazio até girar', async 
   assert.equal(spun.board?.slots.length, 3, 'girar traz novos Pokémon');
 });
 
-test('golpes: lista permitidos, troca por nível (grátis) e por TM (paga uma vez)', async () => {
+test('golpes: lista permitidos, troca por nível (grátis) e TM comprada no Pokémon', async () => {
   const { save, url } = await setup();
   const mon = save.team[0] as PokemonView;
   db.prepare('UPDATE pokemon SET level = 40 WHERE id = ?').run(mon.id);
@@ -197,16 +197,18 @@ test('golpes: lista permitidos, troca por nível (grátis) e por TM (paga uma ve
   assert.equal(swapped.status, 201);
   assert.equal(swapped.json.moves[0]?.name, free?.move.name);
   assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: free?.move.name, slot: 1 })).status, 400, 'já conhece');
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 })).status, 400, 'TM não comprada');
   db.prepare('UPDATE saves SET money = 0 WHERE id = ?').run(save.id);
-  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 })).status, 400, 'sem dinheiro');
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/tm`, { move: tm?.move.name })).status, 400, 'sem dinheiro');
   db.prepare('UPDATE saves SET money = 100000 WHERE id = ?').run(save.id);
-  const bought = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 });
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/tm`, { move: free?.move.name })).status, 400, 'golpe de nível não é TM');
+  const bought = await call<{ learnable: { move: { name: string }; unlocked: boolean }[] }>('POST', `${url}/pokemon/${mon.id}/tm`, { move: tm?.move.name });
   assert.equal(bought.status, 201);
-  const money = (db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money;
-  assert.equal(money, 100000 - (tm?.price ?? 0));
-  // trocar de volta e reaprender a TM não cobra de novo
-  await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: free?.move.name === bought.json.moves[0]?.name ? opts.learnable.find((i) => i.source === 'level' && i.move.name !== free?.move.name && !i.known)?.move.name : free?.move.name, slot: 1 });
-  const again = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 });
-  assert.equal(again.status, 201);
-  assert.equal((db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money, 100000 - (tm?.price ?? 0), 'TM comprada vale para sempre');
+  assert.ok(bought.json.learnable.find((i) => i.move.name === tm?.move.name)?.unlocked);
+  assert.equal((db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money, 100000 - (tm?.price ?? 0));
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/tm`, { move: tm?.move.name })).status, 400, 'não compra duas vezes');
+  const taught = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 });
+  assert.equal(taught.status, 201);
+  assert.equal(taught.json.moves[1]?.name, tm?.move.name);
+  assert.equal((db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money, 100000 - (tm?.price ?? 0), 'ensinar não cobra de novo');
 });

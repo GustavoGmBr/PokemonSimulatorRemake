@@ -104,7 +104,7 @@ export function createPokemonStore(db: Db) {
     const species = data.speciesById.get(row.species_id);
     if (!species) throw notFound('Espécie desconhecida.');
     const known = new Set((JSON.parse(row.moves) as MoveSlot[]).map((slot) => slot.name));
-    const unlocked = new Set((db.prepare('SELECT move FROM tm_unlocked WHERE save_id = ?').all(saveId) as { move: string }[]).map((r) => r.move));
+    const unlocked = new Set((db.prepare('SELECT move FROM tm_owned WHERE pokemon_id = ?').all(row.id) as { move: string }[]).map((r) => r.move));
     const seen = new Map<string, LearnableMove>();
     for (const entry of species.learnset) {
       const move = data.movesByName.get(entry.move);
@@ -338,6 +338,21 @@ export function createPokemonStore(db: Db) {
 
     moveOptions: (saveId: string, pokemonId: string): MoveOptions => moveOptionsOf(saveId, pokemonId),
 
+    /** Compra uma TM para este Pokémon (fica com ele para sempre; ainda precisa ser ensinada numa vaga). */
+    buyTm(saveId: string, pokemonId: string, input: { move?: unknown }): MoveOptions {
+      const name = typeof input.move === 'string' ? input.move : '';
+      const options = moveOptionsOf(saveId, pokemonId);
+      const choice = options.learnable.find((item) => item.move.name === name && item.source === 'machine');
+      if (!choice) throw badRequest('Esse POKÉMON não aprende esse golpe por TM.');
+      if (choice.unlocked) throw badRequest('Ele já tem essa TM.');
+      if (options.money < choice.price) throw badRequest(`Dinheiro insuficiente: essa TM custa ₽ ${choice.price.toLocaleString('pt-BR')}.`);
+      transaction(db, () => {
+        db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(choice.price, new Date().toISOString(), saveId);
+        db.prepare('INSERT OR IGNORE INTO tm_owned (pokemon_id, move) VALUES (?, ?)').run(pokemonId, name);
+      });
+      return moveOptionsOf(saveId, pokemonId);
+    },
+
     /** Troca o golpe de uma vaga (ou preenche uma vaga livre) por um golpe permitido; TM novo é comprado na hora. */
     teachMove(saveId: string, pokemonId: string, input: { move?: unknown; slot?: unknown }): PokemonView {
       const name = typeof input.move === 'string' ? input.move : '';
@@ -352,12 +367,8 @@ export function createPokemonStore(db: Db) {
       const index = Number(input.slot);
       const max = Math.min(4, slots.length + 1);
       if (!Number.isInteger(index) || index < 0 || index >= max) throw badRequest('Escolha uma vaga de golpe.');
+      if (!choice.unlocked) throw badRequest(`Compre a TM de ${move.displayName} para este POKÉMON primeiro.`);
       transaction(db, () => {
-        if (choice.price > 0) {
-          if (options.money < choice.price) throw badRequest(`Dinheiro insuficiente: a TM de ${move.displayName} custa ₽ ${choice.price.toLocaleString('pt-BR')}.`);
-          db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(choice.price, new Date().toISOString(), saveId);
-        }
-        if (choice.source === 'machine') db.prepare('INSERT OR IGNORE INTO tm_unlocked (save_id, move) VALUES (?, ?)').run(saveId, name);
         slots[index] = toMoveSlot(move);
         db.prepare('UPDATE pokemon SET moves = ? WHERE id = ?').run(JSON.stringify(slots), row.id);
         db.prepare('DELETE FROM pending_moves WHERE pokemon_id = ? AND move = ?').run(row.id, name);
