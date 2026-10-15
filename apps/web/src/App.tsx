@@ -6,7 +6,6 @@ import { PcScreen } from './screens/PcScreen.tsx';
 import { PokedexScreen } from './screens/PokedexScreen.tsx';
 import { WildScreen } from './screens/WildScreen.tsx';
 import { ChallengesScreen } from './screens/ChallengesScreen.tsx';
-import { ItemDexScreen } from './screens/ItemDexScreen.tsx';
 import { CasinoScreen } from './screens/CasinoScreen.tsx';
 import { TournamentScreen } from './screens/TournamentScreen.tsx';
 import { MissionsScreen } from './screens/MissionsScreen.tsx';
@@ -26,7 +25,6 @@ export type Screen =
   | { name: 'shop'; saveId: string }
   | { name: 'challenges'; saveId: string }
   | { name: 'casino'; saveId: string }
-  | { name: 'itemdex'; saveId: string }
   | { name: 'tournament'; saveId: string }
   | { name: 'missions'; saveId: string }
   | { name: 'market'; saveId: string }
@@ -74,7 +72,6 @@ export function App() {
           onOpenShop={() => setScreen({ name: 'shop', saveId })}
           onOpenBattle={() => setScreen({ name: 'challenges', saveId })}
           onOpenCasino={() => setScreen({ name: 'casino', saveId })}
-          onOpenItemDex={() => setScreen({ name: 'itemdex', saveId })}
           onOpenTournament={() => setScreen({ name: 'tournament', saveId })}
           onOpenMissions={() => setScreen({ name: 'missions', saveId })}
           onOpenMarket={() => setScreen({ name: 'market', saveId })}
@@ -91,8 +88,6 @@ export function App() {
       return <ShopScreen key={`shop-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'shop' })} />;
     case 'challenges':
       return <ChallengesScreen key={`ch-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'battle' })} />;
-    case 'itemdex':
-      return <ItemDexScreen key={`id-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'itemdex' })} />;
     case 'casino':
       return <CasinoScreen key={`cs-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'casino' })} />;
     case 'tournament':

@@ -1,6 +1,10 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.13
+## Pokémon Simulator (remake) 2.0.0-alpha.14
 
-Primeira distribuição para Windows.
+- Mochila dividida em seções (Cura, Bolas, Treino, Evolução, Formas, Outros), trocadas com ←/→.
+- Caça-níqueis com giro automático.
+- Mercado com 16 Pokémon; menu sem o Catálogo de itens e sem as entradas [TESTE].
+
+### Distribuição para Windows (alpha.13)
 
 - **Executável**: extraia o ZIP completo e abra `PokemonSimulator.exe`. O Node.js já vem incluído; não precisa instalar nada.
 - **Sprites**: baixadas em segundo plano na primeira abertura (a barra de status mostra o progresso); enquanto isso o jogo busca cada imagem na origem. Depois de baixadas, funciona sem internet.

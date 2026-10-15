@@ -65,6 +65,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const [rouletteGroup, setRouletteGroup] = useState<RouletteGroup | ''>('');
   const [pick, setPick] = useState(0);
   const [chipAmount, setChipAmount] = useState(100);
+  const [auto, setAuto] = useState(false);
   const timer = useRef<number | null>(null);
 
   const apply = (next: CasinoState) => { setState(next); setRound(next.round); if (next.round) setTab(next.round.game); };
@@ -74,6 +75,15 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useKeys((key) => { if (key === 'back') { playSound('back'); onBack(); } }, !busy && !round && state !== null);
+
+  // Giro automático do caça-níqueis: repete a mesma aposta em fichas até faltar ficha, dar erro ou o jogador parar.
+  useEffect(() => {
+    if (!auto) return;
+    if (tab !== 'slots' || mode !== 'chips' || (state && state.chips < bet)) { setAuto(false); return; }
+    if (busy) return;
+    const id = window.setTimeout(() => void play('slots'), 700);
+    return () => window.clearTimeout(id);
+  }, [auto, busy, tab, mode, bet, state?.chips]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stakeBody = () => (mode === 'pokemon' && mon ? { pokemonId: mon.id } : { bet });
   const absorb = (chips: number, money: number) => setState((s) => (s ? { ...s, chips, money } : s));
@@ -106,7 +116,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     if (mon && r.stake.pokemon?.lost) setMon(null);
   };
 
-  const fail = (e: unknown) => { setMessage((e as Error).message); playSound('error'); setBusy(false); };
+  const fail = (e: unknown) => { setMessage((e as Error).message); playSound('error'); setAuto(false); setBusy(false); };
 
   const play = async (game: CasinoGame, extra: Record<string, unknown> = {}) => {
     if (mode === 'pokemon' && !mon) { setMessage('Escolha um Pokémon para apostar.'); return; }
@@ -222,7 +232,10 @@ export function CasinoScreen({ saveId, onBack }: Props) {
         <div className="gb-slotgrid" aria-label="Caça-níqueis">{(grid ?? Array<string>(9).fill('poke-ball')).map((s, i) => <SlotCell key={i} symbol={s} />)}</div>
         {last?.detail.game === 'slots' && last.detail.lines.length > 0 ? <p className="gb-muted" style={{ margin: 0 }}>{last.detail.lines.map((l) => `linha ${l.line + 1}: ${MULT(l.multiplier)}`).join(' · ')}</p> : null}
         {stakeBox}
-        <button type="button" className="gb-button" disabled={busy} onClick={() => void play('slots')}>Girar</button>
+        <div className="gb-row" style={{ gap: 6 }}>
+          <button type="button" className="gb-button" disabled={busy || auto} onClick={() => void play('slots')}>Girar</button>
+          <button type="button" className="gb-button" disabled={mode !== 'chips' || (!auto && state.chips < bet)} aria-pressed={auto} onClick={() => setAuto((on) => !on)}>{auto ? 'Parar automático' : 'Giro automático'}</button>
+        </div>
       </>
     );
   } else if (tab === 'roulette') {

@@ -24,7 +24,7 @@ interface Stored {
   favorite: boolean;
 }
 
-/** Mercado de Pokémon (12 à venda, renova por hora, favoritos ficam fixos) e venda de Pokémon da coleção. */
+/** Mercado de Pokémon (16 à venda, renova por hora, favoritos ficam fixos) e venda de Pokémon da coleção. */
 export function createMarketService(db: Db, store: PokemonStore, inventory: Inventory, journal: Journal, now: () => number = Date.now) {
   const data = loadGameData();
   const rng = rngFrom(randomInt);

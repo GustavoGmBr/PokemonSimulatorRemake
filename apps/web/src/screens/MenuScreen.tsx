@@ -8,7 +8,7 @@ import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'market' | 'itemdex' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'market' | 'missions' | 'trainer' | 'options' | 'exit';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -19,7 +19,6 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'teams', label: 'Equipes', info: 'Salve equipes com nome e monte qualquer uma com um clique.' },
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
-  { id: 'itemdex', label: 'Catálogo de itens', info: 'Todos os ~2.200 itens do PokéAPI, com o que já funciona no jogo.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
@@ -28,13 +27,6 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },
   { id: 'options', label: 'Opções', info: 'Velocidade do texto e volume dos sons.' },
   { id: 'exit', label: 'Sair', info: 'Voltar para a tela de jornadas.' },
-];
-
-const DEV_MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
-  { id: 'devkit', label: '[TESTE] Kit', info: 'Dá bolas, curas e ₽ 20.000 para testar.' },
-  { id: 'devprogress', label: '[TESTE] Próximo desafio', info: 'Vence o próximo ginásio, Elite dos 4 ou campeão (libera giros, lendários, regiões e busca específica).' },
-  { id: 'devall', label: '[TESTE] Vencer tudo', info: 'Vence todos os desafios das 9 regiões.' },
-  { id: 'devhurt', label: '[TESTE] Ferir equipe', info: 'Reduz o HP da equipe para testar poções.' },
 ];
 
 interface Props {
@@ -53,24 +45,21 @@ interface Props {
   onOpenTournament: () => void;
   onOpenMissions: () => void;
   onOpenMarket: () => void;
-  onOpenItemDex: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenItemDex, onOpenMissions, onOpenMarket }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenMissions, onOpenMarket }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
   const [panel, setPanel] = useState<Panel>('overview');
   const [notice, setNotice] = useState<string | null>(welcome ?? null);
   const [selectedMon, setSelectedMon] = useState<PokemonView | null>(null);
-  const [devTools, setDevTools] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const reload = () => api.getSave(saveId).then(setSave, (e: Error) => setError(e.message));
   useEffect(() => { void reload(); }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.health().then((h) => setDevTools(h.devTools), () => setDevTools(false)); }, []);
 
-  const menu = devTools ? [...MENU.slice(0, -1), ...DEV_MENU, ...MENU.slice(-1)] : MENU;
+  const menu = MENU;
 
   /** Executa uma ação do servidor, atualiza o save e mostra o resultado num aviso. */
   const act = async (work: () => Promise<string>) => {
@@ -116,23 +105,9 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'battle') return onOpenBattle();
     if (id === 'shop') return onOpenShop();
     if (id === 'casino') return onOpenCasino();
-    if (id === 'itemdex') return onOpenItemDex();
     if (id === 'tournament') return onOpenTournament();
     if (id === 'missions') return onOpenMissions();
     if (id === 'market') return onOpenMarket();
-    if (id === 'devkit') {
-      return void act(async () => {
-        const result = await api.devKit(saveId);
-        return `[TESTE] +${result.balls} bolas, curas e ₽ 20.000.`;
-      });
-    }
-    if (id === 'devprogress' || id === 'devall') {
-      return void act(async () => {
-        const result = await api.devProgress(saveId, id === 'devall');
-        return result.granted ? `[TESTE] Desafio vencido: ${result.granted}.` : '[TESTE] Todos os desafios já foram vencidos.';
-      });
-    }
-    if (id === 'devhurt') return void act(async () => `[TESTE] ${(await api.devHurt(saveId)).hurt} POKÉMON feridos.`);
     if (id === 'team') return setPanel('team');
     if (id === 'pc') return onOpenPc();
     if (id === 'pokedex') return onOpenPokedex();
@@ -289,6 +264,19 @@ function TeamPanel({ team, active, onOpen, onBack }: {
 
 const usable = (item: string): boolean => item in HEAL_EFFECTS || isTrainingItem(item);
 
+const BAG_SECTIONS: { id: string; label: string; categories: string[] }[] = [
+  { id: 'cura', label: 'Cura', categories: ['cura'] },
+  { id: 'bolas', label: 'Bolas', categories: ['captura'] },
+  { id: 'treino', label: 'Treino', categories: ['treino', 'ivs'] },
+  { id: 'evolucao', label: 'Evolução', categories: ['evolucao'] },
+  { id: 'formas', label: 'Formas', categories: ['mega', 'primal'] },
+  { id: 'outros', label: 'Outros', categories: [] },
+];
+
+function sectionOf(category: string): string {
+  return BAG_SECTIONS.find((section) => section.categories.includes(category))?.id ?? 'outros';
+}
+
 function BagPanel({ save, paused, onBack, onUse }: {
   save: SaveDetail;
   paused: boolean;
@@ -296,17 +284,39 @@ function BagPanel({ save, paused, onBack, onUse }: {
   onUse: (item: string, mon: PokemonView) => void;
 }) {
   const [picking, setPicking] = useState<string | null>(null);
+  const [sectionId, setSectionId] = useState<string>('cura');
   const itemName = picking ? save.inventory.find((entry) => entry.item === picking)?.displayName ?? '' : '';
+  const sections = BAG_SECTIONS
+    .map((section) => ({ ...section, entries: save.inventory.filter((entry) => sectionOf(entry.category) === section.id) }))
+    .filter((section) => section.entries.length > 0);
+  const current = sections.find((section) => section.id === sectionId) ?? sections[0];
+  // Setas esquerda/direita trocam de seção (as de cima/baixo ficam com a lista).
+  useKeys((key) => {
+    if (!sections.length || (key !== 'left' && key !== 'right')) return;
+    const index = Math.max(0, sections.findIndex((section) => section.id === current?.id));
+    const next = sections[(index + (key === 'right' ? 1 : sections.length - 1)) % sections.length];
+    if (next) setSectionId(next.id);
+  }, !paused && !picking);
   return (
     <section className="gb-window" aria-labelledby="bag-title">
       <h2 id="bag-title" className="gb-title" style={{ marginBottom: 10 }}>{picking ? `Usar ${itemName} em…` : 'Mochila'}</h2>
       {save.inventory.length === 0 ? <p className="gb-muted">A mochila está vazia.</p> : null}
-      {!picking && save.inventory.length > 0 ? (
+      {!picking && sections.length > 0 ? (
+        <div className="gb-tabs" role="tablist" aria-label="Seções da mochila">
+          {sections.map((section) => (
+            <button key={section.id} type="button" role="tab" aria-selected={section.id === current?.id} className="gb-tab" onClick={() => setSectionId(section.id)}>
+              {section.label} ({section.entries.length})
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!picking && current ? (
         <Menu
-          label="Itens"
+          key={current.id}
+          label={current.label}
           active={!paused}
           onBack={onBack}
-          items={[...save.inventory].sort((a, b) => Number(usable(b.item)) - Number(usable(a.item)) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
+          items={[...current.entries].sort((a, b) => Number(usable(b.item)) - Number(usable(a.item)) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
             id: entry.item,
             label: <span className="gb-iconrow"><ItemIcon item={entry.item} size={24} />{entry.displayName}</span>,
             extra: `×${entry.quantity}`,
@@ -333,7 +343,7 @@ function BagPanel({ save, paused, onBack, onUse }: {
           }}
         />
       ) : null}
-      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>Itens esmaecidos são usados em outros lugares (bolas na captura; pedras, Mega e G-Max no perfil do POKÉMON).</p> : null}
+      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>←/→ trocam a seção. Itens esmaecidos são usados em outros lugares (bolas na captura; pedras, Mega e G-Max no perfil do POKÉMON).</p> : null}
     </section>
   );
 }
