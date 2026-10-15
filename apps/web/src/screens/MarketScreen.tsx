@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import type { MarketState } from '@pokesim/engine';
+import type { MarketState, SpeciesIndexEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
 interface Props { saveId: string; onBack: () => void }
+
+const TYPES = ['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+const isSpecial = (e: { shiny: boolean; stars: number; available: boolean }) => e.available && (e.shiny || e.stars >= 4);
 
 const time = (ms: number) => `${Math.floor(Math.max(0, ms) / 60000)} min`;
 
@@ -16,8 +19,24 @@ export function MarketScreen({ saveId, onBack }: Props) {
   const [message, setMessage] = useState('Mercado Pokémon: o estoque renova a cada hora. Fixe (📌) o que quiser guardar.');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [index, setIndex] = useState<SpeciesIndexEntry[]>([]);
+  const [fType, setFType] = useState('');
+  const [fStars, setFStars] = useState(0);
+  const [fShiny, setFShiny] = useState(false);
+  const [fGen, setFGen] = useState(0);
+  const [alert, setAlert] = useState<string | null>(null);
 
-  useEffect(() => { api.market(saveId).then(setState, (e: Error) => setError(e.message)); }, [saveId]);
+  // Avisa quando há shiny ou 4★+ à venda (ao abrir e a cada renovação).
+  const announce = (next: MarketState, label: string) => {
+    const hits = next.stock.filter(isSpecial);
+    if (hits.length === 0) { setAlert(null); return; }
+    setAlert(`${label}: ${hits.map((h) => `${h.shiny ? '✨ ' : ''}${h.name} (${'★'.repeat(h.stars)})`).join(', ')}`);
+    playSound('confirm');
+  };
+  useEffect(() => {
+    api.market(saveId).then((m) => { setState(m); announce(m, 'Destaque no estoque'); }, (e: Error) => setError(e.message));
+    api.speciesIndex().then(setIndex, () => undefined);
+  }, [saveId]);
   useKeys((key) => { if (key === 'back') { playSound('back'); onBack(); } }, !busy);
 
   if (error) return <main className="gb-screen"><div className="gb-stage"><div className="gb-window gb-window--accent gb-dialog"><p>{error}</p></div><button type="button" className="gb-button" onClick={onBack}>Voltar</button></div></main>;
@@ -27,6 +46,11 @@ export function MarketScreen({ saveId, onBack }: Props) {
     setBusy(true);
     work().catch((e: Error) => { setMessage(e.message); playSound('error'); }).finally(() => setBusy(false));
   };
+  const typesOf = new Map(index.map((x) => [x.id, x.types as string[]]));
+  const gens = [...new Set(state.stock.map((e) => e.generation))].sort((a, b) => a - b);
+  const visible = state.stock.filter((e) =>
+    (!fType || (typesOf.get(e.speciesId) ?? []).includes(fType)) && e.stars >= fStars && (!fShiny || e.shiny) && (!fGen || e.generation === fGen));
+  const filtered = fType !== '' || fStars > 0 || fShiny || fGen > 0;
   const total = state.sellable.filter((s) => picked.includes(s.id)).reduce((sum, s) => sum + s.value, 0);
 
   return (
@@ -45,12 +69,31 @@ export function MarketScreen({ saveId, onBack }: Props) {
             <>
               <div className="gb-spread" style={{ marginBottom: 8 }}>
                 <span className="gb-muted">Renova em {time(state.msLeft)}</span>
-                <button type="button" className="gb-button" disabled={busy || state.money < state.refreshPrice} onClick={() => run(async () => { setState(await api.marketRefresh(saveId)); setMessage('Estoque renovado!'); playSound('confirm'); })}>
+                <button type="button" className="gb-button" disabled={busy || state.money < state.refreshPrice} onClick={() => run(async () => { const next = await api.marketRefresh(saveId); setState(next); setMessage('Estoque renovado!'); playSound('confirm'); announce(next, 'Novo na renovação'); })}>
                   Renovar ({formatMoney(state.refreshPrice)})
                 </button>
               </div>
-              <div className="gb-teampick">
-                {state.stock.map((e) => (
+              {alert && <div className="gb-window gb-window--accent" role="alert" style={{ marginBottom: 8, padding: '6px 12px' }}>🔔 {alert}</div>}
+              <div className="gb-row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }} aria-label="Filtros">
+                <select className="gb-button" aria-label="Tipo" value={fType} onChange={(ev) => setFType(ev.target.value)}>
+                  <option value="">Todos os tipos</option>
+                  {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select className="gb-button" aria-label="Estrelas" value={fStars} onChange={(ev) => setFStars(Number(ev.target.value))}>
+                  <option value={0}>Qualquer ★</option>
+                  {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}★ ou mais</option>)}
+                </select>
+                <select className="gb-button" aria-label="Região" value={fGen} onChange={(ev) => setFGen(Number(ev.target.value))}>
+                  <option value={0}>Todas as regiões</option>
+                  {gens.map((g) => <option key={g} value={g}>Geração {g}</option>)}
+                </select>
+                <button type="button" className="gb-button" aria-pressed={fShiny} onClick={() => setFShiny((v) => !v)}>✨ Shiny</button>
+                {filtered && <button type="button" className="gb-button" onClick={() => { setFType(''); setFStars(0); setFShiny(false); setFGen(0); }}>Limpar</button>}
+                {filtered && <span className="gb-muted">{visible.length}/{state.stock.length}</span>}
+              </div>
+              {visible.length === 0 && <p className="gb-muted">Nenhum Pokémon com esses filtros.</p>}
+              <div className="gb-teampick" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+                {visible.map((e) => (
                   <div key={e.id} className={`gb-teampick__mon${e.available ? '' : ' is-sold'}`}>
                     <Sprite speciesId={e.speciesId} shiny={e.shiny} alt={e.name} size={56} />
                     <span>{e.shiny ? '✨ ' : ''}{e.name}</span>

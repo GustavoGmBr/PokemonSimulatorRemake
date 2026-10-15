@@ -676,3 +676,7 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-minibar span { display: block; height: 100%; background: var(--green); }
 .gb-history { list-style: none; margin: 0; padding: 0; max-height: 28vh; overflow-y: auto; font-size: 20px; display: flex; flex-direction: column; gap: 2px; }
 .gb-teampick__mon.is-sold { opacity: .45; }
+
+.gb-dot { display: inline-block; width: 10px; height: 10px; margin-left: 8px; border-radius: 50%; background: #e53935; box-shadow: 0 0 0 2px #fff, 0 0 6px #e53935; vertical-align: middle; animation: gb-dot-pulse 1.4s ease-in-out infinite; }
+@keyframes gb-dot-pulse { 50% { transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .gb-dot { animation: none; } }

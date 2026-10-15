@@ -18,7 +18,10 @@ import { createCasinoService } from './casino-service.ts';
 import { createTournamentService } from './tournament-service.ts';
 import { createJournal } from './journal.ts';
 import { createJourneyService } from './journey-service.ts';
+import { createAutoWildService } from './auto-wild-service.ts';
 import { createMarketService } from './market-service.ts';
+import { exportSave, importSave } from './save-transfer.ts';
+import { listBackups } from './backup.ts';
 
 export interface AppOptions {
   db: Db;
@@ -26,6 +29,9 @@ export interface AppOptions {
   webDist?: string;
   /** liga as ferramentas de teste da alpha (padrão: desligado nos testes) */
   devTools?: boolean;
+  /** pasta dos backups automáticos (só para listar na interface) */
+  backupsDir?: string;
+  version?: string;
 }
 
 function numberParam(url: URL, key: string): number | undefined {
@@ -65,7 +71,7 @@ function searchQuery(url: URL): SearchPokemonQuery {
   return query;
 }
 
-export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptions): Server {
+export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir, version = 'dev' }: AppOptions): Server {
   const store = createPokemonStore(db);
   const saves = createSaveService(db, store);
   const inventory = createInventory(db);
@@ -73,6 +79,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   const wild = createWildService(db, store, inventory, journal);
   const items = createItemService(db, store, inventory);
   const battle = createBattleService(db, store, inventory, wild, journal);
+  const autoWild = createAutoWildService(wild, battle);
   const teams = createTeamService(db, store);
   const casino = createCasinoService(db, store, inventory);
   const tournaments = createTournamentService(db, store, battle);
@@ -87,6 +94,9 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .get('/api/health', (): HealthInfo => ({ ok: true, species: data.species.length, devTools }))
     .get('/api/saves', () => saves.list())
     .post('/api/saves', ({ body }) => saves.create((body ?? {}) as { trainerName: unknown; starterSpeciesId: unknown }))
+    .post('/api/saves/import', ({ body }) => saves.get(importSave(db, body)), 64 * 1024 * 1024)
+    .get('/api/backups', () => ({ dir: backupsDir ?? null, backups: backupsDir ? listBackups(backupsDir) : [] }))
+    .get('/api/saves/:id/export', ({ params }) => { saves.get(params.id as string); return exportSave(db, params.id as string, version); })
     .get('/api/saves/:id', ({ params }) => saves.get(params.id as string))
     .delete('/api/saves/:id', ({ params }) => { saves.remove(params.id as string); })
     .post('/api/saves/:id/playtime', ({ params, body }) => {
@@ -103,6 +113,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
     .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }))
     .post('/api/saves/:id/wild/spin', ({ params, body }) => wild.spin(params.id as string, (body as { pay?: unknown } | null)?.pay === true))
+    .post('/api/saves/:id/wild/auto', ({ params }) => autoWild.run(params.id as string))
     .post('/api/saves/:id/wild/leave', ({ params }) => wild.leave(params.id as string))
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
     .post('/api/saves/:id/wild/flee', ({ params }) => wild.flee(params.id as string))

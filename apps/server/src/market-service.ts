@@ -105,7 +105,7 @@ export function createMarketService(db: Db, store: PokemonStore, inventory: Inve
       stock: list.map(view),
       msLeft: (period + 1) * MARKET_REFRESH_MS - now(),
       refreshPrice: MARKET_REFRESH_PRICE,
-      sellable: all.map((mon) => ({ id: mon.id, speciesId: mon.speciesId, spriteId: mon.spriteId, name: mon.name, level: mon.level, shiny: mon.shiny, favorite: mon.favorite, value: valueOf(saveId, mon), ball: mon.ball })),
+      sellable: all.map((mon) => ({ id: mon.id, speciesId: mon.speciesId, spriteId: mon.spriteId, name: mon.name, level: mon.level, shiny: mon.shiny, favorite: mon.favorite, value: valueOf(saveId, mon), ball: mon.ball, stars: mon.ivStars, inTeam: mon.location.kind === 'team', generation: mon.generation })),
     };
   }
 

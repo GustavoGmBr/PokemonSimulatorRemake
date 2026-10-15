@@ -59,7 +59,75 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
   const reload = () => api.getSave(saveId).then(setSave, (e: Error) => setError(e.message));
   useEffect(() => { void reload(); }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ponto indicador: missões prontas para resgatar e Pokémon especial (shiny/4★) no Mercado.
+  const [readyMissions, setReadyMissions] = useState(0);
+  const [marketHot, setMarketHot] = useState(false);
+  useEffect(() => {
+    if (panel !== 'overview') return;
+    api.missions(saveId).then((m) => setReadyMissions(m.missions.filter((x) => x.done && !x.claimed).length), () => undefined);
+    api.market(saveId).then((m) => setMarketHot(m.stock.some((e) => e.available && (e.shiny || e.stars >= 4))), () => undefined);
+  }, [saveId, panel]);
+
   const menu = MENU;
+
+  const nameOf = (item: string) => save?.inventory.find((entry) => entry.item === item)?.displayName ?? item;
+
+  /** Usa o mesmo item em cada Pokémon da equipe em que ele funcione, até acabar a quantidade. */
+  const useOnTeam = (item: string) => void act(async () => {
+    if (!save) return '';
+    let used = 0;
+    let healed = 0;
+    let levels = 0;
+    let note = '';
+    for (const mon of save.team) {
+      try {
+        const result = await api.useItem(saveId, item, mon.id);
+        used += 1;
+        healed += result.healed;
+        levels += Math.max(0, result.pokemon.level - mon.level);
+        note = result.message ?? note;
+      } catch (e) {
+        if (/não tem/i.test((e as Error).message)) break; // acabou o item
+      }
+    }
+    if (used === 0) return `${nameOf(item)} não teve efeito em ninguém da equipe.`;
+    const extra = healed > 0 ? ` (+${healed} HP no total)` : levels > 0 ? ` (+${levels} nível${levels > 1 ? 'is' : ''} no total)` : '';
+    return `${nameOf(item)} usado em ${used} POKÉMON da equipe${extra}.`;
+  });
+
+  /** Cura a equipe toda: Reviver nos desmaiados e a menor poção que resolve em cada um. */
+  const healTeam = () => void act(async () => {
+    if (!save) return '';
+    const stock = new Map(save.inventory.filter((entry) => entry.item in HEAL_EFFECTS).map((entry) => [entry.item, entry.quantity]));
+    const potions = Object.entries(HEAL_EFFECTS).filter(([, effect]) => !effect.revive).sort(([, a], [, b]) => a.heal - b.heal).map(([name]) => name);
+    const revives = Object.entries(HEAL_EFFECTS).filter(([, effect]) => effect.revive).sort(([, a], [, b]) => a.heal - b.heal).map(([name]) => name);
+    const has = (name: string) => (stock.get(name) ?? 0) > 0;
+    let cured = 0;
+    let spent = 0;
+    for (const mon of save.team) {
+      let hp = mon.currentHp;
+      const max = mon.stats.hp;
+      if (hp <= 0) {
+        const revive = revives.find(has);
+        if (!revive) continue;
+        hp = (await api.useItem(saveId, revive, mon.id)).pokemon.currentHp;
+        stock.set(revive, (stock.get(revive) ?? 0) - 1);
+        spent += 1;
+      }
+      for (let guard = 0; hp < max && guard < 12; guard++) {
+        const need = max - hp;
+        const available = potions.filter(has);
+        const pick = available.find((name) => (HEAL_EFFECTS[name]?.heal ?? 0) >= need) ?? available[available.length - 1];
+        if (!pick) break;
+        hp = (await api.useItem(saveId, pick, mon.id)).pokemon.currentHp;
+        stock.set(pick, (stock.get(pick) ?? 0) - 1);
+        spent += 1;
+      }
+      if (hp > mon.currentHp) cured += 1;
+    }
+    if (spent === 0) return save.team.every((mon) => mon.currentHp >= mon.stats.hp) ? 'A equipe já está com o HP cheio.' : 'Faltam poções ou Reviver na mochila.';
+    return `Equipe curada: ${cured} POKÉMON, ${spent} item${spent > 1 ? 'ns' : ''} usado${spent > 1 ? 's' : ''}.`;
+  });
 
   /** Executa uma ação do servidor, atualiza o save e mostra o resultado num aviso. */
   const act = async (work: () => Promise<string>) => {
@@ -94,7 +162,11 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
   const menuActive = panel === 'overview' && !notice && !busy;
   const items: MenuItem<MenuId>[] = menu.map((entry) => ({
     id: entry.id,
-    label: entry.label,
+    label: entry.id === 'missions' && readyMissions > 0
+      ? <span>{entry.label}<span className="gb-dot" role="img" aria-label={`${readyMissions} missões prontas`} title={`${readyMissions} prontas para resgatar`} /></span>
+      : entry.id === 'market' && marketHot
+        ? <span>{entry.label}<span className="gb-dot" role="img" aria-label="Pokémon especial no mercado" title="Shiny ou 4★ à venda" /></span>
+        : entry.label,
     extra: entry.phase ? 'em breve' : undefined,
   }));
 
@@ -152,6 +224,10 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
             {panel === 'overview' || panel === 'team' ? (
               <TeamPanel
                 team={save.team}
+                inventory={save.inventory}
+                paused={Boolean(notice) || busy}
+                onHeal={healTeam}
+                onUseAll={useOnTeam}
                 active={panel === 'team' && !notice}
                 onOpen={(mon) => { setSelectedMon(mon); setPanel('summary'); }}
                 onBack={() => setPanel('overview')}
@@ -164,6 +240,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
                 save={save}
                 paused={Boolean(notice) || busy}
                 onBack={() => setPanel('overview')}
+                onUseAll={useOnTeam}
                 onUse={(item, mon) => void act(async () => {
                   const result = await api.useItem(saveId, item, mon.id);
                   if (result.message) return result.message;
@@ -207,8 +284,13 @@ function Header({ save }: { save: SaveDetail }) {
   );
 }
 
-function TeamPanel({ team, active, onOpen, onBack }: {
+function TeamPanel({ team, inventory, paused, onHeal, onUseAll, active, onOpen, onBack }: {
   team: PokemonView[];
+  inventory: SaveDetail['inventory'];
+  paused: boolean;
+  onHeal: () => void;
+  onUseAll: (item: string) => void;
+  
   active: boolean;
   onOpen: (mon: PokemonView) => void;
   onBack: () => void;
@@ -258,10 +340,12 @@ function TeamPanel({ team, active, onOpen, onBack }: {
           </div>
         ))}
       </div>
+      <TeamShortcuts team={team} inventory={inventory} disabled={paused} onHeal={onHeal} onUseAll={onUseAll} />
     </section>
   );
 }
 
+const ALL_TEAM = '__team__';
 const usable = (item: string): boolean => item in HEAL_EFFECTS || isTrainingItem(item);
 
 const BAG_SECTIONS: { id: string; label: string; categories: string[] }[] = [
@@ -277,11 +361,36 @@ function sectionOf(category: string): string {
   return BAG_SECTIONS.find((section) => section.categories.includes(category))?.id ?? 'outros';
 }
 
-function BagPanel({ save, paused, onBack, onUse }: {
+/** Atalhos da equipe: curar todos e doces em todos de uma vez. */
+function TeamShortcuts({ team, inventory, disabled, onHeal, onUseAll }: {
+  team: PokemonView[];
+  inventory: SaveDetail['inventory'];
+  disabled: boolean;
+  onHeal: () => void;
+  onUseAll: (item: string) => void;
+}) {
+  const hurt = team.some((mon) => mon.currentHp < mon.stats.hp);
+  const hasHeal = inventory.some((entry) => entry.item in HEAL_EFFECTS);
+  const candies = inventory.filter((entry) => entry.item === 'rare-candy' || entry.item.startsWith('exp-candy'));
+  if (team.length === 0) return null;
+  return (
+    <div className="gb-row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }} aria-label="Atalhos da equipe">
+      <button type="button" className="gb-button" disabled={disabled || !hurt || !hasHeal} title={!hurt ? 'A equipe está com o HP cheio.' : !hasHeal ? 'Sem poções na mochila.' : ''} onClick={onHeal}>Curar equipe</button>
+      {candies.map((entry) => (
+        <button key={entry.item} type="button" className="gb-button" disabled={disabled} onClick={() => onUseAll(entry.item)}>
+          {entry.displayName} em todos (×{entry.quantity})
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BagPanel({ save, paused, onBack, onUse, onUseAll }: {
   save: SaveDetail;
   paused: boolean;
   onBack: () => void;
   onUse: (item: string, mon: PokemonView) => void;
+  onUseAll: (item: string) => void;
 }) {
   const [picking, setPicking] = useState<string | null>(null);
   const [sectionId, setSectionId] = useState<string>('cura');
@@ -331,12 +440,16 @@ function BagPanel({ save, paused, onBack, onUse }: {
           label="Escolha o POKÉMON"
           active={!paused}
           onBack={() => setPicking(null)}
-          items={save.team.map((mon): MenuItem => ({
-            id: mon.id,
-            label: `${mon.name} Nv${mon.level}`,
-            extra: mon.currentHp === 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`,
-          }))}
+          items={[
+            ...(save.team.length > 1 ? [{ id: ALL_TEAM, label: '★ Toda a equipe', extra: `${save.team.length} POKÉMON` } as MenuItem] : []),
+            ...save.team.map((mon): MenuItem => ({
+              id: mon.id,
+              label: `${mon.name} Nv${mon.level}`,
+              extra: mon.currentHp === 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`,
+            })),
+          ]}
           onSelect={(id) => {
+            if (id === ALL_TEAM) { if (picking) onUseAll(picking); setPicking(null); return; }
             const mon = save.team.find((m) => m.id === id);
             if (mon && picking) onUse(picking, mon);
             setPicking(null);

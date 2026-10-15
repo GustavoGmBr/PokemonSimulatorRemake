@@ -690,7 +690,7 @@ export interface MarketEntry {
   favorite: boolean;
 }
 
-export interface SaleOffer { id: string; speciesId: number; spriteId: number; name: string; level: number; shiny: boolean; favorite: boolean; value: number; ball: string | null }
+export interface SaleOffer { id: string; speciesId: number; spriteId: number; name: string; level: number; shiny: boolean; favorite: boolean; value: number; ball: string | null; stars: number; inTeam: boolean; generation: number }
 
 export interface MarketState {
   money: number;
@@ -698,4 +698,26 @@ export interface MarketState {
   msLeft: number;
   refreshPrice: number;
   sellable: SaleOffer[];
+}
+
+/** Resultado da auto-batalha em selvagens (um mapa por vez). */
+export interface AutoWildReport {
+  fights: number;
+  wins: number;
+  losses: number;
+  money: number;
+  /** Pokémon que subiram de nível, com o nível final */
+  levelUps: { name: string; level: number }[];
+  /** por que parou antes de limpar o mapa (null = limpou) */
+  stopped: null | {
+    reason: 'shiny' | 'stars' | 'defeat';
+    message: string;
+    /** Pokémon especial que está no mapa */
+    slot?: { slot: number; speciesId: number; name: string; level: number; shiny: boolean; ivStars: number };
+  };
+}
+
+export interface AutoWildResult {
+  report: AutoWildReport;
+  state: WildState;
 }

@@ -4,10 +4,18 @@ import { createInterface } from 'node:readline';
 import { config } from './config.ts';
 import { openDatabase } from './db.ts';
 import { createApp } from './app.ts';
+import { backupDatabase, backupsDirOf } from './backup.ts';
 
 mkdirSync(path.dirname(config.dbPath), { recursive: true });
 const db = openDatabase(config.dbPath);
-const server = createApp({ db, assetsDir: config.assetsDir, webDist: config.webDist, devTools: config.devTools });
+const backupsDir = backupsDirOf(config.dbPath);
+try {
+  const made = backupDatabase(db, backupsDir);
+  if (made) console.log(`  backup:  ${path.join(backupsDir, made)}`);
+} catch (error) {
+  console.error(`Não foi possível criar o backup: ${error instanceof Error ? error.message : String(error)}`);
+}
+const server = createApp({ db, assetsDir: config.assetsDir, webDist: config.webDist, devTools: config.devTools, backupsDir, version: config.version });
 
 server.on('error', (error: NodeJS.ErrnoException) => {
   console.error(`Não foi possível iniciar: ${error.code === 'EADDRINUSE' ? `a porta ${config.port} já está em uso.` : error.message}`);

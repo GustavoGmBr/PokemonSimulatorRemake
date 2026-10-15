@@ -67,9 +67,10 @@ const triLabel = (value: Tri, yes: string, no: string) => (value === 'any' ? 'Ta
 interface Props {
   saveId: string;
   onBack: () => void;
+  onOpenSell: () => void;
 }
 
-export function PcScreen({ saveId, onBack }: Props) {
+export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
   const [team, setTeam] = useState<PokemonView[]>([]);
   const [trainer, setTrainer] = useState('');
   const [boxNo, setBoxNo] = useState(0);
@@ -326,7 +327,10 @@ export function PcScreen({ saveId, onBack }: Props) {
       <div className="gb-stage">
         <header className="gb-window gb-spread" style={{ alignItems: 'center', padding: '10px 20px' }}>
           <h1 className="gb-title" style={{ fontSize: 26 }}>PC de {trainer || '…'}</h1>
-          <span className="gb-muted">{box ? `${box.totalInBoxes.toLocaleString('pt-BR')} no PC · ${team.length}/${TEAM_SIZE} na equipe` : 'Carregando…'}</span>
+          <span className="gb-row" style={{ alignItems: 'center', gap: 12 }}>
+            <span className="gb-muted">{box ? `${box.totalInBoxes.toLocaleString('pt-BR')} no PC · ${team.length}/${TEAM_SIZE} na equipe` : 'Carregando…'}</span>
+            <button type="button" className="gb-button" onClick={onOpenSell} disabled={Boolean(carrying)}>Vender…</button>
+          </span>
         </header>
 
         {mode === 'main' ? (

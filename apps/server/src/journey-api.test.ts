@@ -117,6 +117,9 @@ test('venda: valor por bola/nível/investido, favorito e último Pokémon proteg
   db.prepare('UPDATE pokemon SET invested = 2000 WHERE id = ?').run(b);
   const market = (await call<MarketState>('GET', `${url}/market`)).json;
   assert.equal(market.sellable.find((s) => s.id === a)?.value, 500);
+  assert.equal(typeof market.sellable.find((s) => s.id === a)?.stars, 'number');
+  assert.equal(market.sellable.find((s) => s.id === a)?.inTeam, false);
+  assert.ok(market.sellable.some((s) => s.inTeam), 'o inicial da equipe aparece como inTeam');
   assert.equal(market.sellable.find((s) => s.id === b)?.value, saleValue({ level: 10, ball: null, legendary: false, shiny: false, ivMultiplier: 1, invested: 2000 }));
   assert.equal((await call('POST', `${url}/market/sell`, { ids: [fav] })).status, 400, 'favorito');
   assert.equal((await call('POST', `${url}/market/sell`, { ids: ['nao-existe'] })).status, 404);

@@ -1,4 +1,5 @@
 import type {
+  AutoWildResult,
   BattleActRequest, HistoryState, MarketState, MissionClaimResult, MissionsState, PokemonView as MarketPokemon, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
@@ -29,6 +30,9 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 }
 
 export const api = {
+  exportSave: (id: string) => request<unknown>('GET', `/api/saves/${encodeURIComponent(id)}/export`),
+  importSave: (data: unknown) => request<SaveDetail>('POST', '/api/saves/import', data),
+  backups: () => request<{ dir: string | null; backups: { name: string; size: number; createdAt: string }[] }>('GET', '/api/backups'),
   listSaves: () => request<SaveSummary[]>('GET', '/api/saves'),
   getSave: (id: string) => request<SaveDetail>('GET', `/api/saves/${encodeURIComponent(id)}`),
   createSave: (input: CreateSaveRequest) => request<SaveDetail>('POST', '/api/saves', input),
@@ -49,6 +53,7 @@ export const api = {
   wild: (id: string) => request<WildState>('GET', `/api/saves/${encodeURIComponent(id)}/wild`),
   wildSearch: (id: string, input: SearchWildRequest) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/search`, input),
   wildSpin: (id: string, pay = false) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/spin`, { pay }),
+  wildAuto: (id: string) => request<AutoWildResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/auto`),
   wildLeave: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/leave`),
   wildChoose: (id: string, slot: number) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/choose`, { slot }),
   wildFlee: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/flee`),

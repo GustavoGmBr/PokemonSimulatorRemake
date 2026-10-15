@@ -38,6 +38,9 @@ export function WildScreen({ saveId, onBack }: Props) {
   const [habitatPick, setHabitatPick] = useState('');
   const [team, setTeam] = useState<PokemonView[]>([]);
   const alive = useRef(true);
+  const autoStop = useRef(false);
+  const [auto, setAuto] = useState<{ maps: number; wins: number; money: number } | null>(null);
+  const [autoAlert, setAutoAlert] = useState<string | null>(null);
   const loadTeam = () => api.getSave(saveId).then((save) => { if (alive.current) setTeam(save.team); }, () => undefined);
 
   useEffect(() => {
@@ -118,6 +121,42 @@ export function WildScreen({ saveId, onBack }: Props) {
     const started = await api.battleStart(saveId);
     setBattle({ start: started, habitat: next.board?.habitat ?? 'forest' });
   });
+  /** Auto-batalha: limpa o mapa, gira, repete até acabarem os giros; para em shiny/4★ ou se a equipe cair. */
+  const autoBattle = async () => {
+    if (!board || auto) return;
+    autoStop.current = false;
+    setAutoAlert(null);
+    const totals = { maps: 0, wins: 0, money: 0 };
+    setAuto({ ...totals });
+    setBusy(true);
+    let finish = 'Auto-batalha concluída.';
+    try {
+      while (alive.current) {
+        const { report, state: next } = await api.wildAuto(saveId);
+        totals.maps += 1; totals.wins += report.wins; totals.money += report.money;
+        setState(next);
+        setAuto({ ...totals });
+        if (report.stopped) {
+          finish = report.stopped.message;
+          if (report.stopped.reason !== 'defeat') { setAutoAlert(report.stopped.message); playSound('save'); }
+          break;
+        }
+        if (autoStop.current) { finish = 'Auto-batalha interrompida.'; break; }
+        if ((next.board?.spinsLeft ?? 0) === 0) { finish = 'Auto-batalha concluída: os giros acabaram.'; break; }
+        setState(await api.wildSpin(saveId, false));
+      }
+    } catch (e) {
+      finish = (e as Error).message;
+      playSound('error');
+    } finally {
+      if (alive.current) {
+        setMessage(`${finish} ${totals.wins} vitórias em ${totals.maps} mapa${totals.maps === 1 ? '' : 's'}, ${yen(totals.money)} ganhos.`);
+        setAuto(null);
+        setBusy(false);
+        void loadTeam();
+      }
+    }
+  };
   const afterBattle = async () => {
     setBattle(null);
     void loadTeam();
@@ -283,6 +322,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                 {hasShiny && found.some((s) => !s.shiny) ? ' Também há POKÉMON de estrelas altas.' : ''}
               </div>
             ) : null}
+            {autoAlert ? <div className="gb-banner" role="alert" style={{ marginBottom: 10 }}>{autoAlert}</div> : null}
             {board.targetSpeciesId !== null ? (
               <p className="gb-muted" style={{ margin: '0 0 8px' }}>Procura específica: todos os POKÉMON do mapa são da mesma espécie. Escolha o de melhores estrelas.</p>
             ) : null}
@@ -298,6 +338,13 @@ export function WildScreen({ saveId, onBack }: Props) {
             <div className="gb-spread" style={{ marginTop: 12, alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <button type="button" className="gb-button" disabled={busy} onClick={() => { playSound('back'); void leave(); }}>← Voltar à busca (X)</button>
               <span>Giros: <b>{board.spinsLeft}</b>/{board.spinsTotal}</span>
+              {auto ? (
+                <button type="button" className="gb-button gb-button--red" onClick={() => { autoStop.current = true; setMessage('Parando depois do mapa atual…'); }}>
+                  Parar auto ({auto.wins} vitórias · {yen(auto.money)})
+                </button>
+              ) : (
+                <button type="button" className="gb-button" disabled={busy || board.slots.length === 0 && board.spinsLeft === 0} onClick={() => void autoBattle()}>Auto-batalha</button>
+              )}
               {board.spinsLeft > 0 ? (
                 <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void spin()}>Girar (Q)</button>
               ) : (
@@ -309,7 +356,7 @@ export function WildScreen({ saveId, onBack }: Props) {
           </section>
         ) : null}
 
-        <div className="gb-window gb-window--accent gb-info" role="status"><p style={{ margin: 0 }}>{busy ? 'Aguarde…' : message}</p></div>
+        <div className="gb-window gb-window--accent gb-info" role="status"><p style={{ margin: 0 }}>{auto ? `Auto-batalha: ${auto.wins} vitórias em ${auto.maps} mapa${auto.maps === 1 ? '' : 's'}, ${yen(auto.money)} ganhos…` : busy ? 'Aguarde…' : message}</p></div>
         <KeyHints hints={mode === 'board'
           ? [['↑↓←→', 'mover'], ['Z', 'enfrentar'], ['Q', 'girar / renovar'], ['X', 'voltar à busca']]
           : [['↑↓', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar / fugir']]}

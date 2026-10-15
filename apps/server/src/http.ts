@@ -17,6 +17,7 @@ interface Route {
   pattern: RegExp;
   keys: string[];
   handler: Handler;
+  maxBody?: number;
 }
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -24,18 +25,18 @@ const MAX_BODY_BYTES = 64 * 1024;
 export class Router {
   private routes: Route[] = [];
 
-  on(method: string, pathPattern: string, handler: Handler): this {
+  on(method: string, pathPattern: string, handler: Handler, maxBody?: number): this {
     const keys: string[] = [];
     const source = pathPattern.replace(/:(\w+)/g, (_, key: string) => {
       keys.push(key);
       return '([^/]+)';
     });
-    this.routes.push({ method, pattern: new RegExp(`^${source}$`), keys, handler });
+    this.routes.push({ method, pattern: new RegExp(`^${source}$`), keys, handler, maxBody });
     return this;
   }
 
   get(p: string, h: Handler) { return this.on('GET', p, h); }
-  post(p: string, h: Handler) { return this.on('POST', p, h); }
+  post(p: string, h: Handler, maxBody?: number) { return this.on('POST', p, h, maxBody); }
   patch(p: string, h: Handler) { return this.on('PATCH', p, h); }
   delete(p: string, h: Handler) { return this.on('DELETE', p, h); }
 
@@ -47,7 +48,7 @@ export class Router {
       if (!match) continue;
       const params = Object.fromEntries(route.keys.map((key, i) => [key, decodeURIComponent(match[i + 1] ?? '')]));
       try {
-        const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readJson(req);
+        const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readJson(req, route.maxBody ?? MAX_BODY_BYTES);
         const result = await route.handler({ params, body, url });
         if (result === undefined) {
           res.writeHead(204).end();
@@ -68,12 +69,12 @@ export class Router {
   }
 }
 
-async function readJson(req: IncomingMessage): Promise<unknown> {
+async function readJson(req: IncomingMessage, limit: number): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
     size += (chunk as Buffer).length;
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, 'Requisição grande demais.');
+    if (size > limit) throw new HttpError(413, 'Requisição grande demais.');
     chunks.push(chunk as Buffer);
   }
   if (size === 0) return {};

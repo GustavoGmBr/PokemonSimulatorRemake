@@ -10,6 +10,7 @@ import { CasinoScreen } from './screens/CasinoScreen.tsx';
 import { TournamentScreen } from './screens/TournamentScreen.tsx';
 import { MissionsScreen } from './screens/MissionsScreen.tsx';
 import { MarketScreen } from './screens/MarketScreen.tsx';
+import { PcSellScreen } from './screens/PcSellScreen.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
@@ -28,6 +29,7 @@ export type Screen =
   | { name: 'tournament'; saveId: string }
   | { name: 'missions'; saveId: string }
   | { name: 'market'; saveId: string }
+  | { name: 'pcsell'; saveId: string }
   | { name: 'options'; back: Screen };
 
 function saveIdOf(screen: Screen): string | null {
@@ -79,7 +81,9 @@ export function App() {
       );
     }
     case 'pc':
-      return <PcScreen key={`pc-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pc' })} />;
+      return <PcScreen key={`pc-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pc' })} onOpenSell={() => setScreen({ name: 'pcsell', saveId: screen.saveId })} />;
+    case 'pcsell':
+      return <PcSellScreen key={`ps-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'pc', saveId: screen.saveId })} />;
     case 'pokedex':
       return <PokedexScreen key={`dex-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'pokedex' })} />;
     case 'wild':

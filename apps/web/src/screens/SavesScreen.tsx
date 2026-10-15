@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SaveSummary } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
@@ -8,6 +8,7 @@ import { KeyHints, Sprite, formatMoney, formatPlayTime } from '../ui/bits.tsx';
 type Mode = 'list' | 'actions' | 'confirm-delete';
 const NEW_GAME = '__new__';
 const OPTIONS = '__options__';
+const IMPORT = '__import__';
 
 interface Props {
   onContinue: (saveId: string) => void;
@@ -21,6 +22,9 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
   const [selectedId, setSelectedId] = useState<string>(NEW_GAME);
   const [mode, setMode] = useState<Mode>('list');
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [backups, setBackups] = useState<{ dir: string | null; count: number; last: string | null } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -31,6 +35,44 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
     }, (e: Error) => setError(e.message));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => {
+    api.backups().then((b) => setBackups({ dir: b.dir, count: b.backups.length, last: b.backups[0]?.createdAt ?? null }), () => undefined);
+  }, []);
+
+  const exportSelected = async () => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const data = await api.exportSave(selected.id);
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `pokesim-${selected.trainerName.replace(/[^\w-]+/g, '_')}-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setNotice(`Save de ${selected.trainerName.toUpperCase()} exportado. Guarde o arquivo em um lugar seguro.`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      setMode('list');
+    }
+  };
+
+  const importFile = async (file: File) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const imported = await api.importSave(JSON.parse(await file.text()));
+      setNotice(`Save de ${imported.trainerName.toUpperCase()} importado como uma nova jornada.`);
+      setSelectedId(imported.id);
+      load();
+    } catch (e) {
+      setError(e instanceof SyntaxError ? 'O arquivo não é um save válido (JSON inválido).' : (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const selected = saves?.find((save) => save.id === selectedId) ?? null;
 
@@ -41,6 +83,7 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
       extra: `${save.badges} insígnias`,
     })),
     { id: NEW_GAME, label: 'Novo jogo' },
+    { id: IMPORT, label: 'Importar save' },
     { id: OPTIONS, label: 'Opções' },
   ], [saves]);
 
@@ -61,6 +104,8 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
 
   const message = error
     ? error
+    : notice && mode === 'list'
+      ? notice
     : saves === null
       ? 'Carregando suas jornadas…'
       : mode === 'actions' && selected
@@ -89,7 +134,7 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
                 active={mode === 'list' && !busy}
                 initialId={selectedId}
                 onMove={setSelectedId}
-                onSelect={(id) => (id === NEW_GAME ? onNewGame() : id === OPTIONS ? onOptions() : setMode('actions'))}
+                onSelect={(id) => (id === NEW_GAME ? onNewGame() : id === OPTIONS ? onOptions() : id === IMPORT ? fileInput.current?.click() : setMode('actions'))}
               />
             ) : null}
           </section>
@@ -109,11 +154,13 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
                 label="Ações da jornada"
                 items={[
                   { id: 'continue', label: 'Continuar' },
+                  { id: 'export', label: 'Exportar save' },
                   { id: 'delete', label: 'Excluir' },
                   { id: 'back', label: 'Voltar' },
                 ]}
                 onSelect={(id) => {
                   if (id === 'continue') onContinue(selected.id);
+                  else if (id === 'export') void exportSelected();
                   else if (id === 'delete') setMode('confirm-delete');
                   else setMode('list');
                 }}
@@ -134,6 +181,12 @@ export function SavesScreen({ onContinue, onNewGame, onOptions }: Props) {
           ) : null}
         </div>
 
+        <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void importFile(file); }} />
+        {backups && backups.count > 0 ? (
+          <p className="gb-hint" style={{ margin: 0 }}>
+            Backup automático a cada abertura: {backups.count} cópia{backups.count > 1 ? 's' : ''} (a última em {new Date(backups.last ?? '').toLocaleString('pt-BR')}) na pasta {backups.dir}.
+          </p>
+        ) : null}
         {error ? (
           <div>
             <button type="button" className="gb-button" onClick={load}>Tentar de novo</button>
