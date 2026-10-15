@@ -1,6 +1,6 @@
 ## Pokémon Simulator (remake) 2.0.0-alpha.18
 
-- **Dificuldade do save** (criação da jornada): Normal ou Difícil ☠. No Difícil, todo Pokémon que desmaia em qualquer batalha (selvagem, treinador, dupla ou copa) é apagado do save; o inicial nunca é apagado. A auto-batalha para quando alguém cai. A tela de resultado lista os perdidos. Saves antigos continuam Normal.
+- **Dificuldade do save** (criação da jornada): Normal ou Difícil ☠. No Difícil, só ao **perder** uma batalha de desafio, treinador (1×1 ou dupla) ou copa os Pokémon que desmaiaram são apagados do save; o inicial nunca é apagado. Vencendo, todos são curados como sempre. Selvagens nunca apagam. A tela de resultado lista os perdidos. Saves antigos continuam Normal.
 
 ## Anteriores: 2.0.0-alpha.17
 

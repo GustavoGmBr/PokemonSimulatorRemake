@@ -61,7 +61,7 @@ export function createAutoWildService(wild: WildService, battle: BattleService) 
         const outcome = view.outcome;
         report.fights++;
         if (outcome.fallen?.length) {
-          report.stopped = { reason: 'defeat', message: `Modo difícil: ${outcome.fallen.join(', ')} desmaiou e foi perdido. A auto-batalha parou.` };
+          report.stopped = { reason: 'defeat', message: `Modo difícil: ${outcome.fallen.join(', ')} foi perdido. A auto-batalha parou.` };
           if (outcome.result === 'win') { report.wins++; report.money += outcome.money; } else report.losses++;
           break;
         }

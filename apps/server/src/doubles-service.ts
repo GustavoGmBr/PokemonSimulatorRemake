@@ -99,7 +99,7 @@ export function createDoublesService(db: Db, store: PokemonStore, inventory: Inv
     });
     if (result === 'win' && trainer.difficulty) journal.record(saveId, { kind: 'vencer_treinador', difficulty: trainer.difficulty });
     if (tournament?.champion && trainer.tournament) journal.record(saveId, { kind: 'vencer_torneio', tournament: trainer.tournament.tier, text: `Campeão da Copa ${tournament.tierName}!` });
-    const fallen = store.applyBattle(saveId, state.player.team);
+    const fallen = store.applyBattle(saveId, state.player.team, result === 'lose');
     for (const name of fallen) journal.record(saveId, { kind: 'perda', text: `${name} desmaiou e foi perdido (modo difícil).` });
     if (fallen.length > 0) events.push({ k: 'text', text: `Modo difícil: ${fallen.join(', ')} não voltou${fallen.length > 1 ? 'ram' : ''}...` });
     db.prepare('DELETE FROM battles WHERE save_id = ?').run(saveId);

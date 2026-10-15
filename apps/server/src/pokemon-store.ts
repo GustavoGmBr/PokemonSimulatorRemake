@@ -369,16 +369,16 @@ export function createPokemonStore(db: Db) {
     },
 
     /** Guarda o resultado de uma batalha (nível, XP, golpes, amizade) e cura toda a equipe. */
-    applyBattle(saveId: string, combatants: Combatant[]): string[] {
+    applyBattle(saveId: string, combatants: Combatant[], permadeath = false): string[] {
       assertSave(saveId);
-      const hard = (db.prepare('SELECT difficulty FROM saves WHERE id = ?').get(saveId) as { difficulty: string } | undefined)?.difficulty === 'hard';
+      const hard = permadeath && (db.prepare('SELECT difficulty FROM saves WHERE id = ?').get(saveId) as { difficulty: string } | undefined)?.difficulty === 'hard';
       const fallen: string[] = [];
       transaction(db, () => {
         for (const c of combatants) {
           if (!c.ref) continue;
           const row = db.prepare('SELECT * FROM pokemon WHERE id = ? AND save_id = ?').get(c.ref, saveId) as (PokemonRow & { is_starter?: number }) | undefined;
           if (!row) continue;
-          // modo difícil: quem desmaiou é apagado, exceto o inicial
+          // modo difícil: na derrota para treinador/desafio/copa, quem desmaiou é apagado (menos o inicial)
           if (hard && c.hp <= 0 && !row.is_starter) { fallen.push(c.name); this.remove(saveId, row.id); continue; }
           const friendship = c.fought ? Math.min(255, row.friendship + 5) : row.friendship;
           if (c.capped) {

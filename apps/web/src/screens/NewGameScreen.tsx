@@ -56,7 +56,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
       dialog = [error ?? 'Digite seu nome e confirme com ENTER.'];
       break;
     case 'mode':
-      dialog = ['Como você quer jogar? No modo DIFÍCIL, todo POKÉMON que desmaiar numa batalha é perdido para sempre, menos o seu inicial.'];
+      dialog = ['Como você quer jogar? No modo DIFÍCIL, se você PERDER uma batalha contra treinador, desafio ou copa, os POKÉMON que desmaiaram são perdidos para sempre, menos o seu inicial.'];
       break;
     case 'region':
       dialog = [`Prazer, ${trainer}! De qual região vem o seu primeiro parceiro?`];
@@ -99,7 +99,7 @@ export function NewGameScreen({ onCancel, onCreated }: Props) {
               />
               <p className="gb-muted" style={{ margin: '8px 0 0', fontSize: 20 }}>
                 {difficulty === 'hard'
-                  ? 'Difícil: Pokémon que desmaia numa batalha (selvagem, treinador ou copa) é apagado do save. Só o inicial é poupado. A auto-batalha para quando alguém cai.'
+                  ? 'Difícil: se você perder uma batalha de desafio, treinador ou copa, os Pokémon que desmaiaram são apagados do save (menos o inicial). Se ganhar, todos são curados. Selvagens não apagam nada.'
                   : 'Normal: nada se perde; a equipe é curada ao fim de cada batalha.'}
               </p>
             </div>

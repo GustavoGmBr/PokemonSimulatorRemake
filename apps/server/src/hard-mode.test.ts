@@ -71,3 +71,23 @@ for (const mode of ['normal', 'hard'] as const) {
     }
   });
 }
+
+test('dificuldade difícil: vencer não apaga ninguém (mesmo com Pokémon caído) e selvagem não apaga', async () => {
+  const { starter, partner, url, save } = await play('hard');
+  const exists = (id: string) => db.prepare('SELECT 1 FROM pokemon WHERE id = ?').get(id) !== undefined;
+  // o inicial vira um Mewtwo Nv 100 forte; o parceiro começa desmaiado
+  const moves = ['psychic', 'ice-beam', 'thunderbolt', 'shadow-ball'].map((name) => ({ name, pp: 10, maxPp: 10 }));
+  db.prepare('UPDATE pokemon SET species_id = 150, level = 100, exp = 1000000, moves = ?, current_hp = 9999 WHERE id = ?').run(JSON.stringify(moves), starter);
+  db.prepare('UPDATE pokemon SET current_hp = 0 WHERE id = ?').run(partner);
+  let view = (await call<BattleTurnResult>('POST', `${url}/battle/trainer`, { difficulty: 'facil' })).json.view;
+  for (let i = 0; i < 80 && view.phase !== 'ended'; i++) {
+    if (view.phase === 'replace') {
+      const next = view.player.team.find((m) => m.hp > 0);
+      view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'switch', to: next!.index })).json.view;
+    } else view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: 0 })).json.view;
+  }
+  assert.equal(view.outcome?.result, 'win');
+  assert.ok(exists(partner), 'vitória: ninguém é apagado');
+  assert.equal(view.outcome?.fallen, undefined);
+  assert.equal(save.difficulty, 'hard');
+});
