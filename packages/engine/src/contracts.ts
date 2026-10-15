@@ -35,6 +35,7 @@ export interface MoveView {
   category: MoveCategory;
   power: number;
   accuracy: number | null;
+  /** legado: o jogo não usa PP (golpes ilimitados) */
   pp: number;
   maxPp: number;
 }
@@ -223,6 +224,8 @@ export interface WildRegionOption {
   levelCap: number;
   /** giros de cada mapa nesta região */
   spins: number;
+  /** Pokémon soltos no mapa (3 a 15, conforme os desafios da região) */
+  mapSize: number;
   /** lendários podem aparecer (Elite dos 4 derrotada) */
   legendaries: boolean;
   /** busca por Pokémon específico liberada (campeão derrotado) */
@@ -341,7 +344,7 @@ export interface BattleMonView {
   expProgress: number;
 }
 
-export interface BattleMoveView extends MoveView {
+export interface BattleMoveView extends Omit<MoveView, 'pp' | 'maxPp'> {
   slot: number;
   /** multiplicador de tipo contra o oponente em campo (null = golpe de status) */
   effectiveness: number | null;
@@ -366,7 +369,7 @@ export interface BattleOutcome {
 export interface BattleView {
   phase: BattlePhase;
   turn: number;
-  player: { active: number; team: BattleMonView[]; moves: BattleMoveView[]; mustStruggle: boolean };
+  player: { active: number; team: BattleMonView[]; moves: BattleMoveView[] };
   foe: { active: number; team: BattleMonView[]; caughtBefore: boolean };
   balls: BallOption[];
   heals: BattleItemOption[];
@@ -384,6 +387,30 @@ export type BattleActRequest =
 export interface BattleTurnResult {
   events: BattleEvent[];
   view: BattleView;
+}
+
+/** Um golpe que o Pokémon pode aprender (nível já alcançado = grátis; TM = comprada uma vez por save). */
+export interface LearnableMove {
+  move: MoveView;
+  source: 'level' | 'machine';
+  /** nível em que aprende (só source 'level') */
+  level: number;
+  /** quanto custa agora (0 = grátis ou TM já comprada) */
+  price: number;
+  unlocked: boolean;
+  /** já está entre os golpes dele */
+  known: boolean;
+}
+
+export interface MoveOptions {
+  learnable: LearnableMove[];
+  money: number;
+}
+
+export interface TeachMoveRequest {
+  move: string;
+  /** vaga 0–3 (a próxima vaga livre, se ele tem menos de 4 golpes) */
+  slot: number;
 }
 
 export interface EvolveRequest {

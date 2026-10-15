@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import {
   HABITATS, LEGENDARY_SLOT_CHANCE, REFRESH_COST, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
-  habitatById, habitatOfType, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor,
+  habitatById, habitatOfType, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor, boardSizeFor,
   speciesInHabitat, statsOf, MIN_WILD_LEVEL, GYMS_PER_REGION, DEFAULT_MIN_LEVEL, levelCap, HEAL_BALL, unlockedRegionIds,   type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
   type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
 } from '@pokesim/engine';
@@ -24,7 +24,7 @@ interface BoardRow {
 }
 
 interface Board {
-  slots: PokemonInstance[];
+  slots: (PokemonInstance | null)[];
   spinsLeft: number;
   chosen: number | null;
   region: string;
@@ -66,7 +66,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         id: region.id, name: region.name, generation: region.generation, unlocked: unlocked.includes(region.id),
         gyms: progress.gyms, eliteMembers: progress.eliteMembers, elite: progress.elite, champion: progress.champion,
         levelCap: levelCap(progress),
-        spins: spinsFor(progress), legendaries: progress.elite, specific: progress.champion,
+        spins: spinsFor(progress), mapSize: boardSizeFor(progress), legendaries: progress.elite, specific: progress.champion,
         chooseHabitat: progress.gyms >= GYMS_PER_REGION,
       };
     });
@@ -111,20 +111,21 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     });
   }
 
-  /** Sorteia os 10 do mapa. */
+  /** Sorteia os Pokémon do mapa (3 a 15, conforme os desafios da região). */
   function generate(saveId: string, region: string, habitat: Habitat, target: number | null, range: [number, number]): PokemonInstance[] {
     const ids = challenges(saveId);
     const unlocked = unlockedRegionIds(ids);
     const badges = gymCount(ids);
+    const size = regionOptions(ids).find((option) => option.id === region)?.mapSize ?? 3;
     const extraRolls = inventory.quantity(saveId, 'shiny-charm') > 0 ? SHINY_CHARM_EXTRA_ROLLS : 0;
     if (target !== null) {
       const species = data.speciesById.get(target);
       if (!species) throw badRequest('Espécie desconhecida.');
-      return Array.from({ length: 10 }, () => makeMon(species, range, extraRolls));
+      return Array.from({ length: size }, () => makeMon(species, range, extraRolls));
     }
     const { common, rare } = pools(scopeOf(region, unlocked), unlocked, badges, habitat, ids);
     if (common.length === 0 && rare.length === 0) throw badRequest('Nenhum POKÉMON disponível neste mapa.');
-    return Array.from({ length: 10 }, () => {
+    return Array.from({ length: size }, () => {
       const useRare = rare.length > 0 && (common.length === 0 || rng.int(1000) < LEGENDARY_SLOT_CHANCE * 1000);
       const species = useRare ? randomOf(rare) : randomOf(common);
       return makeMon(species, range, extraRolls);
@@ -135,7 +136,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     const row = db.prepare('SELECT * FROM wild_boards WHERE save_id = ?').get(saveId) as BoardRow | undefined;
     if (!row) return null;
     return {
-      slots: JSON.parse(row.slots) as PokemonInstance[], spinsLeft: row.spins_left, chosen: row.chosen,
+      slots: JSON.parse(row.slots) as (PokemonInstance | null)[], spinsLeft: row.spins_left, chosen: row.chosen,
       region: row.region, habitat: row.habitat, target: row.target_species, levels: [row.min_level, row.max_level], throws: row.throws,
     };
   }
@@ -158,6 +159,12 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
   function caughtSet(saveId: string): Set<number> {
     const rows = db.prepare('SELECT species_id FROM pokedex WHERE save_id = ? AND caught = 1').all(saveId) as { species_id: number }[];
     return new Set(rows.map((row) => row.species_id));
+  }
+
+  /** Tira o Pokémon escolhido do mapa (a vaga fica vazia, então os outros não mudam de lugar). */
+  function removeChosen(board: Board, remove: boolean): Board {
+    if (!remove || board.chosen === null) return board;
+    return { ...board, slots: board.slots.map((slot, index) => (index === board.chosen ? null : slot)) };
   }
 
   function slotView(slot: number, pokemon: PokemonInstance, caught: Set<number>): WildSlotView {
@@ -198,7 +205,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     const board = readBoard(saveId);
     const caught = caughtSet(saveId);
     const ids = challenges(saveId);
-    const encounter = board && board.chosen !== null ? board.slots[board.chosen] : undefined;
+    const encounter = board && board.chosen !== null ? board.slots[board.chosen] ?? undefined : undefined;
 
     const owned = db.prepare('SELECT item, quantity FROM inventory WHERE save_id = ? AND quantity > 0').all(saveId) as { item: string; quantity: number }[];
     const quantities = new Map(owned.map((row) => [row.item, row.quantity]));
@@ -217,7 +224,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     if (board) {
       const habitat = habitatById(board.habitat) ?? (HABITATS[0] as Habitat);
       view = {
-        slots: board.slots.map((pokemon, index) => slotView(index, pokemon, caught)),
+        slots: board.slots.flatMap((pokemon, index) => (pokemon ? [slotView(index, pokemon, caught)] : [])),
         spinsLeft: board.spinsLeft,
         spinsTotal: regions.find((region) => region.id === board.region)?.spins ?? 3,
         region: board.region as WildBoardView['region'],
@@ -351,12 +358,11 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       return wild;
     },
 
-    /** Fim da batalha: vitória ou captura encerram o mapa; fuga e derrota devolvem ao mapa. */
+    /** Fim da batalha: vitória ou captura tiram só aquele Pokémon do mapa; fuga e derrota devolvem ao mapa como estava. */
     finishEncounter(saveId: string, result: 'win' | 'lose' | 'fled' | 'captured'): void {
       const board = readBoard(saveId);
       if (!board) return;
-      if (result === 'win' || result === 'captured') db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
-      else writeBoard(saveId, { ...board, chosen: null, throws: 0 });
+      writeBoard(saveId, { ...removeChosen(board, result === 'win' || result === 'captured'), chosen: null, throws: 0 });
     },
 
     /** Fugir do encontro: volta ao mapa (os giros que sobraram continuam). */
@@ -389,7 +395,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
           const healed = item.name === HEAL_BALL ? { ...wild, currentHp: statsOf(wild, speciesOf(wild)).hp } : wild;
           const placed = store.place(saveId, { ...healed, ball: item.name });
           pokemon = store.view(saveId, placed.id);
-          db.prepare('DELETE FROM wild_boards WHERE save_id = ?').run(saveId);
+          writeBoard(saveId, { ...removeChosen(board, true), chosen: null, throws: 0 });
         } else {
           writeBoard(saveId, { ...board, throws: board.throws + 1 });
         }

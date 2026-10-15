@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type BattleTurnResult, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
+import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type BattleTurnResult, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
-import { KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
+import { HpBar, KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
 import { BattleScreen } from './BattleScreen.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
@@ -36,7 +36,9 @@ export function WildScreen({ saveId, onBack }: Props) {
   const [filter, setFilter] = useState('');
   const [levels, setLevels] = useState<[number, number] | null>(null);
   const [habitatPick, setHabitatPick] = useState('');
+  const [team, setTeam] = useState<PokemonView[]>([]);
   const alive = useRef(true);
+  const loadTeam = () => api.getSave(saveId).then((save) => { if (alive.current) setTeam(save.team); }, () => undefined);
 
   useEffect(() => {
     alive.current = true;
@@ -45,12 +47,17 @@ export function WildScreen({ saveId, onBack }: Props) {
       if (running) setBattle({ start: { events: [], view: running }, habitat: next.board?.habitat ?? 'forest' });
       else if (next.board) setMessage('Você voltou ao mapa da última procura.');
     }, (e: Error) => setError(e.message));
+    void loadTeam();
     api.speciesIndex().then(setIndex, () => undefined);
     return () => { alive.current = false; };
   }, [saveId]);
 
   const board = state?.board ?? null;
   const mode: 'idle' | 'board' = board ? 'board' : 'idle';
+  useEffect(() => {
+    if (board && board.slots.length > 0 && !board.slots.some((slot) => slot.slot === cursor)) setCursor((board.slots[0] as { slot: number }).slot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board]);
 
   const found = useMemo(() => (board?.slots ?? []).filter((slot) => slot.shiny || slot.ivStars >= ALERT_STARS), [board]);
   const hasShiny = found.some((slot) => slot.shiny);
@@ -113,10 +120,12 @@ export function WildScreen({ saveId, onBack }: Props) {
   });
   const afterBattle = async () => {
     setBattle(null);
+    void loadTeam();
     try {
       const next = await api.wild(saveId);
       setState(next);
-      if (next.board) setMessage('De volta ao mapa. Escolha outro POKÉMON.');
+      if (next.board && next.board.slots.length === 0) setMessage('Mapa limpo! Gire (Q) para trazer novos POKÉMON.');
+      else if (next.board) setMessage('De volta ao mapa. Escolha outro POKÉMON.');
       else { setStep('region'); setMessage('Procure outro POKÉMON selvagem!'); }
     } catch (e) {
       setError((e as Error).message);
@@ -128,9 +137,10 @@ export function WildScreen({ saveId, onBack }: Props) {
   // ---- teclado (mapa e captura; as listas usam o próprio Menu) ----
   useKeys((key) => {
     if (mode === 'board' && board) {
-      const n = board.slots.length;
+      const present = board.slots.map((slot) => slot.slot);
+      if (present.length === 0 && key === 'confirm') return;
       if (key === 'left' || key === 'right' || key === 'up' || key === 'down') {
-        setCursor((c) => neighbour(board.habitat, c, key, n));
+        setCursor((c) => neighbour(board.habitat, c, key, present));
         playSound('move');
       } else if (key === 'confirm') { playSound('confirm'); void choose(cursor); }
       else if (key === 'prev') void spin();
@@ -179,6 +189,8 @@ export function WildScreen({ saveId, onBack }: Props) {
           </span>
         </header>
 
+        <TeamStrip team={team} />
+
         {mode === 'idle' ? (
           <div className="gb-row" style={{ alignItems: 'flex-start' }}>
             <div className="gb-side" style={{ maxWidth: 380 }}>
@@ -204,7 +216,7 @@ export function WildScreen({ saveId, onBack }: Props) {
               <section className="gb-window" aria-label="Detalhes da região">
                 <h2 className="gb-title" style={{ fontSize: 22, marginBottom: 4 }}>{selected.id === 'all' ? selected.name : `${selected.name} · Geração ${selected.generation}`}</h2>
                 {selected.unlocked ? (
-                  <p style={{ margin: '0 0 8px' }}>Cada mapa mostra 10 POKÉMON soltos. Clique no que quiser enfrentar.</p>
+                  <p style={{ margin: '0 0 8px' }}>Cada mapa mostra de 3 a 15 POKÉMON soltos (mais a cada ginásio, Elite dos 4 e campeão). Clique no que quiser enfrentar.</p>
                 ) : (
                   <p className="gb-region-lock" style={{ margin: '0 0 8px' }}>
                     🔒 Bloqueada. Derrote o campeão de {previous?.name ?? 'Kanto'} para liberar.
@@ -214,6 +226,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                   {selected.id === 'all' ? <li className="gb-muted">Mistura as regiões liberadas; giros, lendários e limite de nível seguem a região mais recente.</li> : null}
                   <li>Ginásios: <b>{selected.gyms}/8</b> · Elite dos 4: <b>{selected.eliteMembers}/4</b> · Campeão: <b>{selected.champion ? '✓' : '—'}</b></li>
                   <li>Nível máximo liberado: <b>{selected.levelCap}</b></li>
+                  <li>Pokémon no mapa: <b>{selected.mapSize}</b> <span className="gb-muted">(3 + 1 por ginásio e membro da Elite · campeão 15)</span></li>
                   <li>Giros por mapa: <b>{selected.spins}</b> <span className="gb-muted">(ginásio 5 · Elite dos 4 8 · campeão 12)</span></li>
                   <li>Lendários: <b>{selected.legendaries ? 'liberados' : 'derrote a Elite dos 4'}</b></li>
                   <li>Pokémon específico: <b>{selected.id === 'all' ? 'escolha uma geração' : selected.specific ? 'liberado' : 'derrote o campeão'}</b></li>
@@ -367,5 +380,26 @@ function SpeciesPicker({ choices, filter, onFilter, onPick, onBack, busy }: Pick
         ))}
       </div>
     </div>
+  );
+}
+
+
+/** Sua equipe, sempre à vista na tela de Selvagens (HP e condição de cada um). */
+function TeamStrip({ team }: { team: PokemonView[] }) {
+  if (team.length === 0) return null;
+  return (
+    <section className="gb-window gb-team-strip" aria-label="Sua equipe">
+      {team.map((mon) => (
+        <div key={mon.id} className={`gb-team-strip__mon${mon.currentHp <= 0 ? ' is-fainted' : ''}`}>
+          <Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={48} />
+          <div className="gb-team-strip__info">
+            <b>{mon.nickname ?? mon.name}</b>
+            <span className="gb-muted">Nv{mon.level}</span>
+            <HpBar current={mon.currentHp} max={mon.stats.hp} />
+            <span className="gb-muted" style={{ fontSize: 18 }}>{mon.currentHp <= 0 ? 'Desmaiado' : `${mon.currentHp}/${mon.stats.hp}`}</span>
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }

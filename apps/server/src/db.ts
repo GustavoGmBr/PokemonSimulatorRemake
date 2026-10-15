@@ -108,6 +108,14 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (pokemon_id, move)
   );
   `,
+  // 8 — TMs comprados (valem para sempre, para qualquer Pokémon que possa aprender)
+  `
+  CREATE TABLE tm_unlocked (
+    save_id TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    move    TEXT NOT NULL,
+    PRIMARY KEY (save_id, move)
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;

@@ -656,10 +656,14 @@ export function drawHabitat(canvas: HTMLCanvasElement, habitat: string): void {
   theme.overlay?.(c);
 }
 
-/** Posições (em tiles) onde cada um dos 10 Pokémon aparece "solto" no mapa: [coluna, linha dos pés]. */
+/**
+ * Posições (em tiles) das vagas "soltas" do mapa: [coluna, linha dos pés]. Até 15 vagas (3 linhas × 5 colunas);
+ * a ordem espalha o começo da lista, então mapas com poucos Pokémon não ficam amontoados num canto.
+ */
 const TARGETS: [number, number][] = [
-  [2.8, 6.6], [7.2, 6.1], [11.6, 6.9], [16.2, 6.2], [20.8, 6.7],
-  [4.6, 12.6], [9, 12.3], [13.6, 12.8], [18, 12.3], [21.8, 12.7],
+  [7.4, 9.2], [16.6, 5.6], [12, 12.8], [2.8, 5.6], [21.2, 9.2],
+  [2.8, 12.8], [12, 5.6], [21.2, 12.8], [7.4, 5.6], [16.6, 9.2],
+  [2.8, 9.2], [21.2, 5.6], [7.4, 12.8], [12, 9.2], [16.6, 12.8],
 ];
 
 const spawnCache = new Map<string, [number, number][]>();
@@ -678,7 +682,7 @@ export function habitatSpawns(habitat: string): [number, number][] {
     let best: [number, number] | null = null;
     let bestD = Infinity;
     for (const spot of spots) {
-      if (chosen.some(([x, y]) => Math.hypot(x - spot[0], (y - spot[1]) * 1.4) < 3.4)) continue;
+      if (chosen.some(([x, y]) => Math.hypot(x - spot[0], (y - spot[1]) * 1.4) < 3)) continue;
       const d = Math.hypot(spot[0] - tx, spot[1] - ty);
       if (d < bestD) { bestD = d; best = spot; }
     }

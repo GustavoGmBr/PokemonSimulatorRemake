@@ -63,7 +63,7 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   let view = (await call<BattleView>('GET', `${url}/battle`)).json;
   let final: BattleTurnResult | null = null;
   for (let i = 0; i < 40 && !final; i++) {
-    const best = [...view.player.moves].filter((m) => m.pp > 0).sort((a, b) => b.power - a.power)[0];
+    const best = [...view.player.moves].sort((a, b) => b.power - a.power)[0];
     const r = await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: best?.slot ?? -1 });
     assert.equal(r.status, 201);
     view = r.json.view;
@@ -79,11 +79,13 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   const mon = after.team[0] as PokemonView;
   assert.ok(mon.exp > 27000, 'ganhou XP');
   assert.equal(mon.currentHp, mon.stats.hp, 'curado ao fim');
-  assert.ok(mon.moves.every((m) => m.pp === m.maxPp), 'PP restaurado');
   assert.ok(mon.friendship > 70, 'amizade subiu');
   assert.equal((await call('GET', `${url}/battle`)).json, null);
   const wild = (await call<WildState>('GET', `${url}/wild`)).json;
-  assert.equal(wild.board, null, 'vitória encerra o mapa');
+  assert.ok(wild.board, 'vitória mantém o mapa');
+  assert.equal(wild.chosen, null);
+  assert.equal(wild.board?.slots.length, 2, 'só o derrotado sai do mapa (3 no início)');
+  assert.ok(!wild.board?.slots.some((slot) => slot.slot === 0), 'a vaga 0 ficou vazia, as outras não mudam de lugar');
 });
 
 test('batalha: capturar dentro da luta com Master Ball', async () => {
@@ -161,4 +163,50 @@ test('golpes pendentes: aprender trocando ou descartar', async () => {
   const dropped = (await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/learn`, { move: 'slash', replace: null })).json;
   assert.equal(dropped.pendingMoves.length, 0);
   assert.ok(!dropped.moves.some((m) => m.name === 'slash'));
+});
+
+
+test('mapa limpo: derrotar/capturar todos deixa o mapa vazio até girar', async () => {
+  const { url } = await setup();
+  await call('POST', `${url}/wild/search`, { region: 'kanto', minLevel: 2, maxLevel: 4 });
+  for (const slot of [0, 1, 2]) {
+    await call('POST', `${url}/wild/choose`, { slot });
+    const r = await call<BattleTurnResult>('POST', `${url}/battle/start`);
+    assert.equal(r.status, 201);
+    const done = await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'ball', item: 'master-ball' });
+    assert.equal(done.json.view.outcome?.result, 'captured');
+  }
+  const wild = (await call<WildState>('GET', `${url}/wild`)).json;
+  assert.equal(wild.board?.slots.length, 0);
+  const spun = (await call<WildState>('POST', `${url}/wild/spin`, {})).json;
+  assert.equal(spun.board?.slots.length, 3, 'girar traz novos Pokémon');
+});
+
+test('golpes: lista permitidos, troca por nível (grátis) e por TM (paga uma vez)', async () => {
+  const { save, url } = await setup();
+  const mon = save.team[0] as PokemonView;
+  db.prepare('UPDATE pokemon SET level = 40 WHERE id = ?').run(mon.id);
+  const opts = (await call<{ learnable: { move: { name: string }; source: string; price: number; known: boolean }[]; money: number }>('GET', `${url}/pokemon/${mon.id}/moves`)).json;
+  assert.ok(opts.learnable.length > 3);
+  const tm = opts.learnable.find((item) => item.source === 'machine' && item.price > 0 && !item.known);
+  assert.ok(tm, 'há TM para comprar');
+  const free = opts.learnable.find((item) => item.source === 'level' && !item.known);
+  assert.ok(free);
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: 'definitely-not-a-move', slot: 0 })).status, 400);
+  const swapped = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: free?.move.name, slot: 0 });
+  assert.equal(swapped.status, 201);
+  assert.equal(swapped.json.moves[0]?.name, free?.move.name);
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: free?.move.name, slot: 1 })).status, 400, 'já conhece');
+  db.prepare('UPDATE saves SET money = 0 WHERE id = ?').run(save.id);
+  assert.equal((await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 })).status, 400, 'sem dinheiro');
+  db.prepare('UPDATE saves SET money = 100000 WHERE id = ?').run(save.id);
+  const bought = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 });
+  assert.equal(bought.status, 201);
+  const money = (db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money;
+  assert.equal(money, 100000 - (tm?.price ?? 0));
+  // trocar de volta e reaprender a TM não cobra de novo
+  await call('POST', `${url}/pokemon/${mon.id}/teach`, { move: free?.move.name === bought.json.moves[0]?.name ? opts.learnable.find((i) => i.source === 'level' && i.move.name !== free?.move.name && !i.known)?.move.name : free?.move.name, slot: 1 });
+  const again = await call<PokemonView>('POST', `${url}/pokemon/${mon.id}/teach`, { move: tm?.move.name, slot: 1 });
+  assert.equal(again.status, 201);
+  assert.equal((db.prepare('SELECT money FROM saves WHERE id = ?').get(save.id) as { money: number }).money, 100000 - (tm?.price ?? 0), 'TM comprada vale para sempre');
 });

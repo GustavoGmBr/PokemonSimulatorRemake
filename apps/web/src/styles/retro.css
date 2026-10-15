@@ -606,3 +606,11 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
   .gb-fx, .gb-battle-ball, .gb-popup { animation: none !important; }
   .gb-fx i, .gb-sprite-anim { animation: none !important; }
 }
+
+/* ---- Equipe na tela de Selvagens ---- */
+.gb-team-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 8px 10px; }
+.gb-team-strip__mon { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.gb-team-strip__mon.is-fainted { opacity: 0.55; filter: grayscale(0.8); }
+.gb-team-strip__info { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
+.gb-team-strip__info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
+@media (max-width: 900px) { .gb-team-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

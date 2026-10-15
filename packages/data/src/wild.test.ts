@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadGameData } from './index.ts';
 import {
-  HABITATS, applyHealItem, habitatOfType, levelCap, regionProgress, spinsFor, unlockedRegionIds,
+  HABITATS, applyHealItem, habitatOfType, levelCap, regionProgress, spinsFor, boardSizeFor, unlockedRegionIds,
   attemptCapture, ballMultiplier, captureChance, captureValue, evolutionStage, isWildEligible, maxStageForBadges,
   rollShiny, seededRng, shakeThreshold, wildLevelRange, type BallContext,
 } from '@pokesim/engine';
@@ -129,6 +129,12 @@ test('progresso: regiões abrem pelo campeão e os giros crescem com os desafios
   assert.equal(spinsFor(regionProgress(['kanto:gym1', 'kanto:elite1', 'kanto:elite2', 'kanto:elite3', 'kanto:elite4'], 'kanto')), 8);
   assert.equal(spinsFor(regionProgress(['kanto:champion'], 'kanto')), 12);
   assert.equal(spinsFor(regionProgress(['kanto:champion'], 'johto')), 3);
+  // Pokémon no mapa: 3 de base, +1 por ginásio/Elite, 15 com o campeão
+  assert.equal(boardSizeFor(regionProgress([], 'kanto')), 3);
+  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2'], 'kanto')), 5);
+  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2', 'kanto:gym3', 'kanto:gym4', 'kanto:gym5', 'kanto:gym6', 'kanto:gym7', 'kanto:gym8'], 'kanto')), 11);
+  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2', 'kanto:gym3', 'kanto:gym4', 'kanto:gym5', 'kanto:gym6', 'kanto:gym7', 'kanto:gym8', 'kanto:elite1', 'kanto:elite2', 'kanto:elite3', 'kanto:elite4'], 'kanto')), 14);
+  assert.equal(boardSizeFor(regionProgress(['kanto:champion'], 'kanto')), 15);
 });
 
 test('limites de nível por progresso', () => {

@@ -65,14 +65,14 @@ export function HabitatBoard({ habitat, slots, cursor, alertStars, disabled, onH
 }
 
 /** Próximo Pokémon do mapa na direção pedida (para jogar só com o teclado). */
-export function neighbour(habitat: string, from: number, direction: 'left' | 'right' | 'up' | 'down', count: number): number {
+export function neighbour(habitat: string, from: number, direction: 'left' | 'right' | 'up' | 'down', present: number[]): number {
   const spawns = habitatSpawns(habitat);
   const origin = spawns[from];
   if (!origin) return from;
   let best = from;
   let bestScore = Infinity;
-  for (let i = 0; i < Math.min(count, spawns.length); i++) {
-    if (i === from) continue;
+  for (const i of present) {
+    if (i === from || !spawns[i]) continue;
     const [x, y] = spawns[i] as [number, number];
     const dx = x - origin[0];
     const dy = (y - origin[1]) * 1.6;

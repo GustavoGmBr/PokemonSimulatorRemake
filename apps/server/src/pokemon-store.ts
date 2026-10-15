@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
   ivQuality, isValidLocation, levelProgress, searchCollection, statsOf,
-  type BoxView, type Combatant, type CollectionEntry, type MoveView, type EvolutionChoice, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
+  type BoxView, type Combatant, type LearnableMove, type MoveOptions, type CollectionEntry, type MoveView, type EvolutionChoice, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
   type PokemonInstance, type PokemonLocation, type PokemonSearchResult, type PokemonView,
   type SearchPokemonQuery, type SortKey, type Stats, type TypeName, SORT_KEYS,
 } from '@pokesim/engine';
@@ -30,6 +30,12 @@ export interface PokemonRow {
   box: number | null;
   box_slot: number | null;
   caught_at: string;
+}
+
+/** Preço da TM: golpes de status ₽ 1.500; os de dano custam 25 por ponto de poder (mín. ₽ 1.000), em centenas. */
+export function tmPrice(move: { category: string; power: number }): number {
+  if (move.category === 'status') return 1500;
+  return Math.max(1000, Math.round((move.power * 25) / 100) * 100);
 }
 
 export const DEFAULT_SEARCH_LIMIT = 30;
@@ -90,6 +96,35 @@ export function createPokemonStore(db: Db) {
       pendingMoves: pendingOf(row.id),
       friendship: row.friendship,
     };
+  }
+
+  /** Golpes que o Pokémon pode usar: os de nível já alcançados (grátis) e os de TM (comprados uma vez por save). */
+  function moveOptionsOf(saveId: string, pokemonId: string): MoveOptions {
+    const row = getRow(saveId, pokemonId);
+    const species = data.speciesById.get(row.species_id);
+    if (!species) throw notFound('Espécie desconhecida.');
+    const known = new Set((JSON.parse(row.moves) as MoveSlot[]).map((slot) => slot.name));
+    const unlocked = new Set((db.prepare('SELECT move FROM tm_unlocked WHERE save_id = ?').all(saveId) as { move: string }[]).map((r) => r.move));
+    const seen = new Map<string, LearnableMove>();
+    for (const entry of species.learnset) {
+      const move = data.movesByName.get(entry.move);
+      if (!move) continue;
+      const source = entry.method === 'level-up' && entry.level <= row.level ? 'level' : entry.method === 'machine' ? 'machine' : null;
+      if (!source) continue;
+      const before = seen.get(entry.move);
+      if (before && (before.source === 'level' || source === 'machine')) continue; // nível (grátis) tem prioridade
+      seen.set(entry.move, {
+        move: moveView(entry.move),
+        source,
+        level: source === 'level' ? entry.level : 0,
+        price: source === 'machine' && !unlocked.has(entry.move) ? tmPrice(move) : 0,
+        unlocked: source === 'level' || unlocked.has(entry.move),
+        known: known.has(entry.move),
+      });
+    }
+    const list = [...seen.values()].sort((a, b) => (a.source === b.source ? a.move.displayName.localeCompare(b.move.displayName) : a.source === 'level' ? -1 : 1));
+    const money = (db.prepare('SELECT money FROM saves WHERE id = ?').get(saveId) as { money: number }).money;
+    return { learnable: list, money };
   }
 
   function moveView(name: string, pp?: number, maxPp?: number): MoveView {
@@ -296,6 +331,35 @@ export function createPokemonStore(db: Db) {
           slots[index] = toMoveSlot(move);
           db.prepare('UPDATE pokemon SET moves = ? WHERE id = ?').run(JSON.stringify(slots), row.id);
         }
+        db.prepare('DELETE FROM pending_moves WHERE pokemon_id = ? AND move = ?').run(row.id, name);
+      });
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
+    moveOptions: (saveId: string, pokemonId: string): MoveOptions => moveOptionsOf(saveId, pokemonId),
+
+    /** Troca o golpe de uma vaga (ou preenche uma vaga livre) por um golpe permitido; TM novo é comprado na hora. */
+    teachMove(saveId: string, pokemonId: string, input: { move?: unknown; slot?: unknown }): PokemonView {
+      const name = typeof input.move === 'string' ? input.move : '';
+      const options = moveOptionsOf(saveId, pokemonId);
+      const choice = options.learnable.find((item) => item.move.name === name);
+      if (!choice) throw badRequest('Esse POKÉMON não pode aprender esse golpe.');
+      if (choice.known) throw badRequest('Ele já conhece esse golpe.');
+      const move = data.movesByName.get(name);
+      if (!move) throw badRequest('Golpe desconhecido.');
+      const row = getRow(saveId, pokemonId);
+      const slots = JSON.parse(row.moves) as MoveSlot[];
+      const index = Number(input.slot);
+      const max = Math.min(4, slots.length + 1);
+      if (!Number.isInteger(index) || index < 0 || index >= max) throw badRequest('Escolha uma vaga de golpe.');
+      transaction(db, () => {
+        if (choice.price > 0) {
+          if (options.money < choice.price) throw badRequest(`Dinheiro insuficiente: a TM de ${move.displayName} custa ₽ ${choice.price.toLocaleString('pt-BR')}.`);
+          db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(choice.price, new Date().toISOString(), saveId);
+        }
+        if (choice.source === 'machine') db.prepare('INSERT OR IGNORE INTO tm_unlocked (save_id, move) VALUES (?, ?)').run(saveId, name);
+        slots[index] = toMoveSlot(move);
+        db.prepare('UPDATE pokemon SET moves = ? WHERE id = ?').run(JSON.stringify(slots), row.id);
         db.prepare('DELETE FROM pending_moves WHERE pokemon_id = ? AND move = ?').run(row.id, name);
       });
       return rowToView(getRow(saveId, pokemonId));

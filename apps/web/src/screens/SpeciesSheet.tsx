@@ -310,7 +310,6 @@ function MovesTab({ method, list, scroll, onMethod }: {
               <th scope="col">Golpe</th><th scope="col">Tipo</th><th scope="col">Classe</th>
               <th scope="col" style={{ textAlign: 'right' }}>Poder</th>
               <th scope="col" style={{ textAlign: 'right' }}>Prec.</th>
-              <th scope="col" style={{ textAlign: 'right' }}>PP</th>
             </tr>
           </thead>
           <tbody>
@@ -322,7 +321,6 @@ function MovesTab({ method, list, scroll, onMethod }: {
                 <td>{move ? CATEGORY_LABEL[move.category] : '—'}</td>
                 <td style={{ textAlign: 'right' }}>{move && move.category !== 'status' ? move.power : '—'}</td>
                 <td style={{ textAlign: 'right' }}>{move ? (move.accuracy ?? '∞') : '—'}</td>
-                <td style={{ textAlign: 'right' }}>{move?.pp ?? '—'}</td>
               </tr>
             ))}
           </tbody>

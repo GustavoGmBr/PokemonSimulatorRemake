@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { STAT_KEYS, STAT_LABELS, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
+import { STAT_KEYS, STAT_LABELS, type MoveOptions, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HpBar, Sprite, Stars, TypeBadge, XpBar } from './bits.tsx';
 import { Menu, type MenuItem } from './Menu.tsx';
@@ -10,7 +10,7 @@ export function locationLabel(mon: PokemonView): string {
   return mon.location.kind === 'team' ? `Equipe · posição ${mon.location.slot + 1}` : `Caixa ${mon.location.box + 1} · vaga ${mon.location.slot + 1}`;
 }
 
-type Panel = null | 'evolve' | 'learn' | { learn: string };
+type Panel = null | 'evolve' | 'learn' | 'slots' | { learn: string } | { teach: number };
 
 /**
  * Ficha de um Pokémon do jogador: sprite, atributos, IVs e golpes.
@@ -22,6 +22,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
   const [names, setNames] = useState<Map<number, SpeciesIndexEntry>>(new Map());
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [options, setOptions] = useState<MoveOptions | null>(null);
   useEffect(() => { setMon(initial); }, [initial]);
   useEffect(() => {
     if (!saveId) return;
@@ -37,10 +38,18 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     try { await job(); } catch (e) { setNote((e as Error).message); playSound('error'); } finally { setBusy(false); }
   };
 
+  const openSlots = () => run(async () => {
+    if (!saveId) return;
+    setOptions(await api.moveOptions(saveId, mon.id));
+    setPanel('slots');
+    playSound('confirm');
+  });
+
   useKeys((key) => {
     if (key === 'back' || key === 'confirm') onBack();
     else if (key === 'next' && canEvolve) { setPanel('evolve'); playSound('confirm'); }
     else if (key === 'goto' && canLearn) { setPanel('learn'); playSound('confirm'); }
+    else if (key === 'filter' && saveId) { openSlots(); }
   }, panel === null && !busy);
 
   const evolveItems: MenuItem[] = [
@@ -51,9 +60,24 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     ...mon.pendingMoves.map((move): MenuItem => ({ id: move.name, label: move.displayName, extra: `${move.type} · ${move.category === 'status' ? 'Status' : `Poder ${move.power}`}` })),
     { id: '__back', label: 'Cancelar' },
   ];
-  const pendingMove = typeof panel === 'object' && panel ? mon.pendingMoves.find((move) => move.name === panel.learn) : undefined;
+  const teachSlot = typeof panel === 'object' && panel && 'teach' in panel ? panel.teach : null;
+  const slotItems: MenuItem[] = [
+    ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `Trocar ${move.displayName}`, extra: `golpe ${index + 1}` })),
+    ...(mon.moves.length < 4 ? [{ id: String(mon.moves.length), label: 'Aprender em vaga livre', extra: `golpe ${mon.moves.length + 1}` } as MenuItem] : []),
+    { id: '__back', label: 'Cancelar' },
+  ];
+  const teachItems: MenuItem[] = [
+    ...(options?.learnable ?? []).filter((item) => !item.known).map((item): MenuItem => ({
+      id: item.move.name,
+      label: item.move.displayName,
+      extra: `${item.move.category === 'status' ? 'Status' : `Poder ${item.move.power}`} · ${item.source === 'level' ? `Nv${item.level}` : item.price > 0 ? `TM ₽ ${item.price.toLocaleString('pt-BR')}` : 'TM ✓'}`,
+      disabled: item.price > (options?.money ?? 0),
+    })),
+    { id: '__back', label: 'Voltar' },
+  ];
+  const pendingMove = typeof panel === 'object' && panel && 'learn' in panel ? mon.pendingMoves.find((move) => move.name === panel.learn) : undefined;
   const replaceItems: MenuItem[] = pendingMove ? [
-    ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `Esquecer ${move.displayName}`, extra: `PP ${move.maxPp}` })),
+    ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `Esquecer ${move.displayName}` })),
     { id: '__skip', label: `Não aprender ${pendingMove.displayName}` },
     { id: '__back', label: 'Voltar' },
   ] : [];
@@ -103,13 +127,14 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
             </tbody>
           </table>
 
-          {saveId && (canEvolve || canLearn || note) ? (
+          {saveId ? (
             <div className="gb-window gb-window--accent gb-window--tight" aria-label="Ações do perfil">
               {note ? <p style={{ margin: '0 0 6px' }}>{note}</p> : null}
               {panel === null ? (
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {canEvolve ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('evolve')}>Evoluir (E)</button> : null}
                   {canLearn ? <button type="button" className="gb-button gb-button--blue" onClick={() => setPanel('learn')}>Novos golpes ({mon.pendingMoves.length}) (G)</button> : null}
+                  <button type="button" className="gb-button" disabled={busy} onClick={() => void openSlots()}>Trocar golpes (F)</button>
                 </div>
               ) : null}
               {panel === 'evolve' ? (
@@ -128,6 +153,31 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                 <Menu label="Novos golpes" items={learnItems} active={!busy} onBack={() => setPanel(null)}
                   onSelect={(id) => setPanel(id === '__back' ? null : { learn: id })}
                 />
+              ) : null}
+              {panel === 'slots' ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Qual golpe de {mon.name} você quer trocar?</p>
+                  <Menu label="Vaga de golpe" items={slotItems} active={!busy} onBack={() => setPanel(null)}
+                    onSelect={(id) => (id === '__back' ? setPanel(null) : setPanel({ teach: Number(id) }))}
+                  />
+                </>
+              ) : null}
+              {teachSlot !== null && saveId ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Novo golpe para a vaga {teachSlot + 1}. Nível = já aprendido (grátis); TM = comprada uma vez e vale para sempre. Dinheiro: ₽ {(options?.money ?? 0).toLocaleString('pt-BR')}.</p>
+                  <Menu label="Golpes permitidos" items={teachItems} active={!busy} onBack={() => setPanel('slots')}
+                    onSelect={(id) => {
+                      if (id === '__back') { setPanel('slots'); return; }
+                      void run(async () => {
+                        const old = mon.moves[teachSlot]?.displayName;
+                        const next = await api.teachMove(saveId, mon.id, id, teachSlot);
+                        playSound('save');
+                        const learned = next.moves[teachSlot]?.displayName ?? id;
+                        update(next, old ? `${mon.name} esqueceu ${old} e aprendeu ${learned}!` : `${mon.name} aprendeu ${learned}!`);
+                      });
+                    }}
+                  />
+                </>
               ) : null}
               {pendingMove ? (
                 <>
@@ -156,7 +206,6 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                 <span className="gb-label" style={{ textTransform: 'uppercase' }}>{move.displayName}</span>
                 <span className="gb-spread" style={{ fontSize: 20 }}>
                   <TypeBadge type={move.type} />
-                  <span>PP {move.pp}/{move.maxPp}</span>
                 </span>
                 <span className="gb-muted" style={{ fontSize: 20 }}>
                   {move.category === 'status' ? 'Status' : `Poder ${move.power}`}{move.accuracy ? ` · Precisão ${move.accuracy}` : ''}

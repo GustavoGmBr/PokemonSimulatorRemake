@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.6**, Fase 1 em andamento (PC, Pokédex, selvagens, captura, loja e batalha selvagem prontos; treinadores/ginásios a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.7**, Fase 1 em andamento (PC, Pokédex, selvagens, captura, loja e batalha selvagem prontos; treinadores/ginásios a seguir). Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -75,7 +75,7 @@ packages/
      evolutiva, golpes (nível, TM, tutor, ovos) e formas.
    - ✅ Acabamento: tela de Opções (velocidade do texto, volume), tempo de jogo, fontes offline.
    - ✅ Selvagens e captura: busca por região (só Kanto no início; as outras abrem ao derrotar o campeão
-     da anterior). Cada procura sorteia um mapa pixel GBA (8 habitats por tipo) com 10 Pokémon soltos,
+     da anterior). Cada procura sorteia um mapa pixel GBA (8 habitats por tipo) com Pokémon soltos,
      brilhantes visíveis e "Nome · Nv · ★" em cima de cada um. Giros para trocar os 10: 3, e 5 / 8 / 12
      após ginásio / Elite dos 4 / campeão da região; sem giros, renovar custa ₽ 1.000. Lendários só
      depois da Elite dos 4 da região; busca por Pokémon específico (10 iguais, mapa do tipo dele) só
@@ -98,6 +98,11 @@ packages/
      RNG, então mesma semente + mesmas ações = mesma batalha). Ao vencer: XP, nível, golpes novos (se já
      tem 4, escolha no perfil), dinheiro (nível do inimigo × 10, Moeda Amuleto) e Ovo da Sorte. A equipe
      é curada (HP e PP) ao fim de toda batalha. Dentro da batalha: bolsa (Poké Bolas e curas), fugir.
+     **Sem PP:** os golpes são ilimitados. Ao fim da batalha você volta ao mapa; só o Pokémon derrotado ou
+     capturado sai dele (limpe o mapa inteiro e gire para renovar). A tela de Selvagens mostra sua equipe.
+     Golpes têm atalho **1–4** na batalha; **Opções → Controles** permite trocar todas as teclas.
+     **Trocar golpes** (F no perfil): golpes de nível já alcançados são grátis; golpes de TM permitidos
+     para a espécie são comprados uma vez (por save) e valem para sempre.
      Tela retrô com texto digitando, HP descendo, piscadas, XP, e animações de golpe por tipo.
      **Evolução é manual:** botão "Evoluir" no perfil do Pokémon da equipe (nível, amizade, horário,
      golpe de tipo; pedras/troca/local ficam para depois).

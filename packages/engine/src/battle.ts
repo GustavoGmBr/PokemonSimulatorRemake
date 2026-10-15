@@ -207,7 +207,8 @@ const STRUGGLE: Move = {
 type FoeChoice = { slot: number } | { struggle: true };
 
 function usableSlots(c: Combatant): number[] {
-  return c.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0);
+  // Sem PP: todos os golpes ficam sempre disponíveis.
+  return c.moves.map((_, i) => i);
 }
 
 /** IA do oponente: pontua os golpes e sorteia entre os dois melhores. */
@@ -389,7 +390,6 @@ function useMove(run: Run, side: SideKey, choice: FoeChoice | { slot: number }):
     move = found;
   }
   if (!canAct(run, side, move)) return;
-  if ('slot' in choice) (me.moves[choice.slot] as MoveSlot).pp -= 1;
   push(run, { k: 'move', side, move: move.name, moveName: move.displayName, type: move.type, category: move.category, text: `${who} usou ${move.displayName}!` });
 
   const targetsSelf = move.target === 'user';
@@ -532,8 +532,7 @@ function validate(state: BattleState, action: BattleAction): void {
   }
   if (action.kind === 'move') {
     const slots = usableSlots(me);
-    if (slots.length === 0) { if (action.slot !== -1) throw new Error('Sem PP: só resta Struggle.'); }
-    else if (!slots.includes(action.slot)) throw new Error('Golpe indisponível ou sem PP.');
+    if (!slots.includes(action.slot)) throw new Error('Golpe indisponível.');
   }
   if (action.kind === 'switch') {
     const target = state.player.team[action.to];

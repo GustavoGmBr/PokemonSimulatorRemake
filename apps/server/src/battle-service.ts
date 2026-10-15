@@ -82,12 +82,11 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
   function view(saveId: string, state: BattleState, outcome: BattleOutcome | null): BattleView {
     const me = activeOf(state, 'player');
     const foe = activeOf(state, 'foe');
-    const usable = me.moves.some((slot) => slot.pp > 0);
     const moves: BattleMoveView[] = me.moves.map((slot, index) => {
       const move = data.movesByName.get(slot.name);
       return {
         slot: index, name: slot.name, displayName: move?.displayName ?? slot.name, type: move?.type ?? 'normal', category: move?.category ?? 'physical',
-        power: move?.power ?? 0, accuracy: move?.accuracy ?? null, pp: slot.pp, maxPp: slot.maxPp,
+        power: move?.power ?? 0, accuracy: move?.accuracy ?? null,
         effectiveness: move && move.category !== 'status' ? effectiveness(data.typeChart, move.type, foe.types) : null,
       };
     });
@@ -106,7 +105,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     return {
       phase: state.phase,
       turn: state.turn,
-      player: { active: state.player.active, team: state.player.team.map(monView), moves, mustStruggle: !usable },
+      player: { active: state.player.active, team: state.player.team.map(monView), moves },
       foe: { active: state.foe.active, team: state.foe.team.map(monView), caughtBefore: caughtBefore || outcome?.result === 'captured' },
       balls,
       heals,

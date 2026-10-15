@@ -1,19 +1,21 @@
 import { useEffect, useRef } from 'react';
+import { BIND_ACTIONS, getSettings } from '../settings.ts';
 
 export type GameKey =
   | 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
-  | 'prev' | 'next' | 'filter' | 'goto' | 'tool';
+  | 'prev' | 'next' | 'filter' | 'goto' | 'tool' | 'move1' | 'move2' | 'move3' | 'move4';
 
-/** Mapa estilo GBA: setas, Z/Enter/Espaço = A, X/Esc/Backspace = B. */
-const KEYMAP: Record<string, GameKey> = {
-  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-  w: 'up', s: 'down', a: 'left', d: 'right',
-  z: 'confirm', Z: 'confirm', Enter: 'confirm', ' ': 'confirm',
-  x: 'back', X: 'back', Escape: 'back', Backspace: 'back',
-  // atalhos extras: Q/E (ou PageUp/PageDown) trocam de aba/caixa; F busca; G "ir para"; T ferramenta de teste
-  q: 'prev', Q: 'prev', PageUp: 'prev', e: 'next', E: 'next', PageDown: 'next',
-  f: 'filter', F: 'filter', g: 'goto', G: 'goto', t: 'tool', T: 'tool',
-};
+const norm = (key: string) => (key.length === 1 ? key.toLowerCase() : key);
+
+/** Tecla -> ação, conforme as teclas escolhidas em Opções → Controles (Enter e Esc sempre valem; T = ferramenta de teste). */
+function actionOf(key: string): GameKey | undefined {
+  const pressed = norm(key);
+  if (pressed === 'Enter') return 'confirm';
+  if (pressed === 'Escape') return 'back';
+  const keys = getSettings().keys;
+  for (const action of BIND_ACTIONS) if (keys[action.id].some((k) => norm(k) === pressed)) return action.id;
+  return pressed === 't' ? 'tool' : undefined;
+}
 
 /**
  * Escuta o teclado enquanto `active` for true. Só uma camada da tela deve estar
@@ -30,7 +32,7 @@ export function useKeys(handler: (key: GameKey, event: KeyboardEvent) => void, a
       const target = event.target as HTMLElement | null;
       const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
       if (typing && event.key !== 'Enter' && event.key !== 'Escape') return;
-      const key = KEYMAP[event.key];
+      const key = actionOf(event.key);
       if (!key) return;
       event.preventDefault();
       ref.current(key, event);

@@ -283,14 +283,14 @@ async function kit(saveId: string): Promise<void> {
   assert.equal((await call('POST', `/api/saves/${saveId}/dev/kit`)).status, 201);
 }
 
-test('procurar: mapa com 10 selvagens, 3 giros e nada sem procura', async () => {
+test('procurar: mapa com 3 selvagens, 3 giros e nada sem procura', async () => {
   const save = await newSave();
   const idle = (await call<WildState>('GET', `/api/saves/${save.id}/wild`)).json;
   assert.equal(idle.board, null);
   assert.deepEqual(idle.balls.map((b) => [b.item, b.quantity]), [['poke-ball', 10]]);
 
   const first = (await call<WildState>('POST', `/api/saves/${save.id}/wild/search`, KANTO)).json;
-  assert.equal(first.board?.slots.length, 10);
+  assert.equal(first.board?.slots.length, 3);
   assert.equal(first.board?.spinsLeft, 3);
   assert.equal(first.board?.regionName, 'Kanto');
   assert.ok(first.board?.habitat);
@@ -323,14 +323,14 @@ test('escolher: encontro, fugir, e regras de ordem', async () => {
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' })).status, 400);
   await call('POST', `/api/saves/${save.id}/wild/search`, KANTO);
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/choose`, { slot: 10 })).status, 400);
-  const chosen = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 4 })).json;
-  assert.equal(chosen.chosen, 4);
+  const chosen = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 2 })).json;
+  assert.equal(chosen.chosen, 2);
   const ball = chosen.balls[0];
   assert.ok(ball && ball.chance !== null && ball.chance > 0 && ball.chance < 1);
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/spin`)).status, 400, 'não gira durante o encontro');
 
   const dex = (await call<PokedexView>('GET', `/api/saves/${save.id}/pokedex`)).json;
-  const speciesId = chosen.board?.slots[4]?.speciesId ?? 0;
+  const speciesId = chosen.board?.slots[2]?.speciesId ?? 0;
   assert.ok(dex.states[speciesId - 1] ?? 0 >= 1, 'a espécie escolhida vira vista');
 
   const fled = (await call<WildState>('POST', `/api/saves/${save.id}/wild/flee`)).json;
@@ -363,7 +363,7 @@ test('lançar bola: gasta a bola, errar mantém o encontro e a Master Ball captu
     assert.equal(master.json.pokemon?.level, target.level);
     assert.equal(master.json.pokemon?.shiny, target.shiny);
     assert.equal(master.json.pokemon?.ball, 'master-ball');
-    assert.equal(master.json.state.board, null);
+    assert.equal(master.json.state.board?.slots.length, 2, 'só o capturado sai do mapa');
   }
   const mine = (await call<PokemonSearchResult>('GET', `/api/saves/${save.id}/pokemon?limit=100`)).json;
   assert.equal(mine.total, 2);
@@ -424,7 +424,7 @@ test('regiões: só Kanto no início; progresso libera regiões, giros, lendári
 
   // busca específica: os 10 são o escolhido e o mapa é o do tipo dele
   const specific = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).json.board;
-  assert.equal(specific?.slots.length, 10);
+  assert.equal(specific?.slots.length, 15);
   assert.ok(specific?.slots.every((slot) => slot.speciesId === 25));
   assert.equal(specific?.habitat, 'industrial');
   assert.equal(specific?.spinsLeft, 12);

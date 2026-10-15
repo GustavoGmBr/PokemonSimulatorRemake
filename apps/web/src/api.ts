@@ -1,5 +1,5 @@
 import type {
-  BattleActRequest, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest,
@@ -59,6 +59,9 @@ export const api = {
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/evolve`, { speciesId }),
   learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/learn`, { move, replace }),
+  moveOptions: (id: string, pokemonId: string) => request<MoveOptions>('GET', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/moves`),
+  teachMove: (id: string, pokemonId: string, move: string, slot: number) =>
+    request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/teach`, { move, slot }),
   wildThrow: (id: string, ball: string) => request<ThrowBallResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/throw`, { ball }),
   shop: (id: string) => request<ShopEntry[]>('GET', `/api/saves/${encodeURIComponent(id)}/shop`),
   buy: (id: string, cart: { item: string; quantity: number }[]) => request<BuyResult>('POST', `/api/saves/${encodeURIComponent(id)}/shop/buy`, { cart }),

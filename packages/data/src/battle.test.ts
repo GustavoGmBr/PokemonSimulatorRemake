@@ -185,13 +185,17 @@ test('multi-golpe, dreno e recuo', () => {
   if (hits(recoil.events, 'foe').length > 0) assert.ok(recoil.events.some((e) => e.k === 'hit' && e.cause === 'recoil'));
 });
 
-test('sem PP: Struggle', () => {
+test('sem PP: golpes ilimitados', () => {
   const hero = mon(25, 50, ['tackle']);
   hero.moves = [{ name: 'tackle', pp: 0, maxPp: 35 }];
-  const { state } = start([hero], [mon(143, 50, ['splash'])]);
-  assert.throws(() => chooseAction(state, { kind: 'move', slot: 0 }, ctx), /PP/);
-  const r = chooseAction(state, { kind: 'move', slot: -1 }, ctx);
-  assert.ok(r.events.some((e) => e.k === 'move' && e.move === 'struggle'));
+  let { state } = start([hero], [mon(143, 100, ['splash'])]);
+  for (let i = 0; i < 40 && state.phase === 'choose'; i++) {
+    const r = chooseAction(state, { kind: 'move', slot: 0 }, ctx);
+    assert.ok(r.events.some((e) => e.k === 'move' && e.move === 'tackle'));
+    state = r.state;
+  }
+  assert.equal(activeOf(state, 'player').moves[0]?.pp, 0, 'PP não é gasto');
+  assert.throws(() => chooseAction({ ...state, phase: 'choose' }, { kind: 'move', slot: 3 }, ctx), /indispon/);
 });
 
 test('reprodutível: mesma semente e ações dão a mesma batalha; outra semente muda', () => {
@@ -233,20 +237,18 @@ test('fuzz: 500 batalhas aleatórias terminam sem erro e respeitam os invariante
       if (state.phase === 'replace') action = { kind: 'switch', to: state.player.team.findIndex((c) => c.hp > 0) };
       else {
         const me = activeOf(state, 'player');
-        const slots = me.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0);
-        action = slots.length ? { kind: 'move', slot: slots[rng.int(slots.length)] as number } : { kind: 'move', slot: -1 };
+        action = { kind: 'move', slot: rng.int(me.moves.length) };
       }
       const r = chooseAction(state, action, ctx);
       state = r.state;
       for (const c of [...state.player.team, ...state.foe.team]) {
         assert.ok(c.hp >= 0 && c.hp <= c.stats.hp, 'HP dentro dos limites');
         for (const key of Object.keys(c.stages) as (keyof typeof c.stages)[]) assert.ok(Math.abs(c.stages[key]) <= 6);
-        for (const m of c.moves) assert.ok(m.pp >= 0 && m.pp <= m.maxPp);
       }
       for (const e of r.events) assert.ok(typeof e.text === 'string');
     }
-    assert.ok(state.phase === 'ended', `batalha ${battle} terminou (${turns} turnos)`);
-    assert.ok(state.result === 'win' || state.result === 'lose');
+    assert.ok(state.phase === 'ended' || turns >= 400, `batalha ${battle} sem PP pode empatar, mas nao quebrar (${turns})`);
+    if (state.phase === 'ended') assert.ok(state.result === 'win' || state.result === 'lose');
     void emptyStages;
   }
 });

@@ -8,6 +8,7 @@ import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { BallIcon, HpBar, KeyHints, Sprite, Stars, TypeBadge, XpBar } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
+import { keyLabel, useSettings, type BindAction } from '../settings.ts';
 import { playSound } from '../sound.ts';
 import { BattleFx, fxKindOf } from '../ui/BattleFx.tsx';
 
@@ -310,6 +311,14 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     if (key === 'confirm' || key === 'back') { playSound('confirm'); onExit(outcome); }
   }, mode === 'ended');
 
+  // atalhos de golpe (1–4 por padrão; dá para trocar em Opções → Controles)
+  const settings = useSettings();
+  useKeys((key) => {
+    const slot = ['move1', 'move2', 'move3', 'move4'].indexOf(key);
+    if (slot < 0 || !view.player.moves[slot]) return;
+    void act({ kind: 'move', slot });
+  }, (mode === 'command' || mode === 'fight') && !busy && view.phase === 'choose');
+
   const commandItems: MenuItem[] = [
     { id: 'fight', label: 'LUTAR' },
     { id: 'bag', label: 'BOLSA' },
@@ -317,14 +326,10 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     { id: 'run', label: 'FUGIR' },
   ];
 
-  const moveItems: MenuItem[] = view.player.mustStruggle
-    ? [{ id: '-1', label: 'STRUGGLE', extra: 'sem PP' }]
-    : view.player.moves.map((move) => ({
-      id: String(move.slot),
-      label: <span className="gb-mv"><span className={`gb-dot gb-dot--${move.type}`} />{move.displayName}</span>,
-      extra: `PP ${move.pp}/${move.maxPp}`,
-      disabled: move.pp === 0,
-    }));
+  const moveItems: MenuItem[] = view.player.moves.map((move) => ({
+    id: String(move.slot),
+    label: <span className="gb-mv"><span className="gb-muted">{keyLabel(settings.keys[`move${move.slot + 1}` as BindAction]?.[0] ?? String(move.slot + 1))}</span><span className={`gb-dot gb-dot--${move.type}`} />{move.displayName}</span>,
+  }));
   const hoveredMove = view.player.moves.find((move) => String(move.slot) === hover);
 
   const teamItems: MenuItem[] = view.player.team.map((mon) => ({
@@ -440,7 +445,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
             {mode === 'ended' && outcome ? <OutcomePanel outcome={outcome} /> : null}
           </div>
         </div>
-        <KeyHints hints={mode === 'ended' ? [['Z', 'continuar']] : mode === 'playing' ? [['Z', 'adiantar texto']] : [['↑↓←→', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar']]} />
+        <KeyHints hints={mode === 'ended' ? [['Z', 'continuar']] : mode === 'playing' ? [['Z', 'adiantar texto']] : [['↑↓←→', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar'], ...(mode === 'command' || mode === 'fight' ? [[`${keyLabel(settings.keys.move1[0] ?? '1')}–${keyLabel(settings.keys.move4[0] ?? '4')}`, 'golpe direto'] as [string, string]] : [])]} />
       </div>
     </main>
   );

@@ -1,7 +1,8 @@
 import type { EvolutionNode, Species, TypeName } from './types.ts';
 import { REGIONS, type Region } from './regions.ts';
 
-export const BOARD_SIZE = 10;
+export const BOARD_MIN_SIZE = 3;
+export const BOARD_MAX_SIZE = 15;
 export const BOARD_SPINS = 3;
 /** Preço para renovar o mapa quando os giros acabam. */
 export const REFRESH_COST = 1000;
@@ -41,6 +42,12 @@ export function unlockedRegionIds(challengeIds: readonly string[]): string[] {
     else break;
   }
   return unlocked;
+}
+
+/** Pokémon no mapa: 3 de base, +1 por ginásio e por membro da Elite dos 4 (até 14); 15 ao derrotar o campeão. */
+export function boardSizeFor(progress: RegionProgress): number {
+  if (progress.champion) return BOARD_MAX_SIZE;
+  return Math.min(BOARD_MAX_SIZE - 1, BOARD_MIN_SIZE + progress.gyms + progress.eliteMembers);
 }
 
 /** Giros por mapa: 3 de base; 5 com um ginásio da região, 8 com a Elite dos 4, 12 com o campeão. */
