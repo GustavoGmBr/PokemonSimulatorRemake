@@ -1,3 +1,4 @@
+import type { StatusKind } from './battle.ts';
 /** Efeito de itens de cura. `heal` = HP recuperado (Infinity = tudo). */
 export interface HealEffect {
   heal: number;
@@ -34,6 +35,30 @@ export function applyHealItem(item: string, currentHp: number, maxHp: number): U
   if (currentHp >= maxHp) return { ok: false, reason: 'O HP já está cheio.' };
   const newHp = Math.min(maxHp, effect.heal === Infinity ? maxHp : currentHp + effect.heal);
   return { ok: true, newHp, healed: newHp - currentHp };
+}
+
+/** Itens que removem problemas de status em batalha (o status some ao fim da luta, então só valem nela). */
+export const STATUS_CURES: Readonly<Record<string, readonly StatusKind[]>> = {
+  antidote: ['poison'],
+  'burn-heal': ['burn'],
+  'ice-heal': ['freeze'],
+  awakening: ['sleep'],
+  'paralyze-heal': ['paralysis'],
+  'full-heal': ['burn', 'poison', 'paralysis', 'sleep', 'freeze', 'confusion'],
+  'full-restore': ['burn', 'poison', 'paralysis', 'sleep', 'freeze', 'confusion'],
+};
+
+export type StatusCureResult = { ok: true; status: boolean; confusion: boolean } | { ok: false; reason: string };
+
+/** O que um item de status cura no Pokémon (puro): o status principal e/ou a confusão. */
+export function applyStatusCure(item: string, status: StatusKind | null, confused: boolean, fainted = false): StatusCureResult {
+  const cures = STATUS_CURES[item];
+  if (!cures) return { ok: false, reason: 'Este item não cura status.' };
+  if (fainted) return { ok: false, reason: 'POKÉMON desmaiado precisa de um Reviver.' };
+  const status1 = status !== null && cures.includes(status);
+  const confusion = confused && cures.includes('confusion');
+  if (!status1 && !confusion) return { ok: false, reason: 'Não surtiria efeito.' };
+  return { ok: true, status: status1, confusion };
 }
 
 /** Itens da loja: categorias à venda e limite por item. */

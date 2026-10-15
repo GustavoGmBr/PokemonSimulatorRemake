@@ -308,3 +308,35 @@ test('dev: "vencer tudo" também conta o segundo circuito de Unova', async () =>
   assert.ok(state.challenges.some((c) => c.id.startsWith('unova2:')));
   assert.ok(state.unlockedRegions.includes('kalos'));
 });
+
+test('itens de status: curam só o que dizem, recusam sem efeito e gastam 1 unidade', async () => {
+  const { save, url } = await setup();
+  await startFight(url);
+  const qty = (item: string) => (db.prepare('SELECT quantity FROM inventory WHERE save_id = ? AND item = ?').get(save.id, item) as { quantity: number } | undefined)?.quantity ?? 0;
+  const setStatus = (status: string | null, confusion = 0) => {
+    const row = db.prepare('SELECT state FROM battles WHERE save_id = ?').get(save.id) as { state: string };
+    const state = JSON.parse(row.state);
+    state.player.team[0].status = status;
+    state.player.team[0].confusion = confusion;
+    db.prepare('UPDATE battles SET state = ? WHERE save_id = ?').run(JSON.stringify(state), save.id);
+  };
+  const use = (item: string) => call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'item', item, target: 0 });
+  const status = async () => ((await call<BattleView | null>('GET', `${url}/battle`)).json as BattleView).player.team[0]?.status;
+
+  const view = (await call<BattleView>('GET', `${url}/battle`)).json;
+  assert.ok(['antidote', 'burn-heal', 'ice-heal', 'awakening', 'paralyze-heal', 'full-heal'].every((id) => view.heals.some((h) => h.item === id)), 'aparecem no menu de cura');
+
+  assert.equal((await use('antidote')).status, 400, 'sem status');
+  assert.equal(qty('antidote'), 5);
+  setStatus('burn');
+  assert.equal((await use('antidote')).status, 400, 'status errado');
+  assert.equal(qty('antidote'), 5);
+  assert.equal(await status(), 'burn');
+  assert.equal((await use('burn-heal')).status, 201);
+  assert.equal(qty('burn-heal'), 4);
+  assert.notEqual(await status(), 'burn'); // o inimigo ainda pode ter agido depois
+  setStatus('paralysis', 3);
+  assert.equal((await use('full-heal')).status, 201);
+  assert.notEqual(await status(), 'paralysis');
+  assert.equal(qty('full-heal'), 4);
+});

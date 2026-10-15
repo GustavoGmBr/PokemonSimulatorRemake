@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  DIFFICULTIES, HEAL_EFFECTS, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
+  DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
   levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, resolvePrizeItem, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
   type TournamentProgress, type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
@@ -165,7 +165,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       }));
     const trainer = state.kind === 'trainer' && state.trainer ? state.trainer : null;
     const heals = data.items
-      .filter((item) => item.name in HEAL_EFFECTS && (quantities.get(item.name) ?? 0) > 0)
+      .filter((item) => (item.name in HEAL_EFFECTS || item.name in STATUS_CURES) && (quantities.get(item.name) ?? 0) > 0)
       .map((item) => ({ item: item.name, displayName: item.displayName, quantity: quantities.get(item.name) ?? 0 }));
     const caughtBefore = (db.prepare('SELECT caught FROM pokedex WHERE save_id = ? AND species_id = ?').get(saveId, foe.speciesId) as { caught: number } | undefined)?.caught === 1;
     return {
@@ -413,16 +413,31 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
               const name = typeof input.item === 'string' ? input.item : '';
               const item = data.itemsByName.get(name);
               const target = state.player.team[Number(input.target)];
-              if (!item || !(name in HEAL_EFFECTS) || !target) throw badRequest('Item ou alvo inválido.');
-              const used = applyHealItem(name, target.hp, target.stats.hp);
-              if (!used.ok) throw badRequest(used.reason);
+              if (!item || !(name in HEAL_EFFECTS || name in STATUS_CURES) || !target) throw badRequest('Item ou alvo inválido.');
+              const heals = name in HEAL_EFFECTS;
+              const cure = name in STATUS_CURES ? applyStatusCure(name, target.status, target.confusion > 0, target.hp <= 0) : null;
+              // Restauração Total vale também só pelo status, com o HP cheio
+              const hpUse = heals ? applyHealItem(name, target.hp, target.stats.hp) : null;
+              const hpOk = hpUse?.ok === true;
+              const cureOk = cure?.ok === true;
+              if (!hpOk && !cureOk) {
+                const hpReason = hpUse && !hpUse.ok ? hpUse.reason : null;
+                const cureReason = cure && !cure.ok ? cure.reason : null;
+                throw badRequest(heals && cure ? (target.hp <= 0 ? (hpReason as string) : 'Não surtiria efeito.') : (hpReason ?? cureReason ?? 'Não surtiria efeito.'));
+              }
               if (!inventory.take(saveId, name)) throw badRequest(`Você não tem ${item.displayName}.`);
               const next: BattleState = JSON.parse(JSON.stringify(state)) as BattleState;
               const mon = next.player.team[Number(input.target)] as Combatant;
-              mon.hp = used.newHp;
-              if (name === 'full-restore') { mon.status = null; mon.confusion = 0; }
-              const result = chooseAction(next, { kind: 'pass', text: `Você usou ${item.displayName} em ${mon.name}! Recuperou ${used.healed} HP.` }, ctx);
-              if (Number(input.target) === next.player.active) result.events.unshift({ k: 'heal', side: 'player', amount: used.healed, hp: mon.hp, maxHp: mon.stats.hp, text: '' });
+              const parts: string[] = [];
+              let healed = 0;
+              if (hpUse && hpUse.ok) { mon.hp = hpUse.newHp; healed = hpUse.healed; parts.push(`Recuperou ${hpUse.healed} HP.`); }
+              if (cure && cure.ok) {
+                if (cure.status) mon.status = null;
+                if (cure.confusion) mon.confusion = 0;
+                parts.push(cure.status ? 'O problema de status foi curado!' : 'A confusão passou!');
+              }
+              const result = chooseAction(next, { kind: 'pass', text: `Você usou ${item.displayName} em ${mon.name}! ${parts.join(' ')}` }, ctx);
+              if (healed > 0 && Number(input.target) === next.player.active) result.events.unshift({ k: 'heal', side: 'player', amount: healed, hp: mon.hp, maxHp: mon.stats.hp, text: '' });
               return commit(saveId, result.state, result.events);
             }
             default:

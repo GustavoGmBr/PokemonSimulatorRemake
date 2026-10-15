@@ -144,6 +144,10 @@ packages/
      `packages/data/catalog/pokeapi-items.json`, gerado por `npm run data:pokeapi` a partir dos dados do PokéAPI.
      Menu **Catálogo de itens** (busca, bolsos, o que já funciona no jogo e quanto você tem); ícones oficiais na Loja,
      Mochila e prêmios do cassino (carregados do repositório PokeAPI/sprites; sem internet o ícone some).
+   - ✅ **Itens de status (alpha.11):** Antídoto, Cura de Queimadura, Cura de Gelo, Despertar, Cura de Paralisia e Cura Total
+     (cura qualquer status e a confusão) na loja, categoria Cura. Valem em batalha, pelo menu CURA; Restauração Total
+     também cura status. Ícones dos itens vêm das sprites do [PokéAPI](https://github.com/PokeAPI/sprites) em Mochila,
+     Loja, Batalha, Cassino e Torneios.
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — launcher Windows e releases.
 

@@ -6,7 +6,7 @@ import {
 } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
-import { BallIcon, HpBar, KeyHints, Sprite, Stars, TypeBadge, XpBar } from '../ui/bits.tsx';
+import { BallIcon, HpBar, ItemIcon, KeyHints, Sprite, Stars, TypeBadge, XpBar } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { keyLabel, useSettings, type BindAction } from '../settings.ts';
 import { playSound } from '../sound.ts';
@@ -425,7 +425,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
               <Menu
                 label="Cura" active={!busy}
                 items={[
-                  ...view.heals.map((h): MenuItem => ({ id: h.item, label: h.displayName, extra: `×${h.quantity}` })),
+                  ...view.heals.map((h): MenuItem => ({ id: h.item, label: <span className="gb-iconrow"><ItemIcon item={h.item} size={24} />{h.displayName}</span>, extra: `×${h.quantity}` })),
                   { id: '__back', label: 'Voltar' },
                 ]}
                 onSelect={(id) => { if (id === '__back') setMode('bag'); else { setHealItem(id); setText('Usar em qual Pokémon?'); setMode('target'); } }}

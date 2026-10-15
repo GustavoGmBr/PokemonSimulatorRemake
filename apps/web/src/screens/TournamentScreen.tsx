@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { BattleOutcome, BattleTurnResult, TeamMemberView, TournamentState, TournamentTierView } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
-import { KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
+import { ItemIcon, KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 import { BattleScreen } from './BattleScreen.tsx';
@@ -131,7 +131,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
               <p className="gb-muted" style={{ margin: 0, fontSize: 20 }}>{tier.rounds} rodadas · nível máximo {tier.cap} · eliminatória</p>
               <p style={{ margin: '6px 0 0' }}>Inscrição: {formatMoney(tier.entry)}</p>
               <p style={{ margin: 0 }}>Prêmio: {formatMoney(tier.prizeMoney)}</p>
-              <p className="gb-muted" style={{ margin: 0, fontSize: 20 }}>{tier.prizeItems.map((i) => `${i.quantity}× ${i.name}`).join(', ')}</p>
+              <p className="gb-muted gb-iconrow" style={{ margin: 0, fontSize: 20, flexWrap: 'wrap' }}>{tier.prizeItems.map((i) => <span key={i.item} className="gb-iconrow"><ItemIcon item={i.item === 'random-essence' ? 'iv-hp' : i.item} size={24} />{i.quantity}× {i.name}</span>)}</p>
               <p style={{ margin: '6px 0 0' }}>{tier.wins > 0 ? `🏆 ${tier.wins} título${tier.wins > 1 ? 's' : ''}` : 'Sem títulos ainda'}</p>
             </div>
           ) : null}
