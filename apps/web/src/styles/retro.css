@@ -666,3 +666,13 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-iconrow { display: inline-flex; align-items: center; gap: 8px; }
 .gb-itemicon { image-rendering: pixelated; object-fit: contain; flex: none; }
 .gb-itemicon--none { display: inline-block; }
+
+/* ---------- missões, mercado e histórico ---------- */
+.gb-missions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 58vh; overflow-y: auto; }
+.gb-missions li { display: flex; gap: 12px; align-items: center; padding: 6px 8px; border: var(--px) solid var(--rim); background: var(--paper); }
+.gb-missions li.is-done { border-color: var(--green); }
+.gb-missions li.is-claimed { opacity: .55; }
+.gb-minibar { height: 10px; margin: 4px 0; border: 3px solid var(--ink); background: var(--paper-2); }
+.gb-minibar span { display: block; height: 100%; background: var(--green); }
+.gb-history { list-style: none; margin: 0; padding: 0; max-height: 28vh; overflow-y: auto; font-size: 20px; display: flex; flex-direction: column; gap: 2px; }
+.gb-teampick__mon.is-sold { opacity: .45; }

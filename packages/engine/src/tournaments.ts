@@ -3,6 +3,7 @@ import type { FoeBagItem } from './battle.ts';
 import { evolutionStage, isLegendary } from './wild.ts';
 import { IV_ESSENCES } from './transform.ts';
 import { pick, type Rng } from './rng.ts';
+import { REWARD_BALLS } from './challenges.ts';
 
 /** Torneios por categoria: 8 rodadas eliminatórias, com nível máximo para o seu time e inscrição em Pokédólares. */
 export const TOURNAMENT_ROUNDS = 8;
@@ -11,8 +12,10 @@ export type TournamentTierId = 'muito-facil' | 'facil' | 'intermediario' | 'difi
 
 export interface TournamentPrize {
   money: number;
-  /** `random-essence` vira uma Essência de IV sorteada */
-  items: { item: string; quantity: number }[];
+  /** quantidade sorteada entre min e máx; `random-ball` vira uma Poké Bola especial sorteada */
+  items: { item: string; min: number; max: number }[];
+  /** Essências de IV sorteadas (cada uma de um tipo aleatório) */
+  essences: number;
 }
 
 export interface TournamentTier {
@@ -20,38 +23,35 @@ export interface TournamentTier {
   name: string;
   description: string;
   entry: number;
-  /** nível máximo dos Pokémon dos dois lados na final */
+  /** nível máximo dos seus Pokémon (e dos adversários) */
   cap: number;
-  /** soma máxima dos atributos-base dos adversários (null = sem limite) */
-  maxBst: number | null;
-  legendary: boolean;
-  /** só espécies sem evolução anterior */
-  basicOnly: boolean;
+  minLevel: number;
+  minTeam: number;
+  maxTeam: number;
   prize: TournamentPrize;
 }
 
+/** Valores do jogo antigo (inscrição, prêmio, níveis e tamanho dos times). */
 export const TOURNAMENT_TIERS: readonly TournamentTier[] = [
-  { id: 'muito-facil', name: 'Muito Fácil', description: 'Pokémon básicos até o nível 30.', entry: 1_000, cap: 30, maxBst: 400, legendary: false, basicOnly: true,
-    prize: { money: 8_000, items: [{ item: 'exp-candy-p', quantity: 2 }] } },
-  { id: 'facil', name: 'Fácil', description: 'Até o nível 45, sem lendários.', entry: 3_000, cap: 45, maxBst: 480, legendary: false, basicOnly: false,
-    prize: { money: 25_000, items: [{ item: 'exp-candy-p', quantity: 5 }] } },
-  { id: 'intermediario', name: 'Intermediário', description: 'Até o nível 60, sem lendários.', entry: 8_000, cap: 60, maxBst: 540, legendary: false, basicOnly: false,
-    prize: { money: 70_000, items: [{ item: 'exp-candy-m', quantity: 3 }] } },
-  { id: 'dificil', name: 'Difícil', description: 'Até o nível 75; Pokémon fortes, sem lendários.', entry: 20_000, cap: 75, maxBst: 600, legendary: false, basicOnly: false,
-    prize: { money: 180_000, items: [{ item: 'exp-candy-g', quantity: 2 }, { item: 'random-essence', quantity: 1 }] } },
-  { id: 'muito-dificil', name: 'Muito Difícil', description: 'Até o nível 90; lendários liberados.', entry: 50_000, cap: 90, maxBst: 680, legendary: true, basicOnly: false,
-    prize: { money: 450_000, items: [{ item: 'exp-candy-gg', quantity: 1 }, { item: 'random-essence', quantity: 2 }] } },
-  { id: 'copa-prime', name: 'Copa Prime', description: 'Nível 100 e sem limites: a elite da elite.', entry: 100_000, cap: 100, maxBst: null, legendary: true, basicOnly: false,
-    prize: { money: 1_000_000, items: [{ item: 'exp-candy-gg', quantity: 3 }, { item: 'random-essence', quantity: 3 }] } },
+  { id: 'muito-facil', name: 'Muito Fácil', description: 'Pokémon básicos, nível 2–10.', entry: 150, cap: 10, minLevel: 2, minTeam: 3, maxTeam: 3,
+    prize: { money: 120, essences: 1, items: [{ item: 'random-ball', min: 2, max: 4 }, { item: 'great-ball', min: 0, max: 2 }, { item: 'exp-candy-p', min: 1, max: 3 }, { item: 'exp-candy-m', min: 0, max: 1 }] } },
+  { id: 'facil', name: 'Fácil', description: 'Nível 10–30, sem lendários.', entry: 500, cap: 30, minLevel: 10, minTeam: 3, maxTeam: 4,
+    prize: { money: 400, essences: 1, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 0, max: 2 }, { item: 'exp-candy-m', min: 2, max: 3 }, { item: 'exp-candy-g', min: 0, max: 1 }] } },
+  { id: 'intermediario', name: 'Intermediário', description: 'Nível 30–50, sem lendários.', entry: 1_500, cap: 50, minLevel: 30, minTeam: 4, maxTeam: 5,
+    prize: { money: 1_200, essences: 2, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 1, max: 3 }, { item: 'exp-candy-g', min: 2, max: 3 }, { item: 'exp-candy-gg', min: 0, max: 1 }] } },
+  { id: 'dificil', name: 'Difícil', description: 'Nível 50–70; evoluídos e fortes, sem lendários.', entry: 4_000, cap: 70, minLevel: 50, minTeam: 5, maxTeam: 6,
+    prize: { money: 3_200, essences: 2, items: [{ item: 'ultra-ball', min: 3, max: 4 }, { item: 'exp-candy-gg', min: 2, max: 4 }, { item: 'rare-candy', min: 1, max: 2 }] } },
+  { id: 'muito-dificil', name: 'Muito Difícil', description: 'Nível 70–99; lendários liberados.', entry: 10_000, cap: 99, minLevel: 70, minTeam: 6, maxTeam: 6,
+    prize: { money: 8_000, essences: 3, items: [{ item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 3, max: 4 }, { item: 'rare-candy', min: 2, max: 3 }] } },
+  { id: 'copa-prime', name: 'Copa Prime', description: 'Nível 100 e sem limites: a elite da elite.', entry: 25_000, cap: 100, minLevel: 100, minTeam: 6, maxTeam: 6,
+    prize: { money: 20_000, essences: 3, items: [{ item: 'master-ball', min: 0, max: 1 }, { item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 4, max: 4 }, { item: 'rare-candy', min: 3, max: 4 }] } },
 ];
 
 export const tournamentTier = (id: unknown): TournamentTier | undefined => TOURNAMENT_TIERS.find((tier) => tier.id === id);
 
-/** Adversários por rodada: 1, 2, 2, 3, 3, 4, 5 e 6 Pokémon. */
-export const ROUND_TEAM_SIZES: readonly number[] = [1, 2, 2, 3, 3, 4, 5, 6];
 export const MAX_TOURNAMENT_PICKS = 6;
 
-const OPPONENT_NAMES = ['Estreante', 'Lutador de Arena', 'Treinador Rival', 'Veterano', 'Estrategista', 'Semifinalista', 'Finalista', 'Campeão do Torneio'];
+const OPPONENT_NAMES = ['Treinador da Copa', 'Ace Trainer', 'Veterana', 'Domador', 'Colecionador', 'Especialista', 'Mestre Pokémon', 'Finalista'];
 const bag = (item: string, name: string, heal: number, qty: number, cures = false): FoeBagItem => ({ item, name, heal, cures, qty });
 
 export interface RolledOpponent {
@@ -61,30 +61,59 @@ export interface RolledOpponent {
   team: { speciesId: number; level: number }[];
 }
 
-export const roundLevel = (tier: TournamentTier, round: number): number => Math.max(5, tier.cap - (TOURNAMENT_ROUNDS - round) * 2);
-
 const bst = (species: Species) => Object.values(species.baseStats).reduce((sum, value) => sum + value, 0);
 
-/** Sorteia o adversário da rodada (1–8): mais Pokémon, nível e inteligência a cada vitória. */
+/** Quem pode aparecer em cada categoria (mesmos filtros do jogo antigo, por estágio de evolução e atributos-base). */
+export function tournamentPool(tier: TournamentTier, species: readonly Species[]): number[] {
+  return species.filter((entry) => {
+    const total = bst(entry);
+    const stage = evolutionStage(entry);
+    const legendary = isLegendary(entry);
+    switch (tier.id) {
+      case 'muito-facil': return stage === 0 && total <= 350;
+      case 'facil': return !legendary && total <= 480;
+      case 'intermediario': return !legendary && (stage >= 1 || total >= 440);
+      case 'dificil': return !legendary && (stage >= 2 || total >= 460);
+      default: return stage >= 2 || legendary || total >= 470;
+    }
+  }).map((entry) => entry.id);
+}
+
+/** Sorteia o adversário da rodada (1–8): time e níveis da categoria; a IA e os itens melhoram nas últimas rodadas. */
 export function rollOpponent(tier: TournamentTier, round: number, species: readonly Species[], rng: Rng): RolledOpponent {
-  const pool = species.filter((entry) =>
-    (tier.legendary || !isLegendary(entry)) && (tier.maxBst === null || bst(entry) <= tier.maxBst) && (!tier.basicOnly || evolutionStage(entry) === 0)).map((entry) => entry.id);
-  const level = roundLevel(tier, round);
-  const count = ROUND_TEAM_SIZES[round - 1] ?? 6;
+  const pool = tournamentPool(tier, species);
+  const count = tier.minTeam + rng.int(tier.maxTeam - tier.minTeam + 1);
   const team: RolledOpponent['team'] = [];
   for (let i = 0; i < count && pool.length > 0; i++) {
     const [id] = pool.splice(rng.int(pool.length), 1);
-    team.push({ speciesId: id as number, level });
+    team.push({ speciesId: id as number, level: tier.minLevel + rng.int(tier.cap - tier.minLevel + 1) });
   }
   const base = round <= 3 ? 1 : round <= 6 ? 2 : 3;
   const skill = (tier.id === 'copa-prime' || tier.id === 'muito-dificil') ? Math.max(base, 2) : base;
   const items: FoeBagItem[] = [];
   if (round >= 5) items.push(bag('super-potion', 'Super Potion', 60, 1));
-  if (round === TOURNAMENT_ROUNDS) items.push(tier.cap >= 75 ? bag('full-restore', 'Full Restore', 9999, 1, true) : bag('hyper-potion', 'Hyper Potion', 120, 1));
-  return { name: OPPONENT_NAMES[round - 1] ?? 'Adversário', skill: skill as 1 | 2 | 3, bag: items, team };
+  if (round === TOURNAMENT_ROUNDS) items.push(tier.cap >= 70 ? bag('full-restore', 'Full Restore', 9999, 1, true) : bag('hyper-potion', 'Hyper Potion', 120, 1));
+  return { name: `${OPPONENT_NAMES[round - 1] ?? 'Adversário'} ${round}`, skill: skill as 1 | 2 | 3, bag: items, team };
 }
 
 /** Resolve `random-essence` para uma Essência de IV sorteada. */
 export function resolvePrizeItem(item: string, rng: Rng): string {
-  return item === 'random-essence' ? pick(rng, Object.keys(IV_ESSENCES)) : item;
+  if (item === 'random-essence') return pick(rng, Object.keys(IV_ESSENCES));
+  if (item === 'random-ball') return pick(rng, REWARD_BALLS);
+  return item;
+}
+
+/** Sorteia os itens do prêmio: quantidades dentro da faixa de cada linha e as Essências. */
+export function rollPrizeItems(tier: TournamentTier, rng: Rng): { item: string; quantity: number }[] {
+  const out: { item: string; quantity: number }[] = [];
+  const add = (item: string, quantity: number) => {
+    const found = out.find((entry) => entry.item === item);
+    if (found) found.quantity += quantity; else out.push({ item, quantity });
+  };
+  for (const line of tier.prize.items) {
+    const quantity = line.min + rng.int(line.max - line.min + 1);
+    if (quantity > 0) add(resolvePrizeItem(line.item, rng), quantity);
+  }
+  for (let i = 0; i < tier.prize.essences; i++) add(resolvePrizeItem('random-essence', rng), 1);
+  return out;
 }

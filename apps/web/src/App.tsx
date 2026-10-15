@@ -9,6 +9,8 @@ import { ChallengesScreen } from './screens/ChallengesScreen.tsx';
 import { ItemDexScreen } from './screens/ItemDexScreen.tsx';
 import { CasinoScreen } from './screens/CasinoScreen.tsx';
 import { TournamentScreen } from './screens/TournamentScreen.tsx';
+import { MissionsScreen } from './screens/MissionsScreen.tsx';
+import { MarketScreen } from './screens/MarketScreen.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
@@ -26,6 +28,8 @@ export type Screen =
   | { name: 'casino'; saveId: string }
   | { name: 'itemdex'; saveId: string }
   | { name: 'tournament'; saveId: string }
+  | { name: 'missions'; saveId: string }
+  | { name: 'market'; saveId: string }
   | { name: 'options'; back: Screen };
 
 function saveIdOf(screen: Screen): string | null {
@@ -72,6 +76,8 @@ export function App() {
           onOpenCasino={() => setScreen({ name: 'casino', saveId })}
           onOpenItemDex={() => setScreen({ name: 'itemdex', saveId })}
           onOpenTournament={() => setScreen({ name: 'tournament', saveId })}
+          onOpenMissions={() => setScreen({ name: 'missions', saveId })}
+          onOpenMarket={() => setScreen({ name: 'market', saveId })}
         />
       );
     }
@@ -91,6 +97,10 @@ export function App() {
       return <CasinoScreen key={`cs-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'casino' })} />;
     case 'tournament':
       return <TournamentScreen key={`tn-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'tournament' })} />;
+    case 'missions':
+      return <MissionsScreen key={`ms-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'missions' })} />;
+    case 'market':
+      return <MarketScreen key={`mk-${screen.saveId}`} saveId={screen.saveId} onBack={() => setScreen({ name: 'menu', saveId: screen.saveId, focus: 'market' })} />;
     case 'options':
       return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }

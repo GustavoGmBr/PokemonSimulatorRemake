@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.11**, batalhas e progressão prontas, mais Pokécassino (7 jogos, fichas e aposta de Pokémon) e torneios por categoria; mapa pixel e missões a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.12**, batalhas e progressão prontas, Pokécassino, torneios, missões, mercado e histórico; mapa pixel e distribuição a seguir. Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -148,6 +148,12 @@ packages/
      (cura qualquer status e a confusão) na loja, categoria Cura. Valem em batalha, pelo menu CURA; Restauração Total
      também cura status. Ícones dos itens vêm das sprites do [PokéAPI](https://github.com/PokeAPI/sprites) em Mochila,
      Loja, Batalha, Cassino e Torneios.
+   - ✅ **Missões, mercado e perfil (alpha.12):** 10 missões a cada 2 horas (capturar, derrotar selvagens, vencer
+     treinadores e torneios) com recompensa em ₽, fichas e itens, mais bônus por concluir as dez. **Mercado** de Pokémon
+     (12 à venda, renova por hora, ₽ 3.000 para renovar, 📌 fixa um Pokémon) e **venda** de Pokémon da coleção (valor por
+     bola, nível, itens gastos, IVs, lendário e shiny; favoritos e o último Pokémon ficam protegidos). O cartão de
+     Treinador ganhou estatísticas e histórico. **Torneios** agora usam os valores do jogo antigo (inscrição ₽ 150 a
+     25.000, níveis e times por categoria).
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — launcher Windows e releases.
 

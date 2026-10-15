@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HEAL_EFFECTS, isTrainingItem, type PokemonView, type SaveDetail } from '@pokesim/engine';
+import { HEAL_EFFECTS, isTrainingItem, type HistoryState, type PokemonView, type SaveDetail } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
@@ -8,7 +8,7 @@ import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'itemdex' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'market' | 'itemdex' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -23,7 +23,8 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
-  { id: 'missions', label: 'Missões', info: 'Objetivos renovados com recompensas.', phase: 'Fase 3' },
+  { id: 'missions', label: 'Missões', info: 'Dez objetivos a cada 2 horas, com recompensas e bônus final.' },
+  { id: 'market', label: 'Mercado', info: 'Compre POKÉMON (renova a cada hora) e venda os da sua coleção.' },
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },
   { id: 'options', label: 'Opções', info: 'Velocidade do texto e volume dos sons.' },
   { id: 'exit', label: 'Sair', info: 'Voltar para a tela de jornadas.' },
@@ -50,10 +51,12 @@ interface Props {
   onOpenBattle: () => void;
   onOpenCasino: () => void;
   onOpenTournament: () => void;
+  onOpenMissions: () => void;
+  onOpenMarket: () => void;
   onOpenItemDex: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenItemDex }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenItemDex, onOpenMissions, onOpenMarket }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
@@ -115,6 +118,8 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'casino') return onOpenCasino();
     if (id === 'itemdex') return onOpenItemDex();
     if (id === 'tournament') return onOpenTournament();
+    if (id === 'missions') return onOpenMissions();
+    if (id === 'market') return onOpenMarket();
     if (id === 'devkit') {
       return void act(async () => {
         const result = await api.devKit(saveId);
@@ -340,6 +345,9 @@ function KeyBack({ onBack, active }: { onBack: () => void; active: boolean }) {
 
 function TrainerCard({ save, onBack }: { save: SaveDetail; onBack: () => void }) {
   useKeys((key) => { if (key === 'back') onBack(); });
+  const [history, setHistory] = useState<HistoryState | null>(null);
+  useEffect(() => { api.history(save.id).then(setHistory, () => undefined); }, [save.id]);
+  const stats = history?.stats;
   return (
     <section className="gb-window" aria-labelledby="card-title" style={{ background: 'var(--paper-2)' }}>
       <div className="gb-spread">
@@ -354,6 +362,26 @@ function TrainerCard({ save, onBack }: { save: SaveDetail; onBack: () => void })
         <span>TEMPO</span><span>{formatPlayTime(save.playTimeSeconds)}</span>
         <span>INÍCIO</span><span>{new Date(save.createdAt).toLocaleDateString('pt-BR')}</span>
       </div>
+      {stats ? (
+        <>
+          <h3 className="gb-title" style={{ fontSize: 20, margin: '12px 0 4px' }}>Estatísticas</h3>
+          <div className="gb-grid-2" style={{ fontSize: 22 }}>
+            <span>VITÓRIAS / DERROTAS</span><span>{stats.victories} / {stats.defeats}</span>
+            <span>CAPTURAS</span><span>{stats.captures}</span>
+            <span>SHINIES ENCONTRADOS</span><span>{stats.shinyEncounters}</span>
+            <span>TREINADORES VENCIDOS</span><span>{stats.trainersBeaten}</span>
+            <span>TÍTULOS DE TORNEIO</span><span>{stats.tournamentTitles}</span>
+            <span>POKÉMON NA COLEÇÃO</span><span>{stats.pokemonOwned}</span>
+            <span>VENDIDOS</span><span>{stats.sold} ({formatMoney(stats.moneyEarnedSales)})</span>
+          </div>
+          <h3 className="gb-title" style={{ fontSize: 20, margin: '12px 0 4px' }}>Histórico</h3>
+          <ul className="gb-history" aria-label="Histórico">
+            {history && history.events.length > 0 ? history.events.map((event) => (
+              <li key={event.id}><span className="gb-muted">{new Date(event.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> {event.text}</li>
+            )) : <li className="gb-muted">Nada por aqui ainda.</li>}
+          </ul>
+        </>
+      ) : null}
     </section>
   );
 }

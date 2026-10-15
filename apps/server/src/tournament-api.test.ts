@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
-import { TOURNAMENT_ROUNDS, TOURNAMENT_TIERS, rollOpponent, roundLevel, seededRng, type BattleTurnResult, type SaveDetail, type TournamentState } from '@pokesim/engine';
+import { TOURNAMENT_ROUNDS, TOURNAMENT_TIERS, rollOpponent, seededRng, type BattleTurnResult, type SaveDetail, type TournamentState } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
 import { openDatabase } from './db.ts';
 import { createApp } from './app.ts';
@@ -58,30 +58,23 @@ async function fight(url: string, first: BattleTurnResult) {
   return view;
 }
 
-test('motor: rodadas crescem em nível e tamanho, respeitando o teto da copa', () => {
+test('motor: times e níveis seguem a categoria do jogo antigo', () => {
   const data = loadGameData();
   for (const tier of TOURNAMENT_TIERS) {
-    assert.equal(roundLevel(tier, TOURNAMENT_ROUNDS), tier.cap);
-    let last = 0;
     for (let round = 1; round <= TOURNAMENT_ROUNDS; round++) {
       const opp = rollOpponent(tier, round, data.species, seededRng(round));
-      assert.ok(opp.team.length >= last && opp.team.length >= 1);
-      last = opp.team.length;
-      for (const member of opp.team) {
-        assert.ok(member.level <= tier.cap);
-        const species = data.speciesById.get(member.speciesId);
-        assert.ok(species);
-        if (tier.maxBst !== null) assert.ok(Object.values(species.baseStats).reduce((a, b) => a + b, 0) <= tier.maxBst);
-        if (!tier.legendary) assert.ok(!species.legendary && !species.mythical);
-      }
+      assert.ok(opp.team.length >= tier.minTeam && opp.team.length <= tier.maxTeam);
+      for (const member of opp.team) assert.ok(member.level >= tier.minLevel && member.level <= tier.cap);
       assert.equal(new Set(opp.team.map((m) => m.speciesId)).size, opp.team.length);
+      if (tier.id !== 'muito-dificil' && tier.id !== 'copa-prime') for (const member of opp.team) { const sp = data.speciesById.get(member.speciesId); assert.ok(sp && !sp.legendary && !sp.mythical); }
     }
   }
+  assert.deepEqual(TOURNAMENT_TIERS.map((t) => [t.entry, t.prize.money]), [[150, 120], [500, 400], [1500, 1200], [4000, 3200], [10000, 8000], [25000, 20000]]);
 });
 
 test('torneio: validações da inscrição', async () => {
   const { save, url, ids } = await setup(500, 2);
-  assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'copa-prime', members: ids })).status, 400); // sem dinheiro
+  assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'copa-prime', members: ids })).status, 400); // sem dinheiro (₽ 500 < 25.000)
   assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'inexistente', members: ids })).status, 400);
   assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'muito-facil', members: [] })).status, 400);
   assert.equal((await call('POST', `${url}/tournaments/enter`, { tier: 'muito-facil', members: ['x'] })).status, 400);
@@ -126,8 +119,8 @@ test('torneio: campeão paga o prêmio; rodadas avançam; não dá para entrar d
   const after = (await call<TournamentState>('GET', `${url}/tournaments`)).json;
   assert.equal(after.active, null);
   assert.equal(after.tiers[0]?.wins, 1);
-  const candy = db.prepare("SELECT quantity FROM inventory WHERE save_id = ? AND item = 'exp-candy-p'").get(save.id) as { quantity: number } | undefined;
-  assert.ok((candy?.quantity ?? 0) >= 2);
+  const essences = db.prepare("SELECT COALESCE(SUM(quantity), 0) AS n FROM inventory WHERE save_id = ? AND item LIKE 'iv-%'").get(save.id) as { n: number };
+  assert.ok(essences.n >= 1, 'a taça dá ao menos uma Essência de IV');
   assert.equal((await call('POST', `${url}/tournaments/next`)).status, 400);
 });
 
@@ -139,7 +132,7 @@ test('torneio: perder elimina e não devolve a inscrição; desistir também enc
   const view = await fight(url, start.json);
   assert.equal(view.outcome?.result, 'lose');
   assert.equal(view.outcome?.tournament?.eliminated, true);
-  assert.equal(moneyOf(save.id), 50_000);
+  assert.equal(moneyOf(save.id), 125_000);
   assert.equal(((await call<TournamentState>('GET', `${url}/tournaments`)).json).active, null);
 });
 

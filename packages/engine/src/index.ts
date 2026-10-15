@@ -18,3 +18,4 @@ export * from './transform.ts';
 export * from './teams.ts';
 export * from './casino.ts';
 export * from './tournaments.ts';
+export * from './journey.ts';

@@ -10,6 +10,7 @@ import { transaction, type Db } from './db.ts';
 import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
+import type { Journal } from './journal.ts';
 
 interface BoardRow {
   slots: string;
@@ -35,7 +36,7 @@ interface Board {
   throws: number;
 }
 
-export function createWildService(db: Db, store: PokemonStore, inventory: Inventory, rng: Rng = rngFrom(randomInt)) {
+export function createWildService(db: Db, store: PokemonStore, inventory: Inventory, journal: Journal, rng: Rng = rngFrom(randomInt)) {
   const data = loadGameData();
 
   function assertSave(saveId: string): void {
@@ -395,6 +396,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
           const healed = item.name === HEAL_BALL ? { ...wild, currentHp: statsOf(wild, speciesOf(wild)).hp } : wild;
           const placed = store.place(saveId, { ...healed, ball: item.name });
           pokemon = store.view(saveId, placed.id);
+          journal.record(saveId, { kind: 'capturar', region: regionOfSpecies(wild.speciesId)?.id ?? null, speciesId: wild.speciesId, text: `Capturou ${wild.shiny ? '✨ ' : ''}${speciesOf(wild).displayName} (Nv ${wild.level}) com ${item.displayName}.` });
           writeBoard(saveId, { ...removeChosen(board, true), chosen: null, throws: 0 });
         } else {
           writeBoard(saveId, { ...board, throws: board.throws + 1 });

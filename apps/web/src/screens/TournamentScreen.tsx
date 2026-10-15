@@ -128,10 +128,10 @@ export function TournamentScreen({ saveId, onBack }: Props) {
             <div className="gb-chdetail">
               <h2 className="gb-title" style={{ fontSize: 22, margin: 0 }}>Copa {tier.name}</h2>
               <p style={{ margin: '4px 0' }}>{tier.description}</p>
-              <p className="gb-muted" style={{ margin: 0, fontSize: 20 }}>{tier.rounds} rodadas · nível máximo {tier.cap} · eliminatória</p>
+              <p className="gb-muted" style={{ margin: 0, fontSize: 20 }}>{tier.rounds} rodadas · adversários com {tier.teamSize[0] === tier.teamSize[1] ? tier.teamSize[0] : `${tier.teamSize[0]}–${tier.teamSize[1]}`} Pokémon, nível {tier.minLevel}–{tier.cap} · seu time também não passa do {tier.cap}</p>
               <p style={{ margin: '6px 0 0' }}>Inscrição: {formatMoney(tier.entry)}</p>
               <p style={{ margin: 0 }}>Prêmio: {formatMoney(tier.prizeMoney)}</p>
-              <p className="gb-muted gb-iconrow" style={{ margin: 0, fontSize: 20, flexWrap: 'wrap' }}>{tier.prizeItems.map((i) => <span key={i.item} className="gb-iconrow"><ItemIcon item={i.item === 'random-essence' ? 'iv-hp' : i.item} size={24} />{i.quantity}× {i.name}</span>)}</p>
+              <p className="gb-muted gb-iconrow" style={{ margin: 0, fontSize: 20, flexWrap: 'wrap' }}>{tier.prizeItems.map((i) => <span key={i.item} className="gb-iconrow"><ItemIcon item={i.item === 'random-ball' ? 'net-ball' : i.item} size={24} />{i.min === i.max ? i.min : `${i.min}–${i.max}`}× {i.name}</span>)}{tier.essences > 0 ? <span className="gb-iconrow"><ItemIcon item="iv-hp" size={24} />{tier.essences}× Essência de IV</span> : null}</p>
               <p style={{ margin: '6px 0 0' }}>{tier.wins > 0 ? `🏆 ${tier.wins} título${tier.wins > 1 ? 's' : ''}` : 'Sem títulos ainda'}</p>
             </div>
           ) : null}

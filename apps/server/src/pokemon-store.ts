@@ -313,6 +313,16 @@ export function createPokemonStore(db: Db) {
       });
     },
 
+    /** Soma o preço de um item gasto no Pokémon ao valor investido (conta na venda). */
+    invest(pokemonId: string, item: string): void {
+      const price = data.itemsByName.get(item)?.price ?? 0;
+      if (price > 0) db.prepare('UPDATE pokemon SET invested = invested + ? WHERE id = ?').run(price, pokemonId);
+    },
+
+    investedOf(saveId: string, pokemonId: string): number {
+      return (db.prepare('SELECT invested FROM pokemon WHERE id = ? AND save_id = ?').get(pokemonId, saveId) as { invested: number } | undefined)?.invested ?? 0;
+    },
+
     /** Remove um Pokémon do save para sempre (aposta perdida no cassino) e fecha o buraco da equipe. */
     remove(saveId: string, pokemonId: string): void {
       getRow(saveId, pokemonId);
@@ -395,6 +405,7 @@ export function createPokemonStore(db: Db) {
         const hp = Math.min(newMax, row.current_hp + Math.max(0, newMax - view.stats.hp));
         db.prepare('UPDATE pokemon SET species_id = ?, current_hp = ?, form = NULL WHERE id = ?').run(next.id, hp, row.id);
         recordCaught(saveId, next.id);
+        if (choice.item) this.invest(row.id, choice.item);
       });
       return rowToView(getRow(saveId, pokemonId));
     },
@@ -412,6 +423,7 @@ export function createPokemonStore(db: Db) {
         const newMax = rowToView(next).stats.hp;
         const hp = Math.min(newMax, row.current_hp + Math.max(0, newMax - view.stats.hp));
         db.prepare('UPDATE pokemon SET form = ?, current_hp = ? WHERE id = ?').run(choice.name, hp, row.id);
+        if (choice.item) this.invest(row.id, choice.item);
       });
       return rowToView(getRow(saveId, pokemonId));
     },
@@ -429,6 +441,7 @@ export function createPokemonStore(db: Db) {
         const updated = { ...row, ivs: JSON.stringify({ ...ivs, [stat]: ivs[stat] + 1 }) };
         const after = rowToView(updated).stats.hp;
         db.prepare('UPDATE pokemon SET ivs = ?, current_hp = ? WHERE id = ?').run(updated.ivs, Math.min(after, row.current_hp + Math.max(0, after - before)), row.id);
+        this.invest(row.id, item);
       });
       return rowToView(getRow(saveId, pokemonId));
     },
@@ -461,6 +474,7 @@ export function createPokemonStore(db: Db) {
         }
         db.prepare('UPDATE pokemon SET exp = ?, level = ?, moves = ?, current_hp = ? WHERE id = ?')
           .run(exp, level, JSON.stringify(slots), Math.min(after, row.current_hp > 0 ? row.current_hp + Math.max(0, after - before) : 0), row.id);
+        this.invest(row.id, item);
         return { pokemon: rowToView(getRow(saveId, pokemonId)), gained: exp - row.exp, levels: level - row.level };
       });
     },

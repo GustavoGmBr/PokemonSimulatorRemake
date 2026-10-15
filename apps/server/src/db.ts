@@ -160,6 +160,35 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (save_id, tier)
   );
   `,
+  // 13 — histórico/missões/mercado e itens investidos em cada Pokémon (valor de venda)
+  `
+  CREATE TABLE events (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    save_id    TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    region     TEXT,
+    species_id INTEGER,
+    difficulty TEXT,
+    tournament TEXT,
+    result     TEXT,
+    amount     INTEGER NOT NULL DEFAULT 0,
+    text       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX events_by_save ON events (save_id, id);
+  CREATE TABLE mission_claims (
+    save_id TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    period  INTEGER NOT NULL,
+    idx     INTEGER NOT NULL,
+    PRIMARY KEY (save_id, period, idx)
+  );
+  CREATE TABLE market_stock (
+    save_id TEXT PRIMARY KEY REFERENCES saves(id) ON DELETE CASCADE,
+    period  INTEGER NOT NULL,
+    state   TEXT NOT NULL
+  );
+  ALTER TABLE pokemon ADD COLUMN invested INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export type Db = DatabaseSync;

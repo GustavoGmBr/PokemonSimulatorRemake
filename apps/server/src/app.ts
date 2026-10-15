@@ -15,6 +15,9 @@ import { createItemService } from './item-service.ts';
 import { badRequest, notFound } from './errors.ts';
 import { createCasinoService } from './casino-service.ts';
 import { createTournamentService } from './tournament-service.ts';
+import { createJournal } from './journal.ts';
+import { createJourneyService } from './journey-service.ts';
+import { createMarketService } from './market-service.ts';
 
 export interface AppOptions {
   db: Db;
@@ -65,12 +68,15 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   const store = createPokemonStore(db);
   const saves = createSaveService(db, store);
   const inventory = createInventory(db);
-  const wild = createWildService(db, store, inventory);
+  const journal = createJournal(db);
+  const wild = createWildService(db, store, inventory, journal);
   const items = createItemService(db, store, inventory);
-  const battle = createBattleService(db, store, inventory, wild);
+  const battle = createBattleService(db, store, inventory, wild, journal);
   const teams = createTeamService(db, store);
   const casino = createCasinoService(db, store, inventory);
   const tournaments = createTournamentService(db, store, battle);
+  const journey = createJourneyService(db, inventory);
+  const market = createMarketService(db, store, inventory, journal);
   const data = loadGameData();
   const speciesIndex: SpeciesIndexEntry[] = data.species.map((s) => ({
     id: s.id, name: s.displayName, types: s.types, generation: s.generation,
@@ -124,6 +130,14 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .post('/api/saves/:id/tournaments/enter', ({ params, body }) => tournaments.enter(params.id as string, (body ?? {}) as { tier?: unknown; members?: unknown }))
     .post('/api/saves/:id/tournaments/next', ({ params }) => tournaments.next(params.id as string))
     .post('/api/saves/:id/tournaments/abandon', ({ params }) => tournaments.abandon(params.id as string))
+    .get('/api/saves/:id/missions', ({ params }) => journey.state(params.id as string))
+    .post('/api/saves/:id/missions/claim', ({ params, body }) => journey.claim(params.id as string, (body ?? {}) as { period?: unknown; index?: unknown }))
+    .get('/api/saves/:id/history', ({ params }) => journey.history(params.id as string))
+    .get('/api/saves/:id/market', ({ params }) => market.state(params.id as string))
+    .post('/api/saves/:id/market/buy', ({ params, body }) => market.buy(params.id as string, (body as { id?: unknown } | null)?.id))
+    .post('/api/saves/:id/market/refresh', ({ params }) => market.refresh(params.id as string))
+    .post('/api/saves/:id/market/favorite', ({ params, body }) => market.favorite(params.id as string, (body as { id?: unknown } | null)?.id, (body as { favorite?: unknown } | null)?.favorite))
+    .post('/api/saves/:id/market/sell', ({ params, body }) => market.sell(params.id as string, (body as { ids?: unknown } | null)?.ids))
     .get('/api/saves/:id/pokemon/:pid/moves', ({ params }) => store.moveOptions(params.id as string, params.pid as string))
     .post('/api/saves/:id/pokemon/:pid/tm', ({ params, body }) => store.buyTm(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/teach', ({ params, body }) => store.teachMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; slot?: unknown }))

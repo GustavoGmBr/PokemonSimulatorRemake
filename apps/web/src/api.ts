@@ -1,5 +1,5 @@
 import type {
-  BattleActRequest, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, HistoryState, MarketState, MissionClaimResult, MissionsState, PokemonView as MarketPokemon, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest, PokeapiItem,
@@ -70,6 +70,14 @@ export const api = {
   tournamentEnter: (id: string, tier: string, members: string[]) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/enter`, { tier, members }),
   tournamentNext: (id: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/next`),
   tournamentAbandon: (id: string) => request<TournamentState>('POST', `/api/saves/${encodeURIComponent(id)}/tournaments/abandon`),
+  missions: (id: string) => request<MissionsState>('GET', `/api/saves/${encodeURIComponent(id)}/missions`),
+  missionClaim: (id: string, period: number, index: number) => request<MissionClaimResult>('POST', `/api/saves/${encodeURIComponent(id)}/missions/claim`, { period, index }),
+  history: (id: string) => request<HistoryState>('GET', `/api/saves/${encodeURIComponent(id)}/history`),
+  market: (id: string) => request<MarketState>('GET', `/api/saves/${encodeURIComponent(id)}/market`),
+  marketBuy: (id: string, stockId: string) => request<{ state: MarketState; pokemon: MarketPokemon; price: number }>('POST', `/api/saves/${encodeURIComponent(id)}/market/buy`, { id: stockId }),
+  marketRefresh: (id: string) => request<MarketState>('POST', `/api/saves/${encodeURIComponent(id)}/market/refresh`),
+  marketFavorite: (id: string, stockId: string, favorite: boolean) => request<MarketState>('POST', `/api/saves/${encodeURIComponent(id)}/market/favorite`, { id: stockId, favorite }),
+  marketSell: (id: string, ids: string[]) => request<{ sold: number; money: number; state: MarketState }>('POST', `/api/saves/${encodeURIComponent(id)}/market/sell`, { ids }),
   transform: (id: string, pokemonId: string, form: string) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/transform`, { form }),
   teams: (id: string) => request<TeamView[]>('GET', `/api/saves/${encodeURIComponent(id)}/teams`),

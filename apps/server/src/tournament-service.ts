@@ -32,12 +32,13 @@ export function createTournamentService(db: Db, store: PokemonStore, battle: Bat
   function state(saveId: string): TournamentState {
     const now = money(saveId);
     const wins = new Map((db.prepare('SELECT tier, wins FROM tournament_wins WHERE save_id = ?').all(saveId) as { tier: string; wins: number }[]).map((row) => [row.tier, row.wins]));
-    const itemName = (item: string) => (item === 'random-essence' ? 'Essência de IV (sorteada)' : data.itemsByName.get(item)?.displayName ?? item);
+    const itemName = (item: string) => data.itemsByName.get(item)?.displayName ?? item;
     return {
       money: now,
       tiers: TOURNAMENT_TIERS.map((tier) => ({
         id: tier.id, name: tier.name, description: tier.description, entry: tier.entry, cap: tier.cap, rounds: TOURNAMENT_ROUNDS,
-        prizeMoney: tier.prize.money, prizeItems: tier.prize.items.map((entry) => ({ item: entry.item, name: itemName(entry.item), quantity: entry.quantity })),
+        prizeMoney: tier.prize.money, prizeItems: tier.prize.items.map((entry) => ({ item: entry.item, name: entry.item === 'random-ball' ? 'Poké Bola especial' : itemName(entry.item), min: entry.min, max: entry.max })),
+        essences: tier.prize.essences, minLevel: tier.minLevel, teamSize: [tier.minTeam, tier.maxTeam],
         wins: wins.get(tier.id) ?? 0,
       })),
       active: active(saveId),

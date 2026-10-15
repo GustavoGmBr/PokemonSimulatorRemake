@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import {
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
-  levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, resolvePrizeItem, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
+  levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, rollPrizeItems, regionOfSpecies, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
   type TournamentProgress, type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
   type BallOption, type BattleActRequest, type BattleContext, type BattleEvent, type BattleMonView, type BattleMoveView,
   type BattleOutcome, type BattleState, type BattleTurnResult, type BattleView, type CaptureInput, type Combatant, type PokemonInstance,
@@ -14,9 +14,10 @@ import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 import type { WildService } from './wild-service.ts';
+import type { Journal } from './journal.ts';
 
 /** Batalhas contra selvagens: guarda o estado, aplica ações e entrega XP, dinheiro e cura ao final. */
-export function createBattleService(db: Db, store: PokemonStore, inventory: Inventory, wild: WildService, seedOf: () => number = () => randomInt(2 ** 31)) {
+export function createBattleService(db: Db, store: PokemonStore, inventory: Inventory, wild: WildService, journal: Journal, seedOf: () => number = () => randomInt(2 ** 31)) {
   const data = loadGameData();
   const ctxBase: BattleContext = {
     species: (id) => {
@@ -131,14 +132,9 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     progress.champion = true;
     progress.prizeMoney = tier.prize.money;
     events.push({ k: 'text', text: `CAMPEÃO da Copa ${tier.name}! Prêmio: ₽ ${tier.prize.money.toLocaleString('pt-BR')}.` });
-    for (const prize of tier.prize.items) {
-      for (let i = 0; i < prize.quantity; i++) {
-        const item = resolvePrizeItem(prize.item, rng);
-        inventory.add(saveId, item, 1);
-        const name = data.itemsByName.get(item)?.displayName ?? item;
-        const found = progress.prizeItems.find((entry) => entry.item === item);
-        if (found) found.quantity += 1; else progress.prizeItems.push({ item, name, quantity: 1 });
-      }
+    for (const prize of rollPrizeItems(tier, rng)) {
+      inventory.add(saveId, prize.item, prize.quantity);
+      progress.prizeItems.push({ item: prize.item, name: data.itemsByName.get(prize.item)?.displayName ?? prize.item, quantity: prize.quantity });
     }
     for (const entry of progress.prizeItems) events.push({ k: 'text', text: `Você ganhou ${entry.quantity}× ${entry.name}!` });
     return progress;
@@ -198,6 +194,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       const species = ctxBase.species(original.speciesId);
       const healed: PokemonInstance = { ...original, currentHp: statsOf(original, species).hp, ball };
       caught = store.view(saveId, store.place(saveId, healed).id);
+      journal.record(saveId, { kind: 'capturar', region: regionOfSpecies(original.speciesId)?.id ?? null, speciesId: original.speciesId, text: `Capturou ${original.shiny ? '✨ ' : ''}${species.displayName} (Nv ${original.level}) com ${data.itemsByName.get(ball ?? '')?.displayName ?? 'uma bola'}.` });
     }
     const coinBonus = () => (inventory.quantity(saveId, 'amulet-coin') > 0 ? amuletCoinMultiplier(extraGenerations(saveId)) : 1);
     if (result === 'win' && !trainer) {
@@ -223,6 +220,16 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       db.prepare('UPDATE saves SET money = money + ?, updated_at = ? WHERE id = ?').run(money, new Date().toISOString(), saveId);
       if (money > 0) events.push({ k: 'money', amount: money, text: `Você ganhou ₽ ${money.toLocaleString('pt-BR')}!` });
     }
+    if (result === 'win' || result === 'lose') {
+      const rival = trainer ? trainer.name : foe.name;
+      journal.record(saveId, {
+        kind: 'batalha', result: result === 'win' ? 'vitoria' : 'derrota',
+        text: `${result === 'win' ? 'Venceu' : 'Perdeu para'} ${trainer ? rival : `${rival} selvagem (Nv ${foe.level})`}${trainer?.tournament ? ` (rodada ${trainer.tournament.round} da copa)` : ''}.`,
+      });
+    }
+    if (result === 'win' && !trainer) journal.record(saveId, { kind: 'derrotar', region: regionOfSpecies(foe.speciesId)?.id ?? null, speciesId: foe.speciesId });
+    if (result === 'win' && trainer?.difficulty) journal.record(saveId, { kind: 'vencer_treinador', difficulty: trainer.difficulty });
+    if (tournament?.champion && trainer?.tournament) journal.record(saveId, { kind: 'vencer_torneio', tournament: trainer.tournament.tier, text: `Campeão da Copa ${tournament.tierName}!` });
     store.applyBattle(saveId, state.player.team);
     if (!trainer) wild.finishEncounter(saveId, result);
     db.prepare('DELETE FROM battles WHERE save_id = ?').run(saveId);
@@ -255,6 +262,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       return transaction(db, () => {
         const player = playerTeam(saveId, null);
         const species = ctxBase.species(foe.speciesId);
+        if (foe.shiny) journal.record(saveId, { kind: 'shiny_encontrado', speciesId: foe.speciesId, text: `Encontrou um ${species.displayName} shiny! ✨` });
         const { state, events } = createBattle({ player, foe: [combatantFrom(foe, species, species.displayName)], seed: seedOf() });
         save(saveId, state);
         return { events, view: view(saveId, state, null) };

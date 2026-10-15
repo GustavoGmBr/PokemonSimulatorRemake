@@ -587,7 +587,10 @@ export interface TournamentTierView {
   cap: number;
   rounds: number;
   prizeMoney: number;
-  prizeItems: { item: string; name: string; quantity: number }[];
+  prizeItems: { item: string; name: string; min: number; max: number }[];
+  essences: number;
+  minLevel: number;
+  teamSize: [number, number];
   /** quantas vezes você já ganhou esta copa */
   wins: number;
 }
@@ -623,4 +626,76 @@ export interface TournamentProgress {
   eliminated: boolean;
   prizeMoney: number;
   prizeItems: { item: string; name: string; quantity: number }[];
+}
+
+// ---------------------------------------------------------------- missões, mercado e perfil
+
+export interface MissionView {
+  index: number;
+  kind: string;
+  title: string;
+  target: number;
+  progress: number;
+  done: boolean;
+  claimed: boolean;
+  reward: { money: number; chips: number; items: { item: string; name: string; quantity: number }[] };
+}
+
+export interface MissionsState {
+  period: number;
+  expiresAt: string;
+  msLeft: number;
+  allDone: boolean;
+  bonusClaimed: boolean;
+  bonus: { money: number; chips: number; items: { item: string; name: string; quantity: number }[] };
+  missions: MissionView[];
+}
+
+export interface MissionClaimResult {
+  reward: MissionView['reward'];
+  bonus: MissionsState['bonus'] | null;
+  state: MissionsState;
+}
+
+export interface HistoryEvent { id: number; kind: string; text: string; at: string }
+
+export interface JourneyStats {
+  victories: number;
+  defeats: number;
+  captures: number;
+  shinyEncounters: number;
+  sold: number;
+  trainersBeaten: number;
+  tournamentTitles: number;
+  moneyEarnedSales: number;
+  pokemonOwned: number;
+  speciesCaught: number;
+  playTimeSeconds: number;
+}
+
+export interface HistoryState { stats: JourneyStats; events: HistoryEvent[] }
+
+export interface MarketEntry {
+  id: string;
+  speciesId: number;
+  spriteId: number;
+  name: string;
+  generation: number;
+  regionUnlocked: boolean;
+  level: number;
+  shiny: boolean;
+  stars: number;
+  price: number;
+  available: boolean;
+  favorite: boolean;
+}
+
+export interface SaleOffer { id: string; speciesId: number; spriteId: number; name: string; level: number; shiny: boolean; favorite: boolean; value: number; ball: string | null }
+
+export interface MarketState {
+  money: number;
+  stock: MarketEntry[];
+  msLeft: number;
+  refreshPrice: number;
+  sellable: SaleOffer[];
 }

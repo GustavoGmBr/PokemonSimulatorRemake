@@ -1,8 +1,8 @@
 import { randomInt } from 'node:crypto';
 import {
-  CASINO_NAMES, CHIP_PRICE, DEALER_STANDS, MAX_BET, PIPLUP_ODDS, PIPLUP_PAYS, RACE_PAYOUT, RACE_RUNNERS, ROUND_GAMES, VOLTORB_MAX_PICKS, VOLTORB_SIZE,
+  CASINO_NAMES, CHIP_PRICE, MAX_BET, PIPLUP_ODDS, PIPLUP_PAYS, RACE_PAYOUT, RACE_RUNNERS, ROUND_GAMES, VOLTORB_MAX_PICKS, VOLTORB_SIZE,
   colorOf, dealJack, groupOf, handValue, ivQuality, jackDouble, jackHit, jackMultiplier, newVoltorb, parseRouletteBet, piplupJump, piplupMultiplier,
-  pokemonPrize, pokemonValue, rngFrom, roulettePayout, runRace, spinRoulette, spinSlots, spinWheel, finishJack, voltorbMultiplier,
+  pokemonPrize, saleValue, rngFrom, roulettePayout, runRace, spinRoulette, spinSlots, spinWheel, finishJack, voltorbMultiplier,
   type CasinoActResult, type CasinoDetail, type CasinoGame, type CasinoPrize, type CasinoResult, type CasinoRoundView, type CasinoStakeInput,
   type CasinoStakeResult, type CasinoState, type JackState, type PiplupState, type VoltorbState,
 } from '@pokesim/engine';
@@ -25,7 +25,6 @@ export const CASINO_PRIZES: readonly { item: string; price: number }[] = [
   { item: 'iv-special-attack', price: 1_000 }, { item: 'iv-special-defense', price: 1_000 }, { item: 'iv-speed', price: 1_000 },
 ];
 
-const BALL_PRICES: Record<string, number> = { 'poke-ball': 200, 'great-ball': 600, 'ultra-ball': 1200 };
 
 /** Quem está em jogo: fichas debitadas ou um Pokémon em risco. */
 interface Stake {
@@ -80,9 +79,9 @@ export function createCasinoService(db: Db, store: PokemonStore, inventory: Inve
       if (mon.favorite) throw badRequest('Pokémon favorito não pode ser apostado.');
       if (store.count(saveId) < 2) throw badRequest('Você precisa manter ao menos um Pokémon.');
       const species = data.speciesById.get(mon.speciesId);
-      const value = pokemonValue({
-        level: mon.level, ball: mon.ball, ballPrice: mon.ball ? (BALL_PRICES[mon.ball] ?? 200) : 200,
-        legendary: Boolean(species?.legendary || species?.mythical), shiny: mon.shiny, ivMultiplier: ivQuality(mon.ivs).valueMultiplier,
+      const value = saleValue({
+        level: mon.level, ball: mon.ball, legendary: Boolean(species?.legendary || species?.mythical), shiny: mon.shiny,
+        ivMultiplier: ivQuality(mon.ivs).valueMultiplier, invested: store.investedOf(saveId, mon.id),
       });
       return { kind: 'pokemon', bet: 0, pokemonId: mon.id, pokemonName: mon.name, value };
     }
