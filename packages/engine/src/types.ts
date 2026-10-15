@@ -119,6 +119,22 @@ export interface Item {
   price: number | null;
 }
 
+/** Item do catálogo oficial do PokéAPI (referência: tudo o que existe nos jogos, jogável ou não). */
+export interface PokeapiItem {
+  id: number;
+  /** identificador do PokéAPI (`poke-ball`), também o nome do sprite */
+  name: string;
+  /** nome em inglês (o PokéAPI não tem itens em português) */
+  en: string;
+  category: string;
+  /** bolso: misc, medicine, pokeballs, machines, berries, mail, battle, key */
+  pocket: string;
+  cost: number;
+  fling: number | null;
+  effect: string;
+  text: string;
+}
+
 export interface Catalog {
   species: Species[];
   moves: Move[];

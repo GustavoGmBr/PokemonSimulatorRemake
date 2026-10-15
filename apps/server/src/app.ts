@@ -136,6 +136,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .get('/api/catalog/types', () => data.types)
     .get('/api/catalog/moves', () => data.moves)
     .get('/api/catalog/items', () => data.items)
+    .get('/api/catalog/pokeapi-items', () => data.pokeapiItems)
     .get('/api/species/:id', ({ params }) => {
       const species = data.speciesById.get(Number(params.id));
       if (!species) throw notFound('Espécie não encontrada.');

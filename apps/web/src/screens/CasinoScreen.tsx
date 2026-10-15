@@ -4,7 +4,7 @@ import {
   type CasinoActResult, type CasinoGame, type CasinoResult, type CasinoRoundView, type CasinoState, type PokemonView, type RouletteGroup,
 } from '@pokesim/engine';
 import { api } from '../api.ts';
-import { BallIcon, KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
+import { BallIcon, ItemIcon, KeyHints, Sprite, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
@@ -205,7 +205,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
         <ul className="gb-prizes">
           {state.prizes.map((p) => (
             <li key={p.item}>
-              <span>{p.displayName} <span className="gb-muted">(você tem {p.owned})</span></span>
+              <span className="gb-iconrow"><ItemIcon item={p.item} size={28} />{p.displayName} <span className="gb-muted">(você tem {p.owned})</span></span>
               <button type="button" className="gb-button" disabled={busy || locked || state.chips < p.price} onClick={() => {
                 setBusy(true);
                 api.casinoPrize(saveId, p.item).then((next) => { apply(next); setMessage(`${p.displayName} comprado!`); playSound('confirm'); }, (e: Error) => { setMessage(e.message); playSound('error'); }).finally(() => setBusy(false));

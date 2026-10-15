@@ -661,3 +661,8 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-pad { width: 44px; height: 44px; display: grid; place-items: center; background: var(--sky); border: var(--px) solid var(--ink); }
 .gb-pad.is-done { background: var(--green); }
 @media (max-width: 560px) { .gb-vgrid { grid-template-columns: repeat(6, 1fr); } .gb-slotgrid { grid-template-columns: repeat(3, 56px); } }
+
+/* ---------- itens (PokéAPI) ---------- */
+.gb-iconrow { display: inline-flex; align-items: center; gap: 8px; }
+.gb-itemicon { image-rendering: pixelated; object-fit: contain; flex: none; }
+.gb-itemicon--none { display: inline-block; }

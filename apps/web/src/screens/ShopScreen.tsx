@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ShopEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu } from '../ui/Menu.tsx';
-import { BallIcon, KeyHints, formatMoney } from '../ui/bits.tsx';
+import { BallIcon, ItemIcon, KeyHints, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
@@ -130,7 +130,7 @@ export function ShopScreen({ saveId, onBack }: Props) {
                     <span className="gb-cursor" aria-hidden="true">▶</span>
                     <span className="gb-shop-row">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {entry.category === 'captura' ? <BallIcon item={entry.item} small /> : null}{entry.displayName}
+                        {entry.category === 'captura' ? <BallIcon item={entry.item} small /> : <ItemIcon item={entry.item} size={24} />}{entry.displayName}
                       </span>
                       <span className="gb-muted">tem {entry.owned}</span>
                       <span>{formatMoney(entry.price)}</span>

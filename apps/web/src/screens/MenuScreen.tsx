@@ -3,12 +3,12 @@ import { HEAL_EFFECTS, isTrainingItem, type PokemonView, type SaveDetail } from 
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
-import { HpBar, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../ui/bits.tsx';
+import { HpBar, ItemIcon, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../ui/bits.tsx';
 import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'itemdex' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -19,6 +19,7 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'teams', label: 'Equipes', info: 'Salve equipes com nome e monte qualquer uma com um clique.' },
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
+  { id: 'itemdex', label: 'Catálogo de itens', info: 'Todos os ~2.200 itens do PokéAPI, com o que já funciona no jogo.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
@@ -49,9 +50,10 @@ interface Props {
   onOpenBattle: () => void;
   onOpenCasino: () => void;
   onOpenTournament: () => void;
+  onOpenItemDex: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenItemDex }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
@@ -111,6 +113,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'battle') return onOpenBattle();
     if (id === 'shop') return onOpenShop();
     if (id === 'casino') return onOpenCasino();
+    if (id === 'itemdex') return onOpenItemDex();
     if (id === 'tournament') return onOpenTournament();
     if (id === 'devkit') {
       return void act(async () => {
@@ -300,7 +303,7 @@ function BagPanel({ save, paused, onBack, onUse }: {
           onBack={onBack}
           items={[...save.inventory].sort((a, b) => Number(usable(b.item)) - Number(usable(a.item)) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
             id: entry.item,
-            label: entry.displayName,
+            label: <span className="gb-iconrow"><ItemIcon item={entry.item} size={24} />{entry.displayName}</span>,
             extra: `×${entry.quantity}`,
             disabled: !usable(entry.item),
           }))}

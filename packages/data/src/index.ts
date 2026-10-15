@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
+import { buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type PokeapiItem, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
 
 export const CATALOG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../catalog');
 
@@ -10,6 +10,8 @@ export interface GameData {
   moves: Move[];
   types: TypeInfo[];
   items: Item[];
+  /** catálogo completo do PokéAPI (~2.200 itens) */
+  pokeapiItems: PokeapiItem[];
   speciesById: Map<number, Species>;
   movesByName: Map<string, Move>;
   itemsByName: Map<string, Item>;
@@ -36,12 +38,14 @@ export function loadGameData(): GameData {
   const moves = readJson<Move[]>('moves');
   const types = readJson<TypeInfo[]>('types');
   const items = readJson<Item[]>('items');
+  const pokeapiItems = readJson<PokeapiItem[]>('pokeapi-items');
   const challenges = listChallenges(readJson<ChallengeCatalog>('challenges'));
   cached = {
     species,
     moves,
     types,
     items,
+    pokeapiItems,
     speciesById: new Map(species.map((entry) => [entry.id, entry])),
     movesByName: new Map(moves.map((entry) => [entry.name, entry])),
     itemsByName: new Map(items.map((entry) => [entry.name, entry])),

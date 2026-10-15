@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { TYPE_LABELS, type TypeName } from '@pokesim/engine';
-import { spriteUrl, type SpriteView } from '../api.ts';
+import { itemSpriteUrl, spriteUrl, type SpriteView } from '../api.ts';
 
 export function HpBar({ current, max }: { current: number; max: number }) {
   const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
@@ -114,5 +114,15 @@ export function BallIcon({ item, small = false, className = '' }: { item: string
       className={`gb-pokeball${variant ? ` gb-pokeball--${variant}` : ''}${small ? ' gb-pokeball--small' : ''} ${className}`}
       style={color ? ({ '--ball-top': color } as CSSProperties) : undefined}
     />
+  );
+}
+
+/** Sprite do item pelo PokéAPI; sem imagem (offline ou item inventado), some sem quebrar o layout. */
+export function ItemIcon({ item, size = 32 }: { item: string; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span className="gb-itemicon gb-itemicon--none" style={{ width: size, height: size }} aria-hidden="true" />;
+  return (
+    <img className="pixel gb-itemicon" src={itemSpriteUrl(item)} alt="" width={size} height={size} loading="lazy"
+      style={{ width: size, height: size }} onError={() => setFailed(true)} draggable={false} />
   );
 }

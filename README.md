@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.10**, batalhas e progressão prontas, mais Pokécassino (7 jogos, fichas e aposta de Pokémon) e torneios por categoria; mapa pixel e missões a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.11**, batalhas e progressão prontas, mais Pokécassino (7 jogos, fichas e aposta de Pokémon) e torneios por categoria; mapa pixel e missões a seguir. Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -140,6 +140,10 @@ packages/
    - ✅ **Torneios por categoria:** Muito Fácil, Fácil, Intermediário, Difícil, Muito Difícil e Copa Prime. Oito rodadas
      eliminatórias, inscrição em ₽, nível máximo da categoria, vida cheia entre rodadas, sem XP; prêmio (₽, Doces e
      Essências) só para o campeão.
+   - ✅ **Catálogo de itens do PokéAPI (alpha.11):** os ~2.200 itens oficiais (nome, bolso, preço, efeito e texto) em
+     `packages/data/catalog/pokeapi-items.json`, gerado por `npm run data:pokeapi` a partir dos dados do PokéAPI.
+     Menu **Catálogo de itens** (busca, bolsos, o que já funciona no jogo e quanto você tem); ícones oficiais na Loja,
+     Mochila e prêmios do cassino (carregados do repositório PokeAPI/sprites; sem internet o ícone some).
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — launcher Windows e releases.
 

@@ -2,7 +2,7 @@ import type {
   BattleActRequest, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
-  UpdatePokemonRequest,
+  UpdatePokemonRequest, PokeapiItem,
 } from '@pokesim/engine';
 
 export class ApiError extends Error {
@@ -94,6 +94,7 @@ export const api = {
   devKit: (id: string) => request<DevKitResult>('POST', `/api/saves/${encodeURIComponent(id)}/dev/kit`),
   devProgress: (id: string, all = false) => request<DevProgressResult>('POST', `/api/saves/${encodeURIComponent(id)}/dev/progress`, { all }),
   devHurt: (id: string) => request<{ hurt: number }>('POST', `/api/saves/${encodeURIComponent(id)}/dev/hurt`),
+  pokeapiItems: cached('pokeapi-items', () => request<PokeapiItem[]>('GET', '/api/catalog/pokeapi-items')),
   speciesIndex: cached('species-index', () => request<SpeciesIndexEntry[]>('GET', '/api/catalog/species-index')),
   moves: cached('moves', () => request<Move[]>('GET', '/api/catalog/moves')),
   types: cached('types', () => request<TypeInfo[]>('GET', '/api/catalog/types')),
@@ -127,4 +128,16 @@ export type SpriteView = 'front' | 'back' | 'artwork' | 'animated' | 'animatedBa
 export function spriteUrl(speciesId: number, view: SpriteView = 'front', shiny = false): string {
   const ext = view.startsWith('animated') ? 'gif' : 'png';
   return `/assets/pokemon/${speciesId}-${view}${shiny ? 'Shiny' : ''}.${ext}`;
+}
+
+/** Itens do jogo que não existem no PokéAPI usam o sprite de um item parecido. */
+const ITEM_SPRITE_ALIAS: Record<string, string> = {
+  'exp-candy-p': 'exp-candy-xs', 'exp-candy-g': 'exp-candy-l', 'exp-candy-gg': 'exp-candy-xl',
+  'iv-hp': 'hp-up', 'iv-attack': 'protein', 'iv-defense': 'iron', 'iv-special-attack': 'calcium', 'iv-special-defense': 'zinc', 'iv-speed': 'carbos',
+  'ultra-burst-stone': 'ultranecrozium-z', 'gmax-stone': 'max-mushrooms',
+};
+
+/** Sprite oficial do item (repositório PokeAPI/sprites); se não carregar, a interface mostra um quadrado. */
+export function itemSpriteUrl(name: string): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${ITEM_SPRITE_ALIAS[name] ?? name}.png`;
 }
