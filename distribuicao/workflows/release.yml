@@ -1,7 +1,7 @@
 name: Release
 
 # Publica uma versão: crie a tag vX.Y.Z (ou vX.Y.Z-alpha.N) igual à versão do package.json.
-#   .\scripts\publicar-versao.ps1
+#   .\scripts\publicar-versao.ps1  (os arquivos ficam em .github/workflows no repositório)
 on:
   push:
     tags: ['v*']

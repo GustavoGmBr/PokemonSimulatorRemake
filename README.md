@@ -183,7 +183,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\criar-repositorio.ps1   # só
 powershell -ExecutionPolicy Bypass -File .\scripts\publicar-versao.ps1
 ```
 
-A tag `vX.Y.Z` dispara `.github/workflows/release.yml`: compila, roda os testes, testa o executável com `--check` e cria
+Os workflows ficam em `distribuicao/workflows` (o `criar-repositorio.ps1` copia para `.github/workflows`). A tag `vX.Y.Z` dispara `release.yml`: compila, roda os testes, testa o executável com `--check` e cria
 a release com os `.zip` e `.sha256`. Versões com sufixo (`-alpha.N`) saem como pré-lançamento; quem está numa alpha recebe
 as próximas alphas, quem está numa estável só recebe estáveis. O repositório de atualização fica em `release-config.json`.
 

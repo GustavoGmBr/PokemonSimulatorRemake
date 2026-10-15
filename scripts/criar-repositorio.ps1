@@ -15,6 +15,10 @@ foreach ($tool in 'git', 'gh') {
 gh auth status 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Host 'Entre na sua conta do GitHub…'; gh auth login --web --git-protocol https; if ($LASTEXITCODE -ne 0) { throw 'Login cancelado.' } }
 
+# Os workflows do GitHub Actions ficam em distribuicao/workflows e são copiados para .github/workflows.
+New-Item -ItemType Directory -Path '.github/workflows' -Force | Out-Null
+Copy-Item 'distribuicao/workflows/*.yml' '.github/workflows' -Force
+
 if (-not (Test-Path '.git')) { git init -b main | Out-Null }
 git add -A
 git diff --cached --quiet
