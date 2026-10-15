@@ -4,6 +4,7 @@ import { resumableRng, type Rng } from './rng.ts';
 import { expForLevel, levelForExp, levelProgress, MAX_LEVEL } from './experience.ts';
 import { stageMultiplier } from './stats.ts';
 import { isUsableMove, statsOf } from './pokemon.ts';
+import { typesOf } from './transform.ts';
 
 /**
  * Motor de batalha: funções puras sobre um estado serializável.
@@ -45,6 +46,8 @@ export interface Combatant {
   level: number;
   exp: number;
   shiny: boolean;
+  /** forma permanente (Mega, Primal…), se tiver */
+  form?: string | null;
   types: TypeName[];
   ivs: Stats;
   stats: Stats;
@@ -150,7 +153,7 @@ export function combatantFrom(instance: PokemonInstance, species: Species, name:
   const stats = statsOf(instance, species);
   return {
     ref, speciesId: species.id, name, level: instance.level, exp: instance.exp, shiny: instance.shiny,
-    types: [...species.types], ivs: { ...instance.ivs }, stats, hp: Math.max(0, Math.min(stats.hp, instance.currentHp)),
+    types: typesOf(species, instance.form), form: instance.form, ivs: { ...instance.ivs }, stats, hp: Math.max(0, Math.min(stats.hp, instance.currentHp)),
     moves: instance.moves.map((slot) => ({ ...slot })), pendingMoves: [], status: null, sleepTurns: 0, confusion: 0,
     flinch: false, stages: emptyStages(), friendship: instance.friendship, fought: false,
   };
@@ -597,7 +600,7 @@ export function awardExp(run: { state: BattleState; ctx: BattleContext; events: 
   while (c.level < target) {
     const oldMax = c.stats.hp;
     c.level += 1;
-    c.stats = statsOf({ speciesId: c.speciesId, nickname: null, level: c.level, exp: c.exp, shiny: c.shiny, gender: null, ivs: c.ivs, moves: c.moves, currentHp: c.hp, friendship: c.friendship, ball: null, form: null }, species);
+    c.stats = statsOf({ speciesId: c.speciesId, nickname: null, level: c.level, exp: c.exp, shiny: c.shiny, gender: null, ivs: c.ivs, moves: c.moves, currentHp: c.hp, friendship: c.friendship, ball: null, form: c.form ?? null }, species);
     if (c.hp > 0) c.hp = Math.min(c.stats.hp, c.hp + (c.stats.hp - oldMax));
     run.events.push({ k: 'level', index, level: c.level, hp: c.hp, maxHp: c.stats.hp, progress: levelProgress(species.growthRate, c.level, c.exp), text: `${c.name} subiu para o nível ${c.level}!` });
     for (const entry of species.learnset) {

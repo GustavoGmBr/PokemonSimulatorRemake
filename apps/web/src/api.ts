@@ -1,5 +1,5 @@
 import type {
-  BattleActRequest, ChallengesState, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
+  BattleActRequest, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
   UpdatePokemonRequest,
@@ -58,6 +58,14 @@ export const api = {
   challenges: (id: string) => request<ChallengesState>('GET', `/api/saves/${encodeURIComponent(id)}/challenges`),
   challengeStart: (id: string, challengeId: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/challenge`, { challengeId }),
   trainerStart: (id: string, difficulty: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/trainer`, { difficulty }),
+  transform: (id: string, pokemonId: string, form: string) =>
+    request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/transform`, { form }),
+  teams: (id: string) => request<TeamView[]>('GET', `/api/saves/${encodeURIComponent(id)}/teams`),
+  teamCreate: (id: string, name: string) => request<TeamView[]>('POST', `/api/saves/${encodeURIComponent(id)}/teams`, { name }),
+  teamUpdate: (id: string, teamId: string, patch: { name?: string; useCurrent?: boolean }) =>
+    request<TeamView[]>('PATCH', `/api/saves/${encodeURIComponent(id)}/teams/${encodeURIComponent(teamId)}`, patch),
+  teamDelete: (id: string, teamId: string) => request<TeamView[]>('DELETE', `/api/saves/${encodeURIComponent(id)}/teams/${encodeURIComponent(teamId)}`),
+  teamApply: (id: string, teamId: string) => request<TeamView[]>('POST', `/api/saves/${encodeURIComponent(id)}/teams/${encodeURIComponent(teamId)}/apply`),
   evolve: (id: string, pokemonId: string, speciesId: number) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/evolve`, { speciesId }),
   learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>

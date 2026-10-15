@@ -79,6 +79,12 @@ export function flattenEvolution(root: EvolutionNode, itemName?: (id: string) =>
 export interface EvolutionChoice {
   speciesId: number;
   requirement: string;
+  /** item gasto na evolução (pedra, Cabo de Ligação…); null quando basta o nível */
+  item: string | null;
+  /** pode evoluir agora (tem o item e nada bloqueia) */
+  ready: boolean;
+  /** por que ainda não dá (item faltando, região bloqueada); null quando pronto */
+  reason: string | null;
 }
 
 export interface EvolutionState {
@@ -88,7 +94,12 @@ export interface EvolutionState {
   moveTypes: readonly TypeName[];
   /** hora local (0–23) */
   hour: number;
+  /** a mochila tem esse item? (sem isso, só evoluções por nível aparecem) */
+  has?: (item: string) => boolean;
 }
+
+/** Item que o jogo antigo usava no lugar da troca: o próprio objeto da troca, ou o Cabo de Ligação. */
+export const LINKING_CORD = 'linking-cord';
 
 function phaseOfDay(hour: number): 'day' | 'dusk' | 'night' {
   if (hour >= 6 && hour < 17) return 'day';
@@ -99,10 +110,10 @@ function phaseOfDay(hour: number): 'day' | 'dusk' | 'night' {
 /** A condição pode ser cumprida agora, sem item, troca ou local? Só gatilhos de nível entram. */
 export function conditionMet(condition: EvolutionCondition, state: EvolutionState): boolean {
   if (condition.trigger !== 'level-up' || condition.item || condition.heldItem) return false;
-  const hasRequirement = condition.level !== null || condition.happiness !== null || condition.timeOfDay !== null || condition.knownMoveType !== null;
+  if (condition.happiness !== null) return false; // sem evolução por amizade neste jogo
+  const hasRequirement = condition.level !== null || condition.timeOfDay !== null || condition.knownMoveType !== null;
   if (!hasRequirement) return false; // condição desconhecida (local, gênero…): fora do alcance
   if (condition.level !== null && state.level < condition.level) return false;
-  if (condition.happiness !== null && state.friendship < condition.happiness) return false;
   if (condition.timeOfDay) {
     const phase = phaseOfDay(state.hour);
     const wanted = condition.timeOfDay;
@@ -114,6 +125,15 @@ export function conditionMet(condition: EvolutionCondition, state: EvolutionStat
   return true;
 }
 
+/** Item que este caminho evolutivo gasta (pedra, objeto de troca, Cabo de Ligação), ou null se não usa item. */
+export function itemFor(condition: EvolutionCondition): string | null {
+  if (condition.happiness !== null) return null;
+  if (condition.trigger === 'use-item' && condition.item && !condition.timeOfDay) return condition.item;
+  if (condition.trigger === 'trade') return condition.heldItem ?? LINKING_CORD;
+  if (condition.trigger === 'level-up' && condition.heldItem) return condition.heldItem; // Garra Afiada, Presa Afiada
+  return null;
+}
+
 function findNode(root: EvolutionNode, speciesId: number): EvolutionNode | null {
   if (root.speciesId === speciesId) return root;
   for (const next of root.evolvesTo) {
@@ -123,11 +143,30 @@ function findNode(root: EvolutionNode, speciesId: number): EvolutionNode | null 
   return null;
 }
 
-/** Evoluções que o Pokémon pode fazer agora (por nível, amizade, hora do dia ou golpe conhecido). */
+/**
+ * Evoluções ao alcance do Pokémon: as de nível já cumpridas e as de item (pedra, troca por Cabo de Ligação ou objeto).
+ * As de item sem o item na mochila aparecem com `ready: false` para o jogador saber o que falta.
+ */
 export function availableEvolutions(species: Species, state: EvolutionState, itemName?: (id: string) => string): EvolutionChoice[] {
   const node = findNode(species.evolutionChain, species.id);
   if (!node) return [];
-  return node.evolvesTo
-    .filter((next) => next.conditions.some((condition) => conditionMet(condition, state)))
-    .map((next) => ({ speciesId: next.speciesId, requirement: describeConditions(next.conditions, itemName) }));
+  const names = itemName ?? titleCase;
+  const choices: EvolutionChoice[] = [];
+  for (const next of node.evolvesTo) {
+    if (next.conditions.some((condition) => conditionMet(condition, state))) {
+      choices.push({ speciesId: next.speciesId, requirement: describeConditions(next.conditions, names), item: null, ready: true, reason: null });
+      continue;
+    }
+    const itemPath = next.conditions.map((condition) => ({ condition, item: itemFor(condition) })).find((entry) => entry.item !== null);
+    if (!itemPath || !itemPath.item) continue;
+    const owned = state.has ? state.has(itemPath.item) : false;
+    choices.push({
+      speciesId: next.speciesId,
+      requirement: itemPath.condition.trigger === 'trade' && !itemPath.condition.heldItem ? `Troca (${names(itemPath.item)})` : `Usar ${names(itemPath.item)}`,
+      item: itemPath.item,
+      ready: owned,
+      reason: owned ? null : `Falta ${names(itemPath.item)} (compre na Loja).`,
+    });
+  }
+  return choices;
 }

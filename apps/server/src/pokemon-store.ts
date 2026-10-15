@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
   BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
-  ivQuality, isValidLocation, levelProgress, searchCollection, statsOf,
+  ivQuality, isValidLocation, levelProgress, searchCollection, statsOf, availableForms, typesOf, formOf, REGIONS, unlockedRegionIds,
+  EXP_CANDIES, IV_ESSENCES, RARE_CANDY, expForLevel, levelForExp, isUsableMove, MAX_LEVEL, type TransformChoice,
   type BoxView, type Combatant, type LearnableMove, type MoveOptions, type CollectionEntry, type MoveView, type EvolutionChoice, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
   type PokemonInstance, type PokemonLocation, type PokemonSearchResult, type PokemonView,
   type SearchPokemonQuery, type SortKey, type Stats, type TypeName, SORT_KEYS,
@@ -9,6 +10,7 @@ import {
 import { loadGameData } from '@pokesim/data';
 import { transaction, type Db } from './db.ts';
 import { badRequest, notFound } from './errors.ts';
+import { createInventory } from './inventory.ts';
 
 export interface PokemonRow {
   id: string;
@@ -43,6 +45,21 @@ export const MAX_SEARCH_LIMIT = 100;
 
 export function createPokemonStore(db: Db) {
   const data = loadGameData();
+  const inventory = createInventory(db);
+
+  /** A espécie pertence a uma região que o save ainda não liberou? */
+  function regionBlocked(saveId: string, speciesId: number): boolean {
+    const region = REGIONS.find((entry) => speciesId >= entry.dex[0] && speciesId <= entry.dex[1]);
+    if (!region) return false;
+    const won = (db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((r) => r.challenge_id);
+    return !unlockedRegionIds(won).includes(region.id);
+  }
+
+  function owns(saveId: string, speciesId: number): boolean {
+    return db.prepare('SELECT 1 FROM pokemon WHERE save_id = ? AND species_id = ? LIMIT 1').get(saveId, speciesId) !== undefined;
+  }
+
+  const itemName = (id: string): string => data.itemsByName.get(id)?.displayName ?? id;
 
   function assertSave(saveId: string): void {
     if (!db.prepare('SELECT 1 FROM saves WHERE id = ?').get(saveId)) throw notFound('Save não encontrado.');
@@ -72,10 +89,10 @@ export function createPokemonStore(db: Db) {
     return {
       id: row.id,
       speciesId: species.id,
-      name: row.nickname ?? species.displayName,
-      speciesName: species.displayName,
+      name: row.nickname ?? formOf(species, row.form)?.displayName ?? species.displayName,
+      speciesName: formOf(species, row.form)?.displayName ?? species.displayName,
       nickname: row.nickname,
-      types: species.types,
+      types: typesOf(species, row.form),
       level: row.level,
       exp: row.exp,
       expProgress: levelProgress(species.growthRate, row.level, row.exp),
@@ -93,6 +110,9 @@ export function createPokemonStore(db: Db) {
       ball: row.ball,
       caughtAt: row.caught_at,
       evolutions: evolutionsOf(row, species, slots),
+      forms: formsOf(row, species),
+      form: row.form,
+      spriteId: formOf(species, row.form)?.spriteId ?? species.id,
       pendingMoves: pendingOf(row.id),
       friendship: row.friendship,
     };
@@ -148,8 +168,22 @@ export function createPokemonStore(db: Db) {
 
   function evolutionsOf(row: PokemonRow, species: NonNullable<ReturnType<typeof data.speciesById.get>>, slots: MoveSlot[]): EvolutionChoice[] {
     const moveTypes = slots.map((slot) => data.movesByName.get(slot.name)?.type).filter((type): type is TypeName => type !== undefined);
-    return availableEvolutions(species, { level: row.level, friendship: row.friendship, moveTypes, hour: new Date().getHours() })
-      .map((choice) => ({ ...choice, requirement: choice.requirement }));
+    return availableEvolutions(species, {
+      level: row.level, friendship: row.friendship, moveTypes, hour: new Date().getHours(),
+      has: (item) => inventory.quantity(row.save_id, item) > 0,
+    }, itemName).map((choice) => (choice.ready && regionBlocked(row.save_id, choice.speciesId)
+      ? { ...choice, ready: false, reason: 'Essa espécie é de uma região que você ainda não liberou.' }
+      : choice));
+  }
+
+  function formsOf(row: PokemonRow, species: NonNullable<ReturnType<typeof data.speciesById.get>>): TransformChoice[] {
+    if (species.forms.length === 0) return [];
+    return availableForms(species, {
+      level: row.level, form: row.form,
+      has: (item) => inventory.quantity(row.save_id, item) > 0,
+      owns: (id) => owns(row.save_id, id),
+      itemName,
+    });
   }
 
   function writeLocation(id: string, location: PokemonLocation | null): void {
@@ -194,6 +228,17 @@ export function createPokemonStore(db: Db) {
     );
     recordCaught(saveId, pokemon.speciesId);
     return id;
+  }
+
+  /** Primeira vaga livre do PC (ignora a equipe), contando as posições já reservadas em `taken`. */
+  function firstFreeBox(saveId: string, taken: Set<number> = new Set()): { box: number; slot: number } {
+    const used = new Set((db.prepare('SELECT box, box_slot FROM pokemon WHERE save_id = ? AND box IS NOT NULL').all(saveId) as { box: number; box_slot: number }[]).map((r) => r.box * BOX_SIZE + r.box_slot));
+    let position = 0;
+    while (used.has(position) || taken.has(position)) position++;
+    const box = Math.floor(position / BOX_SIZE);
+    if (box > MAX_BOX_INDEX) throw badRequest('O PC está cheio.');
+    taken.add(position);
+    return { box, slot: position % BOX_SIZE };
   }
 
   /** Primeira posição livre: equipe primeiro, depois a primeira vaga do PC (caixas nunca acabam). */
@@ -254,6 +299,20 @@ export function createPokemonStore(db: Db) {
       });
     },
 
+    /** Monta a equipe com estes Pokémon (em ordem); quem sai da equipe vai para o PC. */
+    applyTeam(saveId: string, ids: string[]): void {
+      assertSave(saveId);
+      transaction(db, () => {
+        const wanted = ids.filter((id) => db.prepare('SELECT 1 FROM pokemon WHERE id = ? AND save_id = ?').get(id, saveId));
+        if (wanted.length === 0) throw badRequest('Nenhum Pokémon dessa equipe existe mais.');
+        const leaving = teamRows(saveId).filter((row) => !wanted.includes(row.id));
+        for (const id of [...wanted, ...leaving.map((row) => row.id)]) writeLocation(id, null);
+        wanted.forEach((id, index) => writeLocation(id, { kind: 'team', slot: index }));
+        const taken = new Set<number>();
+        for (const row of leaving) writeLocation(row.id, { kind: 'box', ...firstFreeBox(saveId, taken) });
+      });
+    },
+
     /** Um Pokémon do save, já no formato da API. */
     view(saveId: string, pokemonId: string): PokemonView {
       return rowToView(getRow(saveId, pokemonId));
@@ -301,22 +360,90 @@ export function createPokemonStore(db: Db) {
       });
     },
 
-    /** Evolui por escolha do jogador (botão no perfil). */
+    /** Evolui por escolha do jogador (botão no perfil). Gasta a pedra/objeto, se o caminho exigir. */
     evolve(saveId: string, pokemonId: string, toSpeciesId: unknown): PokemonView {
       const row = getRow(saveId, pokemonId);
       const view = rowToView(row);
       const choice = view.evolutions.find((entry) => entry.speciesId === toSpeciesId);
-      if (!choice) throw badRequest('Este Pokémon não pode evoluir assim agora.');
+      if (!choice) throw badRequest('Este Pokémon não pode evoluir assim.');
+      if (!choice.ready) throw badRequest(choice.reason ?? 'Ainda não dá para evoluir.');
       const next = data.speciesById.get(choice.speciesId);
       if (!next) throw badRequest('Espécie desconhecida.');
       transaction(db, () => {
-        const grown = { ...row, species_id: next.id };
+        if (choice.item && !inventory.take(saveId, choice.item)) throw badRequest(`Falta ${itemName(choice.item)}.`);
+        const grown = { ...row, species_id: next.id, form: null };
         const newMax = rowToView(grown).stats.hp;
         const hp = Math.min(newMax, row.current_hp + Math.max(0, newMax - view.stats.hp));
-        db.prepare('UPDATE pokemon SET species_id = ?, current_hp = ? WHERE id = ?').run(next.id, hp, row.id);
+        db.prepare('UPDATE pokemon SET species_id = ?, current_hp = ?, form = NULL WHERE id = ?').run(next.id, hp, row.id);
         recordCaught(saveId, next.id);
       });
       return rowToView(getRow(saveId, pokemonId));
+    },
+
+    /** Mega, Primal, G-Max ou fusão: permanente; gasta o item e mantém os parceiros da fusão na coleção. */
+    transform(saveId: string, pokemonId: string, formName: unknown): PokemonView {
+      const row = getRow(saveId, pokemonId);
+      const view = rowToView(row);
+      const choice = view.forms.find((entry) => entry.name === formName);
+      if (!choice) throw badRequest('Este Pokémon não tem essa forma.');
+      if (!choice.ready) throw badRequest(choice.reason ?? 'Ainda não dá.');
+      transaction(db, () => {
+        if (choice.item && !inventory.take(saveId, choice.item)) throw badRequest(`Falta ${itemName(choice.item)}.`);
+        const next = { ...row, form: choice.name };
+        const newMax = rowToView(next).stats.hp;
+        const hp = Math.min(newMax, row.current_hp + Math.max(0, newMax - view.stats.hp));
+        db.prepare('UPDATE pokemon SET form = ?, current_hp = ? WHERE id = ?').run(choice.name, hp, row.id);
+      });
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
+    /** Essência de IV (+1, máx. 31). Se o IV já está no máximo, falha sem gastar o item. */
+    useEssence(saveId: string, pokemonId: string, item: string): PokemonView {
+      const stat = IV_ESSENCES[item];
+      if (!stat) throw badRequest('Esse item não é uma Essência de IV.');
+      const row = getRow(saveId, pokemonId);
+      const ivs = JSON.parse(row.ivs) as Stats;
+      if (ivs[stat] >= 31) throw badRequest('Esse IV já está no máximo; o item não foi gasto.');
+      transaction(db, () => {
+        if (!inventory.take(saveId, item)) throw badRequest('Você não tem esse item.');
+        const before = rowToView(row).stats.hp;
+        const updated = { ...row, ivs: JSON.stringify({ ...ivs, [stat]: ivs[stat] + 1 }) };
+        const after = rowToView(updated).stats.hp;
+        db.prepare('UPDATE pokemon SET ivs = ?, current_hp = ? WHERE id = ?').run(updated.ivs, Math.min(after, row.current_hp + Math.max(0, after - before)), row.id);
+      });
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
+    /** Doce de EXP (XP fixo) ou Doce Raro (+1 nível). Golpes novos entram sozinhos ou esperam vaga no perfil. */
+    useCandy(saveId: string, pokemonId: string, item: string): { pokemon: PokemonView; gained: number; levels: number } {
+      const row = getRow(saveId, pokemonId);
+      const species = data.speciesById.get(row.species_id);
+      if (!species) throw notFound('Espécie desconhecida.');
+      if (row.level >= MAX_LEVEL) throw badRequest('Esse Pokémon já está no nível máximo.');
+      const amount = item === RARE_CANDY ? expForLevel(species.growthRate, row.level + 1) - row.exp : EXP_CANDIES[item];
+      if (amount === undefined) throw badRequest('Esse item não é um doce.');
+      return transaction(db, () => {
+        if (!inventory.take(saveId, item)) throw badRequest('Você não tem esse item.');
+        const maxExp = expForLevel(species.growthRate, MAX_LEVEL);
+        const exp = Math.min(maxExp, row.exp + amount);
+        const level = levelForExp(species.growthRate, exp);
+        const before = rowToView(row).stats.hp;
+        const grown = { ...row, exp, level };
+        const after = rowToView(grown).stats.hp;
+        const slots = JSON.parse(row.moves) as MoveSlot[];
+        for (let l = row.level + 1; l <= level; l++) {
+          for (const entry of species.learnset) {
+            if (entry.method !== 'level-up' || entry.level !== l) continue;
+            const move = data.movesByName.get(entry.move);
+            if (!move || !isUsableMove(move) || slots.some((slot) => slot.name === move.name)) continue;
+            if (slots.length < 4) slots.push(toMoveSlot(move));
+            else db.prepare('INSERT OR IGNORE INTO pending_moves (pokemon_id, move) VALUES (?, ?)').run(row.id, move.name);
+          }
+        }
+        db.prepare('UPDATE pokemon SET exp = ?, level = ?, moves = ?, current_hp = ? WHERE id = ?')
+          .run(exp, level, JSON.stringify(slots), Math.min(after, row.current_hp > 0 ? row.current_hp + Math.max(0, after - before) : 0), row.id);
+        return { pokemon: rowToView(getRow(saveId, pokemonId)), gained: exp - row.exp, levels: level - row.level };
+      });
     },
 
     /** Aprende um golpe pendente, trocando por um dos quatro atuais (ou descarta). */

@@ -345,7 +345,7 @@ export function PcScreen({ saveId, onBack }: Props) {
                       aria-current={selected}
                       onClick={() => { setZone('team'); setCursor(i); if (carrying) void drop(); else setMenuOpen(true); }}
                     >
-                      <span className="gb-mon__sprite gb-mon__sprite--small"><Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={48} /></span>
+                      <span className="gb-mon__sprite gb-mon__sprite--small"><Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={48} /></span>
                       <span className="gb-mon__body">
                         <span className="gb-mon__head">
                           <span>{mon.favorite ? <span className="gb-fav">♥</span> : null} {mon.name}</span>
@@ -389,7 +389,7 @@ export function PcScreen({ saveId, onBack }: Props) {
                     onMouseEnter={() => { if (!overlay) { setZone('box'); setCursor(i); } }}
                     onClick={() => { setZone('box'); setCursor(i); if (carrying) void drop(); else if (mon) setMenuOpen(true); }}
                   >
-                    {mon ? <Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={56} /> : null}
+                    {mon ? <Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={56} /> : null}
                     {mon?.favorite ? <span className="gb-cell__fav" aria-hidden="true">♥</span> : null}
                     {mon?.shiny ? <span className="gb-cell__shiny" aria-hidden="true">✦</span> : null}
                   </button>
@@ -426,7 +426,7 @@ export function PcScreen({ saveId, onBack }: Props) {
                       onClick={() => { setSearchZone('results'); setResultIndex(i); setMenuOpen(true); }}
                       onMouseEnter={() => { if (!overlay) { setSearchZone('results'); setResultIndex(i); } }}
                     >
-                      <span className="gb-mon__sprite gb-mon__sprite--small"><Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={48} /></span>
+                      <span className="gb-mon__sprite gb-mon__sprite--small"><Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={48} /></span>
                       <span className="gb-mon__body">
                         <span className="gb-mon__head">
                           <span>{mon.favorite ? <span className="gb-fav">♥</span> : null} {mon.name}{mon.shiny ? ' ✦' : ''}</span>

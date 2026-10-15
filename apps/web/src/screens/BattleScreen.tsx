@@ -334,7 +334,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
 
   const teamItems: MenuItem[] = view.player.team.map((mon) => ({
     id: String(mon.index),
-    label: <span className="gb-teamrow"><Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={32} /> {mon.name} <span className="gb-muted">Nv{mon.level}</span></span>,
+    label: <span className="gb-teamrow"><Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={32} /> {mon.name} <span className="gb-muted">Nv{mon.level}</span></span>,
     extra: mon.hp === 0 ? 'DESMAIADO' : `${mon.hp}/${mon.maxHp}${mon.status ? ` · ${STATUS_SHORT[mon.status]}` : ''}`,
     disabled: mode === 'target' ? false : view.phase === 'replace' ? mon.hp === 0 : mon.index === view.player.active || mon.hp === 0,
   }));
@@ -360,12 +360,12 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
           {player ? <InfoBox side="player" mon={player} xpGain={xpShown} /> : null}
 
           <div className="gb-battle__sprite gb-battle__sprite--foe">
-            {foe ? <div className={`gb-sprite-anim ${anims.foe}`}><Sprite speciesId={foe.speciesId} shiny={foe.shiny} alt={foe.name} size={176} className={anims.foe ? '' : 'gb-bob'} /></div> : null}
+            {foe ? <div className={`gb-sprite-anim ${anims.foe}`}><Sprite speciesId={foe.spriteId} shiny={foe.shiny} alt={foe.name} size={176} className={anims.foe ? '' : 'gb-bob'} /></div> : null}
             {ball ? <BallIcon item={ball.item} className={`gb-battle-ball gb-battle-ball--${ball.stage}${ball.stage === 'shake' ? ` gb-battle-ball--n${ball.n % 2}` : ''}`} /> : null}
             {popup && popup.side === 'foe' ? <Popup key={popup.id} {...popup} /> : null}
           </div>
           <div className="gb-battle__sprite gb-battle__sprite--player">
-            {player ? <div className={`gb-sprite-anim ${anims.player}`}><BackSprite speciesId={player.speciesId} shiny={player.shiny} name={player.name} /></div> : null}
+            {player ? <div className={`gb-sprite-anim ${anims.player}`}><BackSprite speciesId={player.spriteId} shiny={player.shiny} name={player.name} /></div> : null}
             {popup && popup.side === 'player' ? <Popup key={popup.id} {...popup} /> : null}
           </div>
           {fx ? <BattleFx key={fx.id} type={fx.type} target={fx.side} category={fx.category} /> : null}

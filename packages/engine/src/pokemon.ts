@@ -3,6 +3,7 @@ import type { Rng } from './rng.ts';
 import { calcStats } from './stats.ts';
 import { expForLevel } from './experience.ts';
 import { rollIvs } from './ivs.ts';
+import { GMAX_HP_MULTIPLIER } from './transform.ts';
 
 /** Golpes que nocauteiam o próprio usuário; ficam fora dos movesets automáticos. */
 const SELF_KO_MOVES = new Set([
@@ -81,5 +82,7 @@ export function createPokemon(options: CreatePokemonOptions): PokemonInstance {
 
 export function statsOf(pokemon: PokemonInstance, species: Species): Stats {
   const form = pokemon.form ? species.forms.find((entry) => entry.name === pokemon.form) : undefined;
-  return calcStats(form?.baseStats ?? species.baseStats, pokemon.level, pokemon.ivs, pokemon.shiny);
+  const stats = calcStats(form?.baseStats ?? species.baseStats, pokemon.level, pokemon.ivs, pokemon.shiny);
+  if (form?.kind === 'gmax') stats.hp = Math.floor(stats.hp * GMAX_HP_MULTIPLIER);
+  return stats;
 }

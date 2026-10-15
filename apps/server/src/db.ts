@@ -124,6 +124,17 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (pokemon_id, move)
   );
   `,
+  // 10 — equipes nomeadas (lista de Pokémon em ordem, até 6)
+  `
+  CREATE TABLE teams (
+    id         TEXT PRIMARY KEY,
+    save_id    TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    members    TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX teams_by_save ON teams (save_id);
+  `,
 ];
 
 export type Db = DatabaseSync;

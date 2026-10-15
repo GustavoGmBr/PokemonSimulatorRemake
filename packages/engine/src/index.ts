@@ -14,3 +14,5 @@ export * from './wild.ts';
 export * from './challenges.ts';
 export * from './items.ts';
 export type * from './contracts.ts';
+export * from './transform.ts';
+export * from './teams.ts';

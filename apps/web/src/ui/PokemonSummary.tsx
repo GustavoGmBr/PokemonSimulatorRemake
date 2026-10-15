@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { STAT_KEYS, STAT_LABELS, type MoveOptions, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
+import { STAT_KEYS, STAT_LABELS, isTrainingItem, type InventoryEntry, type MoveOptions, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HpBar, Sprite, Stars, TypeBadge, XpBar } from './bits.tsx';
 import { Menu, type MenuItem } from './Menu.tsx';
@@ -10,7 +10,7 @@ export function locationLabel(mon: PokemonView): string {
   return mon.location.kind === 'team' ? `Equipe · posição ${mon.location.slot + 1}` : `Caixa ${mon.location.box + 1} · vaga ${mon.location.slot + 1}`;
 }
 
-type Panel = null | 'evolve' | 'learn' | 'slots' | 'tms' | { learn: string } | { teach: number };
+type Panel = null | 'evolve' | 'forms' | 'items' | 'learn' | 'slots' | 'tms' | { learn: string } | { teach: number } | { confirmForm: string };
 
 /**
  * Ficha de um Pokémon do jogador: sprite, atributos, IVs e golpes.
@@ -23,6 +23,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [options, setOptions] = useState<MoveOptions | null>(null);
+  const [stock, setStock] = useState<InventoryEntry[]>([]);
   useEffect(() => { setMon(initial); }, [initial]);
   useEffect(() => {
     if (!saveId) return;
@@ -30,6 +31,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
   }, [saveId]);
 
   const canEvolve = Boolean(saveId) && mon.evolutions.length > 0;
+  const canTransform = Boolean(saveId) && mon.forms.length > 0;
   const canLearn = Boolean(saveId) && mon.pendingMoves.length > 0;
   const update = (next: PokemonView, text: string) => { setMon(next); onChanged?.(next); setNote(text); setPanel(null); };
   const run = async (job: () => Promise<void>) => {
@@ -52,17 +54,39 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     playSound('confirm');
   });
 
+  const openItems = () => run(async () => {
+    if (!saveId) return;
+    setStock((await api.getSave(saveId)).inventory.filter((entry) => isTrainingItem(entry.item) && entry.quantity > 0));
+    setPanel('items');
+    playSound('confirm');
+  });
+
   useKeys((key) => {
     if (key === 'back' || key === 'confirm') onBack();
+    else if (key === 'tool' && canTransform) { setPanel('forms'); playSound('confirm'); }
     else if (key === 'next' && canEvolve) { setPanel('evolve'); playSound('confirm'); }
     else if (key === 'goto' && canLearn) { setPanel('learn'); playSound('confirm'); }
     else if (key === 'filter' && saveId) { openSlots(); }
   }, panel === null && !busy);
 
   const evolveItems: MenuItem[] = [
-    ...mon.evolutions.map((choice): MenuItem => ({ id: String(choice.speciesId), label: `Evoluir para ${names.get(choice.speciesId)?.name ?? `#${choice.speciesId}`}`, extra: choice.requirement })),
+    ...mon.evolutions.map((choice): MenuItem => ({
+      id: String(choice.speciesId),
+      label: `Evoluir para ${names.get(choice.speciesId)?.name ?? `#${choice.speciesId}`}`,
+      extra: choice.ready ? choice.requirement : (choice.reason ?? choice.requirement),
+      disabled: !choice.ready,
+    })),
     { id: '__back', label: 'Cancelar' },
   ];
+  const formItems: MenuItem[] = [
+    ...mon.forms.map((choice): MenuItem => ({ id: choice.name, label: choice.displayName, extra: choice.ready ? choice.requirement : (choice.reason ?? ''), disabled: !choice.ready })),
+    { id: '__back', label: 'Cancelar' },
+  ];
+  const itemItems: MenuItem[] = [
+    ...stock.map((entry): MenuItem => ({ id: entry.item, label: entry.displayName, extra: `×${entry.quantity}` })),
+    { id: '__back', label: 'Voltar' },
+  ];
+  const confirmForm = typeof panel === 'object' && panel && 'confirmForm' in panel ? mon.forms.find((f) => f.name === panel.confirmForm) : undefined;
   const learnItems: MenuItem[] = [
     ...mon.pendingMoves.map((move): MenuItem => ({ id: move.name, label: move.displayName, extra: `${move.type} · ${move.category === 'status' ? 'Status' : `Poder ${move.power}`}` })),
     { id: '__back', label: 'Cancelar' },
@@ -102,7 +126,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
       <div className="gb-row" style={{ gap: 24 }}>
         <div className="gb-side gb-stack" style={{ maxWidth: 260, alignItems: 'center', textAlign: 'center' }}>
           <div style={{ background: 'var(--sky)', border: '4px solid var(--ink)', padding: 8 }}>
-            <Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt={mon.speciesName} size={180} />
+            <Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt={mon.speciesName} size={180} />
           </div>
           <h2 id="summary-title" className="gb-title" style={{ fontSize: 28 }}>
             {mon.favorite ? <span className="gb-fav" aria-label="Favorito">♥ </span> : null}
@@ -148,6 +172,8 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
               {panel === null ? (
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {canEvolve ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('evolve')}>Evoluir (E)</button> : null}
+                  {canTransform ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('forms')}>Transformar (T)</button> : null}
+                  <button type="button" className="gb-button" disabled={busy} onClick={() => void openItems()}>Doces e Essências</button>
                   {canLearn ? <button type="button" className="gb-button gb-button--blue" onClick={() => setPanel('learn')}>Novos golpes ({mon.pendingMoves.length}) (G)</button> : null}
                   <button type="button" className="gb-button" disabled={busy} onClick={() => void openSlots()}>Trocar golpes (F)</button>
                   <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void openTms()}>Comprar TMs</button>
@@ -164,6 +190,47 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                     });
                   }}
                 />
+              ) : null}
+              {panel === 'forms' ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Formas permanentes de {mon.name}. A transformação não tem volta e gasta o item.</p>
+                  <Menu label="Transformar" items={formItems} active={!busy} onBack={() => setPanel(null)}
+                    onSelect={(id) => setPanel(id === '__back' ? null : { confirmForm: id })}
+                  />
+                </>
+              ) : null}
+              {confirmForm && saveId ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Transformar {mon.name} em {confirmForm.displayName} para sempre?</p>
+                  <Menu label="Confirmar" active={!busy} onBack={() => setPanel('forms')}
+                    items={[{ id: 'yes', label: `Sim, virar ${confirmForm.displayName}` }, { id: 'no', label: 'Cancelar' }]}
+                    onSelect={(id) => {
+                      if (id !== 'yes') { setPanel('forms'); return; }
+                      void run(async () => {
+                        const next = await api.transform(saveId, mon.id, confirmForm.name);
+                        playSound('levelup');
+                        update(next, `${mon.name} virou ${next.speciesName}!`);
+                      });
+                    }}
+                  />
+                </>
+              ) : null}
+              {panel === 'items' && saveId ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>{stock.length === 0 ? 'Você não tem Doces nem Essências de IV.' : `Use em ${mon.name}. Essência: +1 IV (máx. 31). Doce: XP ou nível.`}</p>
+                  <Menu label="Doces e Essências" items={itemItems} active={!busy} onBack={() => setPanel(null)}
+                    onSelect={(id) => {
+                      if (id === '__back') { setPanel(null); return; }
+                      void run(async () => {
+                        const result = await api.useItem(saveId, id, mon.id);
+                        playSound('levelup');
+                        setMon(result.pokemon); onChanged?.(result.pokemon);
+                        setNote(result.message ?? `${mon.name} usou o item.`);
+                        setStock((await api.getSave(saveId)).inventory.filter((entry) => isTrainingItem(entry.item) && entry.quantity > 0));
+                      });
+                    }}
+                  />
+                </>
               ) : null}
               {panel === 'learn' ? (
                 <Menu label="Novos golpes" items={learnItems} active={!busy} onBack={() => setPanel(null)}

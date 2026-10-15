@@ -8,6 +8,7 @@ import type { HealthInfo, SearchPokemonQuery, SortKey, SpeciesIndexEntry } from 
 import { createSaveService } from './saves.ts';
 import { createPokemonStore } from './pokemon-store.ts';
 import { createInventory } from './inventory.ts';
+import { createTeamService } from './team-service.ts';
 import { createBattleService } from './battle-service.ts';
 import { createWildService } from './wild-service.ts';
 import { createItemService } from './item-service.ts';
@@ -65,6 +66,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
   const wild = createWildService(db, store, inventory);
   const items = createItemService(db, store, inventory);
   const battle = createBattleService(db, store, inventory, wild);
+  const teams = createTeamService(db, store);
   const data = loadGameData();
   const speciesIndex: SpeciesIndexEntry[] = data.species.map((s) => ({
     id: s.id, name: s.displayName, types: s.types, generation: s.generation,
@@ -101,6 +103,12 @@ export function createApp({ db, assetsDir, webDist, devTools = false }: AppOptio
     .post('/api/saves/:id/battle/trainer', ({ params, body }) => battle.startTrainer(params.id as string, (body as { difficulty?: unknown } | null)?.difficulty))
     .post('/api/saves/:id/battle/act', ({ params, body }) => battle.act(params.id as string, body))
     .post('/api/saves/:id/pokemon/:pid/evolve', ({ params, body }) => store.evolve(params.id as string, params.pid as string, (body as { speciesId?: unknown } | null)?.speciesId))
+    .post('/api/saves/:id/pokemon/:pid/transform', ({ params, body }) => store.transform(params.id as string, params.pid as string, (body as { form?: unknown } | null)?.form))
+    .get('/api/saves/:id/teams', ({ params }) => teams.list(params.id as string))
+    .post('/api/saves/:id/teams', ({ params, body }) => teams.create(params.id as string, (body ?? {}) as { name?: unknown }))
+    .patch('/api/saves/:id/teams/:tid', ({ params, body }) => teams.update(params.id as string, params.tid as string, (body ?? {}) as { name?: unknown; useCurrent?: unknown }))
+    .delete('/api/saves/:id/teams/:tid', ({ params }) => teams.remove(params.id as string, params.tid as string))
+    .post('/api/saves/:id/teams/:tid/apply', ({ params }) => teams.apply(params.id as string, params.tid as string))
     .get('/api/saves/:id/pokemon/:pid/moves', ({ params }) => store.moveOptions(params.id as string, params.pid as string))
     .post('/api/saves/:id/pokemon/:pid/tm', ({ params, body }) => store.buyTm(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/teach', ({ params, body }) => store.teachMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; slot?: unknown }))

@@ -8,6 +8,7 @@ import type { RegionId } from './regions.ts';
 import type { PokemonLocation, SortKey } from './collection.ts';
 import type { BattleEvent, BattlePhase, BattleResult, StageKey, StatusKind } from './battle.ts';
 import type { EvolutionChoice } from './evolution.ts';
+import type { TransformChoice } from './transform.ts';
 
 export interface SaveSummary {
   id: string;
@@ -65,6 +66,12 @@ export interface PokemonView {
   caughtAt: string;
   /** evoluções que já podem ser feitas (o jogador clica em Evoluir) */
   evolutions: EvolutionChoice[];
+  /** Mega, Primal, G-Max e fusões ao alcance (ou o que falta para elas) */
+  forms: TransformChoice[];
+  /** forma permanente atual (null = normal) */
+  form: string | null;
+  /** id dos arquivos de sprite (muda nas formas) */
+  spriteId: number;
   /** golpes aprendidos ao subir de nível que esperam uma vaga */
   pendingMoves: MoveView[];
   friendship: number;
@@ -315,6 +322,8 @@ export interface UseItemResult {
   pokemon: PokemonView;
   healed: number;
   remaining: number;
+  /** frase pronta para mostrar (Essência, Doce…) */
+  message?: string;
 }
 
 export interface DevKitResult {
@@ -331,6 +340,8 @@ export interface DevProgressResult {
 export interface BattleMonView {
   index: number;
   speciesId: number;
+  /** id dos arquivos de sprite (formas Mega etc.) */
+  spriteId: number;
   name: string;
   level: number;
   hp: number;
@@ -474,4 +485,23 @@ export interface ChallengesState {
   unlockedRegions: string[];
   /** nível máximo que o desafio permite ao seu time (nível do líder) é mostrado em cada desafio */
   badges: number;
+}
+
+// ---------------------------------------------------------------- equipes nomeadas
+
+export interface TeamMemberView {
+  id: string;
+  speciesId: number;
+  spriteId: number;
+  name: string;
+  level: number;
+  shiny: boolean;
+}
+
+export interface TeamView {
+  id: string;
+  name: string;
+  members: TeamMemberView[];
+  /** é a equipe que está montada agora */
+  active: boolean;
 }

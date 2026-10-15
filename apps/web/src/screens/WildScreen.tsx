@@ -391,7 +391,7 @@ function TeamStrip({ team }: { team: PokemonView[] }) {
     <section className="gb-window gb-team-strip" aria-label="Sua equipe">
       {team.map((mon) => (
         <div key={mon.id} className={`gb-team-strip__mon${mon.currentHp <= 0 ? ' is-fainted' : ''}`}>
-          <Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={48} />
+          <Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={48} />
           <div className="gb-team-strip__info">
             <b>{mon.nickname ?? mon.name}</b>
             <span className="gb-muted">Nv{mon.level}</span>

@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.0-alpha.8**, Fases 1–2 prontas (PC, Pokédex, selvagens, captura, loja, batalha, ginásios, Elite dos 4, campeões e treinadores aleatórios; mapa das regiões a seguir). Veja o [plano de fases](#fases).
+> Versão atual: **2.0.0-alpha.9**, batalhas e progressão prontas, mais evolução por item, formas, Essências, Doces e equipes nomeadas; Pokécassino e torneios a seguir. Veja o [plano de fases](#fases).
 
 ## Como rodar
 
@@ -122,6 +122,17 @@ packages/
    - **Treinadores aleatórios** (aba "Aleatórios"): Fácil (2–3 Pokémon Nv 20–30, ₽ 1.000), Médio (3–4, Nv 40–50,
      ₽ 3.000) e Difícil (6 Pokémon Nv 100, ₽ 10.000), cada um com times sorteados e itens de prêmio.
    - Batalha selvagem: engine, captura e tela retrô (acima).
+   - ✅ **Evolução por item e troca (alpha.9):** pedras e objetos da loja evoluem pelo perfil (botão Evoluir, E);
+     evoluções por troca usam o **Cabo de Ligação** ou o próprio objeto da troca (Metal Coat, Kings Rock…).
+     **Não há evolução por amizade.** Espécies de regiões ainda não liberadas esperam o campeão da anterior.
+     Item é gasto só quando a evolução acontece.
+   - ✅ **Mega, Primal, G-Max e fusões:** permanentes, pelo botão **Transformar (T)** no perfil. Mega e Primal pedem
+     Nv 60 + a pedra/orbe; G-Max usa a Pedra G-Max (+50% de HP máximo); o Necrozma se funde com Solgaleo e/ou
+     Lunala (que continuam na coleção) e o Ultra Necrozma exige também a Pedra Ultra Burst. Tipos, atributos e
+     sprite mudam.
+   - ✅ **Essências de IV** (+1 no atributo, máx. 31; não gasta se já está no máximo) e **Doces** (Doce Raro +1 nível;
+     EXP P/M/G/GG = 800 / 3.000 / 10.000 / 30.000 XP), pela Mochila ou por "Doces e Essências" no perfil.
+   - ✅ **Equipes nomeadas:** menu **Equipes** guarda até 20 equipes de 6; montar troca equipe e PC sozinho.
 3. **Jornada** — mapa pixel de cada região com rotas próprias, missões, loja e mercado.
 4. **Extras** — Pokécassino, torneios, Mega/G-Max/fusões, launcher Windows e releases.
 

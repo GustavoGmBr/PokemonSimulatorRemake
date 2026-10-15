@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import {
   DIFFICULTIES, HEAL_EFFECTS, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
-  levelProgress, luckyEggMultiplier, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
+  levelProgress, luckyEggMultiplier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
   type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
   type BallOption, type BattleActRequest, type BattleContext, type BattleEvent, type BattleMonView, type BattleMoveView,
   type BattleOutcome, type BattleState, type BattleTurnResult, type BattleView, type CaptureInput, type Combatant, type PokemonInstance,
@@ -59,7 +59,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     const species = ctxBase.species(c.speciesId);
     const stages = Object.fromEntries(Object.entries(c.stages).filter(([, value]) => value !== 0));
     return {
-      index, speciesId: c.speciesId, name: c.name, level: c.level, hp: c.hp, maxHp: c.stats.hp, status: c.status, confused: c.confusion > 0,
+      index, speciesId: c.speciesId, spriteId: formOf(species, c.form ?? null)?.spriteId ?? c.speciesId, name: c.name, level: c.level, hp: c.hp, maxHp: c.stats.hp, status: c.status, confused: c.confusion > 0,
       shiny: c.shiny, types: c.types, stages, expProgress: levelProgress(species.growthRate, c.level, c.exp),
     };
   }
@@ -95,7 +95,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       const level = capped ? (cap as number) : mon.level;
       const instance: PokemonInstance = {
         speciesId: mon.speciesId, nickname: mon.nickname, level, exp: capped ? expForLevel(species.growthRate, level) : mon.exp, shiny: mon.shiny, gender: mon.gender, ivs: mon.ivs,
-        moves: mon.moves.map((m) => ({ name: m.name, pp: m.pp, maxPp: m.maxPp })), currentHp: mon.currentHp, friendship: mon.friendship, ball: mon.ball, form: null,
+        moves: mon.moves.map((m) => ({ name: m.name, pp: m.pp, maxPp: m.maxPp })), currentHp: mon.currentHp, friendship: mon.friendship, ball: mon.ball, form: mon.form,
       };
       const combatant = combatantFrom(instance, species, mon.name, mon.id);
       if (capped) {

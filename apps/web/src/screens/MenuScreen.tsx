@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
-import { HEAL_EFFECTS, type PokemonView, type SaveDetail } from '@pokesim/engine';
+import { HEAL_EFFECTS, isTrainingItem, type PokemonView, type SaveDetail } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
 import { HpBar, KeyHints, Sprite, Stars, formatMoney, formatPlayTime } from '../ui/bits.tsx';
 import { PokemonSummary } from '../ui/PokemonSummary.tsx';
+import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
-type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'trainer';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'missions' | 'trainer' | 'options' | 'exit' | 'devkit' | 'devprogress' | 'devall' | 'devhurt';
+type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'battle', label: 'Batalhar', info: 'Ginásios, Elite dos 4, campeões e treinadores aleatórios.' },
   { id: 'wild', label: 'Selvagens', info: 'Procure POKÉMON no mapa, gire, escolha e capture.' },
   { id: 'pokedex', label: 'Pokédex', info: 'Os 1.025 POKÉMON das nove regiões.' },
   { id: 'team', label: 'Equipe', info: 'Veja os POKÉMON que viajam com você.' },
+  { id: 'teams', label: 'Equipes', info: 'Salve equipes com nome e monte qualquer uma com um clique.' },
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
@@ -123,6 +125,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'pokedex') return onOpenPokedex();
     if (id === 'options') return onOpenOptions();
     if (id === 'bag') return setPanel('bag');
+    if (id === 'teams') return setPanel('teams');
     if (id === 'trainer') return setPanel('trainer');
     setNotice(`${entry?.label.toUpperCase()} ainda está em construção. Chega na ${entry?.phase} do remake!`);
   };
@@ -135,7 +138,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
       : panel === 'summary' && selectedMon
         ? [`${selectedMon.name.toUpperCase()} · ${selectedMon.ivTotal}/186 de IV. X para voltar.`]
         : panel === 'bag'
-          ? ['Escolha um item de cura e depois o POKÉMON. X para voltar.']
+          ? ['Escolha um item (cura, Doce ou Essência de IV) e depois o POKÉMON. X para voltar.']
           : panel === 'trainer'
             ? ['Seu cartão de treinador. X para voltar.']
             : [info];
@@ -175,12 +178,14 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
                 onBack={() => setPanel('overview')}
                 onUse={(item, mon) => void act(async () => {
                   const result = await api.useItem(saveId, item, mon.id);
+                  if (result.message) return result.message;
                   const revived = mon.currentHp === 0;
                   return revived
                     ? `${mon.name.toUpperCase()} voltou à vida com ${result.pokemon.currentHp} HP!`
                     : `${mon.name.toUpperCase()} recuperou ${result.healed} HP!`;
                 })}
               /> : null}
+            {panel === 'teams' ? <TeamsPanel saveId={saveId} paused={Boolean(notice) || busy} onBack={() => setPanel('overview')} onChanged={() => void reload()} /> : null}
             {panel === 'trainer' ? <TrainerCard save={save} onBack={() => setPanel('overview')} /> : null}
             {panel === 'overview' ? <JourneyPanel save={save} /> : null}
           </div>
@@ -246,7 +251,7 @@ function TeamPanel({ team, active, onOpen, onBack }: {
             onMouseEnter={() => active && setIndex(i)}
             onClick={() => onOpen(mon)}
           >
-            <span className="gb-mon__sprite"><Sprite speciesId={mon.speciesId} shiny={mon.shiny} alt="" size={80} /></span>
+            <span className="gb-mon__sprite"><Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={80} /></span>
             <span className="gb-mon__body">
               <span className="gb-mon__head">
                 <span>{mon.favorite ? <span className="gb-fav">♥ </span> : null}{mon.name}{mon.shiny ? ' ✦' : ''}</span>
@@ -269,6 +274,8 @@ function TeamPanel({ team, active, onOpen, onBack }: {
   );
 }
 
+const usable = (item: string): boolean => item in HEAL_EFFECTS || isTrainingItem(item);
+
 function BagPanel({ save, paused, onBack, onUse }: {
   save: SaveDetail;
   paused: boolean;
@@ -286,11 +293,11 @@ function BagPanel({ save, paused, onBack, onUse }: {
           label="Itens"
           active={!paused}
           onBack={onBack}
-          items={[...save.inventory].sort((a, b) => Number(b.item in HEAL_EFFECTS) - Number(a.item in HEAL_EFFECTS) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
+          items={[...save.inventory].sort((a, b) => Number(usable(b.item)) - Number(usable(a.item)) || a.displayName.localeCompare(b.displayName)).map((entry): MenuItem => ({
             id: entry.item,
             label: entry.displayName,
             extra: `×${entry.quantity}`,
-            disabled: !(entry.item in HEAL_EFFECTS),
+            disabled: !usable(entry.item),
           }))}
           onSelect={setPicking}
         />
@@ -313,7 +320,7 @@ function BagPanel({ save, paused, onBack, onUse }: {
           }}
         />
       ) : null}
-      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>Itens esmaecidos são usados em outros lugares (bolas na captura, pedras na evolução).</p> : null}
+      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>Itens esmaecidos são usados em outros lugares (bolas na captura; pedras, Mega e G-Max no perfil do POKÉMON).</p> : null}
     </section>
   );
 }

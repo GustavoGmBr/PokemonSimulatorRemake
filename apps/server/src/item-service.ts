@@ -1,5 +1,5 @@
 import {
-  MAX_STACK, PREMIER_BALL, PREMIER_EVERY, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
+  EXP_CANDIES, IV_ESSENCES, IV_STAT_LABEL, RARE_CANDY, type Stats, MAX_STACK, PREMIER_BALL, PREMIER_EVERY, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
   type BuyResult, type DevKitResult, type DevProgressResult, type ShopEntry, type UseItemResult,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
@@ -71,6 +71,15 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
       const itemName = typeof input.item === 'string' ? input.item : '';
       const pokemonId = typeof input.pokemonId === 'string' ? input.pokemonId : '';
       if (!data.itemsByName.has(itemName)) throw badRequest('Item desconhecido.');
+      if (itemName in IV_ESSENCES || itemName === RARE_CANDY || itemName in EXP_CANDIES) {
+        if (inventory.quantity(saveId, itemName) < 1) throw badRequest('Você não tem esse item.');
+        if (itemName in IV_ESSENCES) {
+          const pokemon = store.useEssence(saveId, pokemonId, itemName);
+          return { pokemon, healed: 0, remaining: inventory.quantity(saveId, itemName), message: `${pokemon.name}: ${IV_STAT_LABEL[IV_ESSENCES[itemName] as keyof Stats]} +1 IV.` };
+        }
+        const { pokemon, gained, levels } = store.useCandy(saveId, pokemonId, itemName);
+        return { pokemon, healed: 0, remaining: inventory.quantity(saveId, itemName), message: `${pokemon.name} ganhou ${gained.toLocaleString('pt-BR')} XP${levels > 0 ? ` e subiu ${levels} nível(is), agora Nv ${pokemon.level}` : ''}.` };
+      }
       const mon = store.view(saveId, pokemonId);
       const result = applyHealItem(itemName, mon.currentHp, mon.stats.hp);
       if (!result.ok) throw badRequest(result.reason);
@@ -89,6 +98,7 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
         for (const item of data.items) {
           if (item.category === 'captura') { inventory.add(saveId, item.name, 10); balls += 10; }
           if (item.category === 'cura') inventory.add(saveId, item.name, 5);
+          if (['evolucao', 'ivs', 'treino', 'primal', 'mega'].includes(item.category)) inventory.add(saveId, item.name, 2);
         }
         db.prepare('UPDATE saves SET money = money + 20000 WHERE id = ?').run(saveId);
       });
