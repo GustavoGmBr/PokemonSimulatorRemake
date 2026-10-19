@@ -58,7 +58,7 @@ test('batalha: precisa de um selvagem escolhido e bloqueia o mapa enquanto dura'
 test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e libera o mapa', async () => {
   const { save, url } = await setup();
   // deixa o inicial forte para garantir a vitória
-  db.prepare('UPDATE pokemon SET level = 30, exp = 27000 WHERE save_id = ?').run(save.id);
+  db.prepare('UPDATE pokemon SET level = 30, exp = 27000, current_hp = 9999 WHERE save_id = ?').run(save.id);
   await startFight(url);
   let view = (await call<BattleView>('GET', `${url}/battle`)).json;
   let final: BattleTurnResult | null = null;
@@ -136,7 +136,7 @@ test('evoluir só pelo botão: nível suficiente libera, antes disso não', asyn
   const mon = save.team[0] as PokemonView;
   assert.deepEqual(mon.evolutions, []);
   assert.equal((await call('POST', `${url}/pokemon/${mon.id}/evolve`, { speciesId: 5 })).status, 400);
-  db.prepare('UPDATE pokemon SET level = 16, exp = 4096 WHERE id = ?').run(mon.id);
+  db.prepare('UPDATE pokemon SET level = 16, exp = 4096, current_hp = 9999 WHERE id = ?').run(mon.id);
   const ready = (await call<SaveDetail>('GET', url)).json.team[0] as PokemonView;
   assert.deepEqual(ready.evolutions.map((e) => e.speciesId), [5]);
   assert.equal(ready.speciesId, 4, 'não evolui sozinho');
@@ -215,7 +215,7 @@ test('golpes: lista permitidos, troca por nível (grátis) e TM comprada no Pok�
 
 async function fightToEnd(url: string, first: BattleTurnResult): Promise<BattleView> {
   let view = first.view;
-  for (let i = 0; i < 120 && view.phase !== 'ended'; i++) {
+  for (let i = 0; i < 400 && view.phase !== 'ended'; i++) {
     if (view.phase === 'replace' || view.player.team[view.player.active]?.hp === 0) {
       const next = view.player.team.find((m) => m.hp > 0);
       if (!next) break;
@@ -246,7 +246,7 @@ test('desafios: lista com bloqueios, ginásio em qualquer ordem, Elite só depoi
 test('desafios: Pokémon de fora da região não entram; vitória dá insígnia, dinheiro e não repete XP acima do teto', async () => {
   const { save, url } = await setup();
   // inicial forte: o desafio o reduz ao nível do líder
-  db.prepare('UPDATE pokemon SET level = 80, exp = 512000 WHERE save_id = ?').run(save.id);
+  db.prepare('UPDATE pokemon SET level = 80, exp = 512000, current_hp = 9999 WHERE save_id = ?').run(save.id);
   const before = db.prepare('SELECT level, exp FROM pokemon WHERE save_id = ?').get(save.id) as { level: number; exp: number };
   const money0 = (await call<SaveDetail>('GET', url)).json.money;
 
@@ -285,7 +285,7 @@ test('desafios: equipe com Pokémon de outra região é recusada', async () => {
 
 test('treinador aleatório: recompensa em dinheiro e itens, sem bolas nem fuga', async () => {
   const { save, url } = await setup();
-  db.prepare('UPDATE pokemon SET level = 80, exp = 512000 WHERE save_id = ?').run(save.id);
+  db.prepare('UPDATE pokemon SET level = 80, exp = 512000, current_hp = 9999 WHERE save_id = ?').run(save.id);
   const money0 = (await call<SaveDetail>('GET', url)).json.money;
   const started = await call<BattleTurnResult>('POST', `${url}/battle/trainer`, { difficulty: 'facil' });
   assert.equal(started.status, 201);

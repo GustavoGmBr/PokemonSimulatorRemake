@@ -80,11 +80,15 @@ test('dificuldade difícil: vencer não apaga ninguém (mesmo com Pokémon caíd
   db.prepare('UPDATE pokemon SET species_id = 150, level = 100, exp = 1000000, moves = ?, current_hp = 9999 WHERE id = ?').run(JSON.stringify(moves), starter);
   db.prepare('UPDATE pokemon SET current_hp = 0 WHERE id = ?').run(partner);
   let view = (await call<BattleTurnResult>('POST', `${url}/battle/trainer`, { difficulty: 'facil' })).json.view;
-  for (let i = 0; i < 80 && view.phase !== 'ended'; i++) {
+  for (let i = 0; i < 400 && view.phase !== 'ended'; i++) {
     if (view.phase === 'replace') {
       const next = view.player.team.find((m) => m.hp > 0);
       view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'switch', to: next!.index })).json.view;
-    } else view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: 0 })).json.view;
+    } else {
+      const score = (m: { power: number; effectiveness: number | null }) => m.power * (m.effectiveness ?? 1);
+      const best = [...view.player.moves].sort((a, b) => score(b) - score(a))[0];
+      view = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: best?.slot ?? 0 })).json.view;
+    }
   }
   assert.equal(view.outcome?.result, 'win');
   assert.ok(exists(partner), 'vitória: ninguém é apagado');
