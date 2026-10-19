@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { TrainerSprite } from '../ui/TrainerSprite.tsx';
 import { TYPE_LABELS, type BattleTurnResult, type ChallengesState, type DoublesTurnResult, type NgChallengeView, type ChallengeView, type TrainerOption, type TypeName } from '@pokesim/engine';
@@ -84,7 +85,7 @@ export function ChallengesScreen({ saveId, onBack }: Props) {
   const won = state.challenges.filter((c) => c.won).length;
 
   let items: MenuItem[] = [];
-  let detail: JSX.Element | null = null;
+  let detail: ReactElement | null = null;
   const ng = state.ngplus;
   if (current.id === NG_TAB) {
     items = ng.unlocked ? ng.entries.map((c) => ({ id: c.id, label: <span className="gb-chrow"><span className="gb-muted">{c.kind === 'iconic' ? 'Lenda' : c.regionName}</span> {c.name}</span>, extra: c.wins > 0 ? `★${c.wins}` : '' })) : [];

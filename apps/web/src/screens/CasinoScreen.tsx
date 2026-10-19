@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
   CASINO_GAMES, CASINO_NAMES, GROUP_SPECIES, RACE_LENGTH, RACE_RUNNERS, WHEEL_LAYOUT, SLOT_SYMBOLS,
@@ -192,7 +193,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     </div>
   );
 
-  let panel: JSX.Element | null = null;
+  let panel: ReactElement | null = null;
   if (tab === 'chips') {
     panel = (
       <div className="gb-stake">

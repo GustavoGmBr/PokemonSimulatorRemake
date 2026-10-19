@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
 import type { BattleOutcome, BattleTurnResult, DoublesTurnResult, TeamMemberView, TournamentState, TournamentTierView } from '@pokesim/engine';
 import { api } from '../api.ts';
@@ -74,7 +75,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
   const active = state.active;
   const toggle = (member: TeamMemberView) => setPicked((now) => (now.includes(member.id) ? now.filter((id) => id !== member.id) : [...now, member.id]));
 
-  let body: JSX.Element;
+  let body: ReactElement;
   if (active) {
     body = (
       <section className="gb-window" aria-label="Torneio em andamento">
