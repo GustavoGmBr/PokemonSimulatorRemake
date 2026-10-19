@@ -1,0 +1,53 @@
+name: Release
+
+# Publica uma versão: crie a tag vX.Y.Z (ou vX.Y.Z-alpha.N) igual à versão do package.json.
+#   .\scripts\publicar-versao.ps1  (os arquivos ficam em .github/workflows no repositório)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: A tag precisa ser igual à versão do package.json
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME difere da versão $version do package.json" >&2
+            exit 1
+          fi
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - name: Baixar as sprites (para o pacote completo)
+        run: npm run sprites -- --dir=sprites-cache
+      - run: npm run release:build -- --sprites-dir=sprites-cache
+      - name: Teste do executável (sobe o servidor, confere a API e encerra)
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $exe = "dist/release/v$version/stage/PokemonSimulator.exe"
+          $process = Start-Process -FilePath $exe -ArgumentList '--check' -Wait -PassThru
+          Get-Content "dist/release/v$version/stage/logs/latest.log" -ErrorAction SilentlyContinue
+          if ($process.ExitCode -ne 0) { throw "PokemonSimulator.exe --check terminou com código $($process.ExitCode)" }
+      - name: Publicar a release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $files = Get-ChildItem "dist/release/v$version" -File | ForEach-Object { $_.FullName }
+          $arguments = @('release', 'create', $env:GITHUB_REF_NAME) + $files + @('--title', "Pokémon Simulator (remake) $env:GITHUB_REF_NAME", '--notes-file', 'RELEASE_NOTES.md')
+          if ($version.Contains('-')) { $arguments += '--prerelease' }
+          gh @arguments

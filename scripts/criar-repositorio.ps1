@@ -3,7 +3,7 @@
 # Precisa do Git e do GitHub CLI (gh): https://cli.github.com
 param(
   [string]$Owner = 'GustavoGmBr',
-  [string]$Name = 'PokemonSimulator-Remake',
+  [string]$Name = 'PokemonSimulatorRemake',
   [switch]$Private
 )
 $ErrorActionPreference = 'Stop'
