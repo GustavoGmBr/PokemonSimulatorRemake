@@ -29,7 +29,14 @@ jobs:
           fi
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
-      - run: npm test
+      - name: Testes (mostra no resumo os que falharem)
+        shell: bash
+        run: |
+          set +e
+          npm test 2>&1 | tee test.log
+          code=${PIPESTATUS[0]}
+          grep -E "not ok|error:|Error:|expected|actual|ENOENT|EPERM|EBUSY" test.log | head -25 | while IFS= read -r line; do echo "::error::${line:0:200}"; done
+          exit $code
       - name: Baixar as sprites (para o pacote completo)
         run: npm run sprites -- --dir=sprites-cache
       - run: npm run release:build -- --sprites-dir=sprites-cache
