@@ -5,6 +5,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:   # também dá para rodar pelo botão "Run workflow" na aba Actions (a tag é criada na release)
 
 permissions:
   contents: write
@@ -22,7 +23,7 @@ jobs:
         shell: bash
         run: |
           version=$(node -p "require('./package.json').version")
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "Tag $GITHUB_REF_NAME difere da versão $version do package.json" >&2
             exit 1
           fi
@@ -48,6 +49,7 @@ jobs:
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $files = Get-ChildItem "dist/release/v$version" -File | ForEach-Object { $_.FullName }
-          $arguments = @('release', 'create', $env:GITHUB_REF_NAME) + $files + @('--title', "Pokémon Simulator (remake) $env:GITHUB_REF_NAME", '--notes-file', 'RELEASE_NOTES.md')
+          $tag = "v$version"
+          $arguments = @('release', 'create', $tag) + $files + @('--target', $env:GITHUB_SHA, '--title', "Pokémon Simulator (remake) $tag", '--notes-file', 'RELEASE_NOTES.md')
           if ($version.Contains('-')) { $arguments += '--prerelease' }
           gh @arguments

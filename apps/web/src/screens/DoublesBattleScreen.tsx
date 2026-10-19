@@ -424,7 +424,7 @@ export function DoublesBattleScreen({ saveId, start, habitat = 'forest', onExit 
             {mode === 'replace' ? (
               <Menu label="Equipe" items={replaceItems} active={!busy} onSelect={pickReplacement} />
             ) : null}
-            {mode === 'ended' && outcome ? <OutcomePanel outcome={outcome} trainer={view.trainer} /> : null}
+            {mode === 'ended' && outcome ? <OutcomePanel outcome={outcome} trainer={{ ...view.trainer, bagLeft: 0 }} /> : null}
           </div>
         </div>
         <KeyHints hints={mode === 'ended' ? [['Z', 'continuar']] : mode === 'playing' ? [['Z', 'adiantar texto']] : [['↑↓←→', 'escolher'], ['Z', 'confirmar'], ['X', 'voltar']]} />

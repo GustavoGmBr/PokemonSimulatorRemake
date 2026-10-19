@@ -45,7 +45,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<Mode>('playing');
   const [fx, setFx] = useState<{ id: number; type: TypeName; side: SideKey; category: string } | null>(null);
-  const [popup, setPopup] = useState<{ id: number; side: SideKey; text: string; kind: 'up' | 'down' | 'heal' | 'level' } | null>(null);
+  const [popup, setPopup] = useState<{ id: number; side: SideKey; text: string; kind: 'up' | 'down' | 'heal' | 'level' | 'dmg' | 'crit' } | null>(null);
   const [ball, setBall] = useState<{ item: string; stage: 'fly' | 'shake' | 'caught' | 'open'; n: number } | null>(null);
   const [shake, setShake] = useState('');
   const [hover, setHover] = useState<string>('');
