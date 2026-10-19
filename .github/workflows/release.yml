@@ -29,7 +29,7 @@ jobs:
           fi
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
-      - name: Testes (até 3 tentativas: algumas lutas usam sorteio e podem oscilar; mostra no resumo o que falhar)
+      - name: Testes (ate 3 tentativas, pois algumas lutas usam sorteio)
         shell: bash
         run: |
           for attempt in 1 2 3; do
