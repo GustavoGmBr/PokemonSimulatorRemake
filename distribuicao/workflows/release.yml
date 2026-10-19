@@ -52,6 +52,29 @@ jobs:
           $process = Start-Process -FilePath $exe -ArgumentList '--check' -Wait -PassThru
           Get-Content "dist/release/v$version/stage/logs/latest.log" -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "PokemonSimulator.exe --check terminou com código $($process.ExitCode)" }
+      - name: Interface carrega (o index.html e os arquivos que ele cita respondem 200)
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $stage = (Resolve-Path "dist/release/v$version/stage").Path
+          $env:PORT = '34655'
+          $env:POKESIM_HOME = Join-Path $env:RUNNER_TEMP 'pokesim-home'
+          $env:WEB_DIST = Join-Path $stage 'app/web'
+          $env:ASSETS_DIR = Join-Path $env:RUNNER_TEMP 'sprites-vazio'
+          $server = Start-Process -FilePath (Join-Path $stage 'runtime/node.exe') -ArgumentList (Join-Path $stage 'app/server.mjs') -PassThru -WindowStyle Hidden
+          try {
+            $html = $null
+            foreach ($i in 1..30) { try { $html = (Invoke-WebRequest 'http://127.0.0.1:34655/' -UseBasicParsing).Content; break } catch { Start-Sleep -Seconds 1 } }
+            if (-not $html) { throw 'O servidor não respondeu.' }
+            $refs = [regex]::Matches($html, '(?:src|href)="(/[^"]+\.(?:js|css))"') | ForEach-Object { $_.Groups[1].Value }
+            if ($refs.Count -lt 2) { throw "index.html sem js/css: $html" }
+            foreach ($ref in $refs) {
+              $response = Invoke-WebRequest "http://127.0.0.1:34655$ref" -UseBasicParsing
+              if ($response.StatusCode -ne 200) { throw "$ref respondeu $($response.StatusCode)" }
+              Write-Host "OK $ref"
+            }
+          } finally { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
       - name: Publicar a release
         shell: pwsh
         env:

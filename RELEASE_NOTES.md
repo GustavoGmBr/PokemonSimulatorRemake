@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.18
+## Pokémon Simulator (remake) 2.0.0-alpha.19
+
+- Corrige a **tela branca** ao abrir o jogo instalado: os arquivos da interface (`/assets/index-*.js`) colidiam com a rota das sprites e davam 404. Agora a interface usa `/static/` e o servidor tem um recuo para a pasta da interface.
+
+## Anteriores: 2.0.0-alpha.18
 
 - **Dificuldade do save** (criação da jornada): Normal ou Difícil ☠. No Difícil, só ao **perder** uma batalha de desafio, treinador (1×1 ou dupla) ou copa os Pokémon que desmaiaram são apagados do save; o inicial nunca é apagado. Vencendo, todos são curados como sempre. Selvagens nunca apagam. A tela de resultado lista os perdidos. Saves antigos continuam Normal.
 

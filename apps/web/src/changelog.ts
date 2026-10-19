@@ -2,6 +2,9 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.19', items: [
+    'Corrige a tela branca ao abrir o jogo instalado (os arquivos da interface estavam sendo confundidos com as sprites).',
+  ] },
   { version: '2.0.0-alpha.18', items: [
     'Novo save com dificuldade: Normal ou Difícil. No Difícil, ao perder uma batalha de desafio, treinador ou copa, os Pokémon que desmaiaram são apagados (só o inicial é poupado); vencendo, todos são curados.',
   ] },

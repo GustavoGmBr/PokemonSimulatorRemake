@@ -198,6 +198,8 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
         res.writeHead(302, { Location: remote, 'Cache-Control': 'no-store' });
         return void res.end();
       }
+      // interfaces compiladas por versões antigas guardavam os arquivos em /assets/
+      if (hasWeb && webDist && serveFile(res, webDist, url.pathname.slice(1))) return;
       return sendJson(res, 404, { error: 'Sprite não encontrada.' });
     }
 
