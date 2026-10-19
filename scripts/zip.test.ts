@@ -19,7 +19,7 @@ test('zip gerado pode ser lido por ferramentas padrão (python zipfile) e preser
   const script = `
 import zipfile,sys
 z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None
-print(sorted(z.namelist())); print(len(z.read('app/server.mjs')))
+print(ascii(sorted(z.namelist()))); print(len(z.read('app/server.mjs')))
 `;
   // no Windows o Python se chama "python" (ou "py"); sem nenhum deles, só confere o hash
   let check: ReturnType<typeof spawnSync> | null = null;
@@ -28,7 +28,7 @@ print(sorted(z.namelist())); print(len(z.read('app/server.mjs')))
     if (result.status === 0) { check = result; break; }
   }
   if (check) {
-    assert.match(String(check.stdout), /índice\.html/);
+    assert.match(String(check.stdout), /\\xedndice\.html/);
     assert.match(String(check.stdout), /\r?\n10500\r?\n/);
   }
   assert.match(await sha256File(archive), /^[a-f0-9]{64}$/);
