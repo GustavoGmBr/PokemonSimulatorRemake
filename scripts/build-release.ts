@@ -2,11 +2,13 @@
  * Monta os pacotes de release para Windows x64 em dist/release/v<versão>/:
  *   PokemonSimulator-v<versão>-compact-win-x64.zip   instalação completa (sem sprites; elas baixam em segundo plano)
  *   PokemonSimulator-v<versão>-update-win-x64.zip    só os arquivos do jogo, usado pela atualização automática
+ *   PokemonSimulator-v<versão>-full-win-x64.zip      instalação completa com as sprites (só com --sprites-dir)
  *   (e o .sha256 de cada um)
  *
  *   npm run release:build                  no Windows: compila os executáveis e usa o Node que está rodando
  *   npm run release:build -- --node=C:\node\node.exe
  *   npm run release:build -- --skip-web    reaproveita apps/web/dist
+ *   npm run release:build -- --sprites-dir=sprites-cache   também gera o pacote "full" (com as sprites já baixadas por `npm run sprites -- --dir=sprites-cache`)
  *
  * Fora do Windows só dá para montar a estrutura (sem os .exe); serve para conferir o conteúdo.
  */
@@ -82,10 +84,17 @@ for (const file of ['README.md', 'THIRD_PARTY_NOTICES.txt', 'release-config.json
 
 // 7. pacotes
 const all = listFiles(stage).filter((f) => f !== 'distribution.json');
-const kinds: { kind: 'compact' | 'update'; files: string[] }[] = [
+const kinds: { kind: 'compact' | 'update' | 'full'; files: string[] }[] = [
   { kind: 'compact', files: all },
   { kind: 'update', files: all.filter((f) => !f.startsWith('runtime/')) },
 ];
+// pacote completo: o mesmo da instalação compacta + as sprites (jogo pronto para uso offline)
+const spritesDir = value('sprites-dir');
+if (spritesDir) {
+  if (!existsSync(spritesDir)) throw new Error(`Pasta de sprites não encontrada: ${spritesDir}`);
+  cpSync(spritesDir, path.join(stage, 'assets'), { recursive: true });
+  kinds.push({ kind: 'full', files: listFiles(stage).filter((f) => f !== 'distribution.json') });
+}
 for (const { kind, files } of kinds) {
   const list = [...files, 'distribution.json'];
   writeFileSync(path.join(stage, 'distribution.json'), `${JSON.stringify({ version, platform: 'win-x64', kind, nodeVersion, files: list }, null, 2)}\n`);

@@ -12,7 +12,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,7 +29,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
-      - run: npm run release:build
+      - name: Baixar as sprites (para o pacote completo)
+        run: npm run sprites -- --dir=sprites-cache
+      - run: npm run release:build -- --sprites-dir=sprites-cache
       - name: Teste do executável (sobe o servidor, confere a API e encerra)
         shell: pwsh
         timeout-minutes: 3

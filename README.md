@@ -8,7 +8,7 @@ Nintendo, Game Freak ou The Pokémon Company.
 
 ## Jogar no Windows (sem instalar nada)
 
-1. Em **Releases**, baixe `PokemonSimulator-vX.Y.Z-compact-win-x64.zip` e extraia **todos** os arquivos.
+1. Em **Releases**, baixe `PokemonSimulator-vX.Y.Z-full-win-x64.zip` (já com as imagens) ou `...-compact-win-x64.zip` (menor; as imagens baixam em segundo plano) e extraia **todos** os arquivos.
 2. Abra **`PokemonSimulator.exe`**. O Node.js já vem junto; o jogo abre no navegador em http://127.0.0.1:34600.
 3. As imagens são baixadas em segundo plano na primeira vez (o progresso aparece na janela do inicializador).
    Enquanto isso o jogo busca cada imagem direto da origem; depois de baixadas, funciona sem internet.
@@ -49,7 +49,7 @@ Abra http://127.0.0.1:35300.
 | `npm test` | Testes do engine, do catálogo e da API |
 | `npm run typecheck` | Checagem de tipos de todos os pacotes |
 | `npm run sprites` | Baixa as imagens (Pokémon e itens) para a pasta de sprites; só baixa o que falta |
-| `npm run release:build` | Monta os pacotes `compact` e `update` (Windows) em `dist/release/vX` |
+| `npm run release:build` | Monta os pacotes `compact` e `update` (Windows) em `dist/release/vX`; com `-- --sprites-dir=<pasta>` gera também o `full` |
 | `npm run data:import` | Reimporta o catálogo do projeto antigo (opcional, já vem pronto) |
 
 ### Controles
