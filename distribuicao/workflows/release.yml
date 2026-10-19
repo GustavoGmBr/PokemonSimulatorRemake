@@ -32,6 +32,7 @@ jobs:
       - name: Testes (ate 3 tentativas, pois algumas lutas usam sorteio)
         shell: bash
         run: |
+          set +e +o pipefail
           for attempt in 1 2 3; do
             npm test 2>&1 | tee test.log
             code=${PIPESTATUS[0]}
