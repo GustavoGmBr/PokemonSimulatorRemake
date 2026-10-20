@@ -119,7 +119,7 @@ export function missionProgress(mission: Mission, events: readonly JourneyEvent[
 // ------------------------------------------------------------------------------------------------ mercado
 
 export const MARKET_REFRESH_MS = 60 * 60 * 1000;
-export const MARKET_SIZE = 16;
+export const MARKET_SIZE = 15;
 export const MARKET_REFRESH_PRICE = 3_000;
 export const MARKET_SHINY_DENOMINATOR = 4086;
 export const marketPeriod = (now = Date.now()): number => Math.floor(now / MARKET_REFRESH_MS);

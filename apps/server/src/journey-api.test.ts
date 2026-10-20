@@ -81,11 +81,11 @@ test('histórico e estatísticas vêm de eventos reais (venda, compra, batalha)'
   assert.match(history.events[1]!.text, /Vendeu/);
 });
 
-test('mercado: 12 no estoque, compra, renovação paga, favorito fica', async () => {
+test('mercado: 15 no estoque, compra, renovação paga, favorito fica', async () => {
   const { save, url } = await setup(100_000);
   const market = (await call<MarketState>('GET', `${url}/market`)).json;
-  assert.equal(market.stock.length, 16);
-  assert.equal(new Set(market.stock.map((s) => s.speciesId)).size, 16);
+  assert.equal(market.stock.length, 15);
+  assert.equal(new Set(market.stock.map((s) => s.speciesId)).size, 15);
   assert.ok(market.stock.every((s) => s.stars >= 2 && s.level === 1 && s.price >= 10_000));
   assert.ok(market.stock.every((s) => (s.regionUnlocked ? true : s.price >= 20_000)));
   assert.deepEqual((await call<MarketState>('GET', `${url}/market`)).json.stock.map((s) => s.id), market.stock.map((s) => s.id), 'estável na mesma hora');
@@ -101,7 +101,7 @@ test('mercado: 12 no estoque, compra, renovação paga, favorito fica', async ()
   const money = row(save.id).money;
   const refreshed = (await call<MarketState>('POST', `${url}/market/refresh`)).json;
   assert.equal(row(save.id).money, money - 3000);
-  assert.equal(refreshed.stock.length, 16);
+  assert.equal(refreshed.stock.length, 15);
   assert.ok(refreshed.stock.some((s) => s.id === keep.id && s.favorite), 'favorito sobrevive');
   assert.equal(refreshed.stock.filter((s) => s.id !== keep.id && market.stock.some((o) => o.id === s.id)).length, 0, 'o resto é novo');
   db.prepare('UPDATE saves SET money = 10 WHERE id = ?').run(save.id);

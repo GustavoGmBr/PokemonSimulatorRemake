@@ -166,7 +166,7 @@ packages/
      Loja, Batalha, Cassino e Torneios.
    - ✅ **Missões, mercado e perfil (alpha.12):** 10 missões a cada 2 horas (capturar, derrotar selvagens, vencer
      treinadores e torneios) com recompensa em ₽, fichas e itens, mais bônus por concluir as dez. **Mercado** de Pokémon
-     (16 à venda, renova por hora, ₽ 3.000 para renovar, 📌 fixa um Pokémon) e **venda** de Pokémon da coleção (valor por
+     (15 à venda, renova por hora, ₽ 3.000 para renovar, 📌 fixa um Pokémon) e **venda** de Pokémon da coleção (valor por
      bola, nível, itens gastos, IVs, lendário e shiny; favoritos e o último Pokémon ficam protegidos). O cartão de
      Treinador ganhou estatísticas e histórico. **Torneios** agora usam os valores do jogo antigo (inscrição ₽ 150 a
      25.000, níveis e times por categoria).

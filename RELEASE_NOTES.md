@@ -3,6 +3,7 @@
 - **Mercado Pokémon** com visual novo (cartões por tipo, selos shiny/bloqueado, barra de renovação) e filtros de IV até **4 estrelas**. A aba Vender ganhou busca, ordenação, filtro de estrelas e total da venda.
 - **Valor de venda**: (bola + nível + itens investidos) × espécie (lendário/mítico ×3) × shiny (×10) × IVs (3★ ×1,5; 4★ ×2), arredondado para baixo. Preço de compra: 10.000 ₽ base, região bloqueada ×2, shiny ×5, 3★ ×1,5, 4★ ×2. Coberto por testes.
 - **Cassino**: a aposta com Pokémon usa esse valor de venda como base do prêmio.
+- **Mercado**: vitrine com **15** Pokémon (era 16).
 - **Selvagens**: botão **Buscar um novo mapa** quando os giros acabam.
 
 ## Anteriores: 2.0.0-alpha.22

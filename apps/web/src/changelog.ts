@@ -6,6 +6,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     'Mercado Pokémon redesenhado: cartões com arte colorida pelo tipo, selo shiny/região bloqueada, preço em destaque, barra de renovação e filtros no máximo até 4 estrelas.',
     'Aba Vender com busca, ordenação, filtro de estrelas e total da venda; o valor segue a fórmula (bola + nível + itens) × espécie × shiny × IVs.',
     'Cassino: apostar um Pokémon usa o mesmo valor de venda (lendário/mítico ×3) como base do prêmio.',
+    'Mercado agora tem 15 Pokémon à venda (eram 16).',
     'Selvagens: ao terminar os giros aparece "Buscar um novo mapa", sem voltar ao menu.',
   ] },
   { version: '2.0.0-alpha.22', items: [
