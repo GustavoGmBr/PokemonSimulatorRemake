@@ -17,6 +17,7 @@ import { OptionsScreen } from './screens/OptionsScreen.tsx';
 import { usePlayTime } from './usePlayTime.ts';
 import { useMusic, type Track } from './music.ts';
 import { useSettings } from './settings.ts';
+import { YoutubeDock } from './ui/YoutubeDock.tsx';
 
 const TRACKS: Partial<Record<Screen['name'], Track>> = { wild: 'wild', shop: 'shop', market: 'shop', casino: 'casino' };
 
@@ -52,7 +53,7 @@ function saveIdOf(screen: Screen): string | null {
   return 'saveId' in screen ? screen.saveId : screen.name === 'options' ? saveIdOf(screen.back) : null;
 }
 
-export function App() {
+function Screens() {
   const [screen, setScreen] = useState<Screen>({ name: 'title' });
   usePlayTime(saveIdOf(screen));
   useAppearance();
@@ -131,4 +132,13 @@ export function App() {
     case 'options':
       return <OptionsScreen key="options" onBack={() => setScreen(screen.back)} />;
   }
+}
+
+export function App() {
+  return (
+    <>
+      <Screens />
+      <YoutubeDock />
+    </>
+  );
 }

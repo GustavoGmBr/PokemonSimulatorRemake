@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.19
+## Pokémon Simulator (remake) 2.0.0-alpha.20
+
+- **Player do YouTube** no canto superior esquerdo (botão ▸ Vídeo): cole o link de um vídeo, live ou playlist para ouvir música ou assistir enquanto joga. Precisa de internet; a opção "Silenciar a música do jogo" desliga a trilha interna. Ao clicar no vídeo, as teclas do jogo ficam com o player até você clicar fora.
+
+## Anteriores: 2.0.0-alpha.19
 
 - Corrige a **tela branca** ao abrir o jogo instalado: os arquivos da interface (`/assets/index-*.js`) colidiam com a rota das sprites e davam 404. Agora a interface usa `/static/` e o servidor tem um recuo para a pasta da interface.
 

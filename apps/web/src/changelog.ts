@@ -2,6 +2,9 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.20', items: [
+    'Player do YouTube no canto superior esquerdo (botão ▸ Vídeo): cole o link de um vídeo, live ou playlist para ouvir música própria ou assistir enquanto joga; dá para silenciar a música do jogo.',
+  ] },
   { version: '2.0.0-alpha.19', items: [
     'Corrige a tela branca ao abrir o jogo instalado (os arquivos da interface estavam sendo confundidos com as sprites).',
   ] },
