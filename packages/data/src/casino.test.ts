@@ -6,19 +6,28 @@ import {
   parseRouletteBet, seededRng, piplupJump, piplupMultiplier, RACE_RUNNERS, type Card, type JackState,
 } from '@pokesim/engine';
 
-test('caça-níqueis: 8 linhas, Ditto coringa e retorno médio perto de 93%', () => {
+test('caça-níqueis: 8 linhas, Ditto coringa e 25% de vazios e retorno médio perto de 93%', () => {
   assert.equal(SLOT_LINES.length, 8);
   assert.deepEqual(scoreLine(['mew', 'mew', 'mew']), { symbol: 'mew', multiplier: 50 });
   assert.deepEqual(scoreLine(['mew', 'ditto', 'mew']), { symbol: 'mew', multiplier: 50 }, 'um Ditto completa');
   assert.equal(scoreLine(['ditto', 'ditto', 'mewtwo'])?.multiplier, 1, 'dois Ditto devolvem a aposta da linha');
   assert.equal(scoreLine(['ditto', 'ditto', 'ditto'])?.multiplier, 4);
   assert.equal(scoreLine(['poke-ball', 'great-ball', 'poke-ball']), null);
+  assert.equal(scoreLine(['mew', 'empty', 'mew']), null, 'vazio não completa trinca');
+  assert.equal(scoreLine(['ditto', 'ditto', 'empty']), null, 'Ditto não preenche espaço vazio');
+  assert.equal(scoreLine(['empty', 'empty', 'empty']), null);
   const rng = seededRng(11);
   let total = 0;
   const N = 200_000;
   for (let i = 0; i < N; i++) total += spinSlots(rng).multiplier;
   const rtp = total / N;
   assert.ok(rtp > 0.85 && rtp < 1.0, `retorno ${rtp}`);
+  let empty = 0;
+  const M = 40_000;
+  const cellRng = seededRng(5);
+  for (let i = 0; i < M; i++) empty += spinSlots(cellRng).grid.filter((c) => c === 'empty').length;
+  const share = empty / (M * 9);
+  assert.ok(share > 0.24 && share < 0.26, `vazios ${share}`);
 });
 
 test('roleta: pagamentos, zero fora de paridade/faixas/dúzias e grupos Pokémon', () => {

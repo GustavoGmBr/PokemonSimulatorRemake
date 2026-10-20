@@ -10,7 +10,7 @@ import type { DuelEvent, Pos, SlotRef } from './battle2.ts';
 import type { BattleEvent, BattlePhase, BattleResult, StageKey, StatusKind } from './battle.ts';
 import type { EvolutionChoice } from './evolution.ts';
 import type { TransformChoice } from './transform.ts';
-import type { CasinoGame, Card, RouletteColor, RouletteGroup, SlotLine, SlotSymbol } from './casino.ts';
+import type { CasinoGame, Card, RouletteColor, RouletteGroup, SlotCell, SlotLine } from './casino.ts';
 
 /** Normal: nada se perde. Difícil: Pokémon que desmaia numa batalha é apagado (menos o inicial). */
 export type SaveDifficulty = 'normal' | 'hard';
@@ -576,7 +576,7 @@ export interface CasinoStakeResult {
 }
 
 export type CasinoDetail =
-  | { game: 'slots'; grid: SlotSymbol[]; lines: SlotLine[] }
+  | { game: 'slots'; grid: SlotCell[]; lines: SlotLine[] }
   | { game: 'roulette'; number: number; color: RouletteColor; group: RouletteGroup }
   | { game: 'race'; frames: number[][]; winner: number; pick: number }
   | { game: 'wheel'; index: number; multiplier: number }

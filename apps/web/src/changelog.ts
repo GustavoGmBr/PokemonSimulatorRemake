@@ -2,6 +2,10 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.22', items: [
+    'Poké Bolas com a sprite real do item (loja, batalha e cassino), em vez da bola desenhada.',
+    'Caça-níqueis: cada posição tem 25% de chance de ficar vazia (vazio não completa trinca), com os pesos das figuras reajustados para manter o retorno perto de 93%. A tela agora mostra as regras e a tabela de prêmios.',
+  ] },
   { version: '2.0.0-alpha.21', items: [
     'Ordenar golpes: na ficha do Pokémon, o botão "Ordenar golpes" escolhe qual golpe fica no 1, 2, 3 ou 4 (vale também para as teclas 1-4 da batalha).',
     'Treinadores e líderes usam no máximo 5 itens por batalha.',

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
-  CASINO_GAMES, CASINO_NAMES, GROUP_SPECIES, RACE_LENGTH, RACE_RUNNERS, WHEEL_LAYOUT, SLOT_SYMBOLS,
+  CASINO_GAMES, CASINO_NAMES, GROUP_SPECIES, RACE_LENGTH, RACE_RUNNERS, WHEEL_LAYOUT, SLOT_CELLS, SLOT_PAYS, DITTO_PAIR, DITTO_TRIPLE,
   type CasinoActResult, type CasinoGame, type CasinoResult, type CasinoRoundView, type CasinoState, type PokemonView, type RouletteGroup,
 } from '@pokesim/engine';
 import { api } from '../api.ts';
@@ -21,7 +21,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'prizes', label: 'Prêmios' },
 ];
 const GAME_HELP: Record<CasinoGame, string> = {
-  slots: '3×3 com 8 linhas. Ditto é coringa. Master Bola ×3 em uma linha paga 100×.',
+  slots: 'Trinca em qualquer uma das 8 linhas. Posições vazias não completam; Ditto é coringa.',
   roulette: '37 casas. Número/verde 36×, cor/paridade/faixa 2×, dúzia 3×, grupo Pokémon 4×.',
   voltorb: 'Vire até 6 cartas: some os multiplicadores. Um Voltorb zera tudo. Linha ou coluna completa ×1,5.',
   jack: 'Chegue a 21 sem estourar. A banca para em 17. Vitória 2×, 21 natural 3×, empate devolve.',
@@ -45,8 +45,41 @@ const SLOT_SPECIES: Partial<Record<string, number>> = { pikachu: 25, mewtwo: 150
 const MULT = (n: number) => `${String(n).replace('.', ',')}×`;
 
 function SlotCell({ symbol }: { symbol: string }) {
+  if (symbol === 'empty') return <div className="gb-slotcell gb-slotcell--empty" aria-label="vazio"><span className="gb-slotcell__none" /></div>;
   const species = SLOT_SPECIES[symbol];
-  return <div className="gb-slotcell">{species ? <Sprite speciesId={species} alt={symbol} size={48} /> : <BallIcon item={symbol} />}</div>;
+  return <div className="gb-slotcell">{species ? <Sprite speciesId={species} alt={symbol} size={48} /> : <BallIcon item={symbol} className="gb-slotball" />}</div>;
+}
+
+const SLOT_NAMES: Record<string, string> = {
+  'poke-ball': 'Poké Bola', 'great-ball': 'Grande Bola', 'ultra-ball': 'Ultra Bola', pikachu: 'Pikachu', mewtwo: 'Mewtwo', mew: 'Mew', 'master-ball': 'Master Bola', ditto: 'Ditto',
+};
+
+/** Regras e tabela de prêmios do caça-níqueis. */
+function SlotRules() {
+  const rows = [...Object.entries(SLOT_PAYS)] as [string, number][];
+  return (
+    <div className="gb-slotrules">
+      <p>
+        Faça uma trinca em qualquer uma das oito linhas. Cada posição tem 25% de chance de ficar vazia. Espaços vazios não completam trincas.
+        Ditto é coringa: um Ditto substitui a figura que falta para completar uma trinca. Duas figuras Ditto devolvem a aposta da linha (1×);
+        três Ditto pagam 4×. Cada linha usa a aposta inteira e os prêmios são somados. Apostando só um Pokémon, fichas são opcionais.
+      </p>
+      <ul className="gb-paytable" aria-label="Tabela de prêmios">
+        {rows.map(([symbol, pay]) => (
+          <li key={symbol}>
+            <span className="gb-paytable__icon">{SLOT_SPECIES[symbol] ? <Sprite speciesId={SLOT_SPECIES[symbol] as number} alt="" size={32} /> : <BallIcon item={symbol} small />}</span>
+            <span className="gb-paytable__name">{SLOT_NAMES[symbol]}</span>
+            <b>{MULT(pay)}</b>
+          </li>
+        ))}
+        <li className="gb-paytable__wide">
+          <span className="gb-paytable__icon"><Sprite speciesId={132} alt="" size={32} /></span>
+          <span className="gb-paytable__name">Ditto <span className="gb-muted">coringa</span></span>
+          <b>2 devolvem a aposta ({MULT(DITTO_PAIR)}) · 3 pagam {MULT(DITTO_TRIPLE)}</b>
+        </li>
+      </ul>
+    </div>
+  );
 }
 
 export function CasinoScreen({ saveId, onBack }: Props) {
@@ -128,7 +161,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
       const d = result.detail;
       const rand = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)] as T;
       animate(() => {
-        if (d.game === 'slots') setShown({ grid: Array.from({ length: 9 }, () => rand(SLOT_SYMBOLS)) });
+        if (d.game === 'slots') setShown({ grid: Array.from({ length: 9 }, () => rand(SLOT_CELLS)) });
         else if (d.game === 'roulette') setShown({ number: Math.floor(Math.random() * 37) });
         else if (d.game === 'race') setShown({ frame: d.frames[Math.floor(Math.random() * d.frames.length)] });
         else if (d.game === 'wheel') setShown({ wheel: Math.floor(Math.random() * WHEEL_LAYOUT.length) });
@@ -237,6 +270,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
           <button type="button" className="gb-button" disabled={busy || auto} onClick={() => void play('slots')}>Girar</button>
           <button type="button" className="gb-button" disabled={mode !== 'chips' || (!auto && state.chips < bet)} aria-pressed={auto} onClick={() => setAuto((on) => !on)}>{auto ? 'Parar automático' : 'Giro automático'}</button>
         </div>
+        <SlotRules />
       </>
     );
   } else if (tab === 'roulette') {

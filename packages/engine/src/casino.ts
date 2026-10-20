@@ -37,15 +37,27 @@ export const SLOT_PAYS: Record<Exclude<SlotSymbol, 'ditto'>, number> = {
 export const DITTO_PAIR = 1;
 export const DITTO_TRIPLE = 4;
 
-/** Fita de cada rolo (34 casas, sem espaços vazios); os pesos foram ajustados para um retorno médio de ~93%. */
-export const SLOT_STRIP: readonly SlotSymbol[] = (() => {
-  const counts: [SlotSymbol, number][] = [['poke-ball', 12], ['great-ball', 8], ['ultra-ball', 5], ['pikachu', 3], ['ditto', 2], ['mewtwo', 2], ['mew', 1], ['master-ball', 1]];
-  const left = counts.map(([, n]) => n);
-  const strip: SlotSymbol[] = [];
-  // intercala os símbolos (rodadas da lista), para que iguais não fiquem lado a lado
-  while (strip.length < 34) counts.forEach(([symbol], i) => { if ((left[i] as number) > 0) { strip.push(symbol); left[i] = (left[i] as number) - 1; } });
-  return strip;
-})();
+/** Chance de uma posição ficar vazia (espaço vazio nunca completa uma trinca). */
+export const SLOT_EMPTY_CHANCE = 25;
+export type SlotCell = SlotSymbol | 'empty';
+export const SLOT_CELLS: readonly SlotCell[] = [...SLOT_SYMBOLS, 'empty'];
+
+/** Peso de cada figura quando a posição não está vazia; ajustado para um retorno médio de ~93%. */
+export const SLOT_WEIGHTS: Record<SlotSymbol, number> = {
+  'poke-ball': 27, 'great-ball': 24, 'ultra-ball': 20, pikachu: 11, ditto: 10, mewtwo: 9, mew: 6, 'master-ball': 1,
+};
+const SLOT_WEIGHT_TOTAL = Object.values(SLOT_WEIGHTS).reduce((sum, n) => sum + n, 0);
+
+/** Sorteia o conteúdo de uma posição: vazio em 25% das vezes, senão uma figura pelo peso. */
+export function drawSlotCell(rng: Rng): SlotCell {
+  if (rng.int(100) < SLOT_EMPTY_CHANCE) return 'empty';
+  let roll = rng.int(SLOT_WEIGHT_TOTAL);
+  for (const symbol of SLOT_SYMBOLS) {
+    roll -= SLOT_WEIGHTS[symbol];
+    if (roll < 0) return symbol;
+  }
+  return 'poke-ball';
+}
 
 /** As oito linhas: 3 horizontais, 3 verticais e 2 diagonais (grade 3×3, índices 0–8 por linha). */
 export const SLOT_LINES: readonly (readonly [number, number, number])[] = [
@@ -53,26 +65,25 @@ export const SLOT_LINES: readonly (readonly [number, number, number])[] = [
 ];
 
 export interface SlotLine { line: number; symbol: SlotSymbol; multiplier: number }
-export interface SlotSpin { grid: SlotSymbol[]; lines: SlotLine[]; multiplier: number }
+export interface SlotSpin { grid: SlotCell[]; lines: SlotLine[]; multiplier: number }
 
-export function scoreLine(cells: readonly SlotSymbol[]): { symbol: SlotSymbol; multiplier: number } | null {
+export function scoreLine(cells: readonly SlotCell[]): { symbol: SlotSymbol; multiplier: number } | null {
+  if (cells.includes('empty')) return null; // espaço vazio não completa trinca
   const dittos = cells.filter((s) => s === 'ditto').length;
   if (dittos === 3) return { symbol: 'ditto', multiplier: DITTO_TRIPLE };
   if (dittos === 2) return { symbol: 'ditto', multiplier: DITTO_PAIR };
-  const real = cells.filter((s) => s !== 'ditto') as Exclude<SlotSymbol, 'ditto'>[];
+  const real = cells.filter((s) => s !== 'ditto' && s !== 'empty') as Exclude<SlotSymbol, 'ditto'>[];
   const first = real[0];
   if (first && real.every((s) => s === first)) return { symbol: first, multiplier: SLOT_PAYS[first] };
   return null;
 }
 
 export function spinSlots(rng: Rng): SlotSpin {
-  // cada rolo mostra três símbolos seguidos da fita; grade[linha*3 + rolo]
-  const offsets = [0, 1, 2].map(() => rng.int(SLOT_STRIP.length));
-  const grid: SlotSymbol[] = [];
-  for (let row = 0; row < 3; row++) for (let reel = 0; reel < 3; reel++) grid.push(SLOT_STRIP[((offsets[reel] as number) + row) % SLOT_STRIP.length] as SlotSymbol);
+  // grade[linha*3 + coluna]; cada posição é sorteada sozinha
+  const grid: SlotCell[] = Array.from({ length: 9 }, () => drawSlotCell(rng));
   const lines: SlotLine[] = [];
   SLOT_LINES.forEach((cells, line) => {
-    const scored = scoreLine(cells.map((i) => grid[i] as SlotSymbol));
+    const scored = scoreLine(cells.map((i) => grid[i] as SlotCell));
     if (scored) lines.push({ line, ...scored });
   });
   return { grid, lines, multiplier: lines.reduce((sum, entry) => sum + entry.multiplier, 0) };

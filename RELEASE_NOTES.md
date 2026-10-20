@@ -1,4 +1,9 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.21
+## Pokémon Simulator (remake) 2.0.0-alpha.22
+
+- **Poké Bolas com sprite real** (loja, batalha, caça-níqueis): usam a imagem do item; sem a imagem (offline) aparece a bola desenhada.
+- **Caça-níqueis**: cada posição tem **25% de chance de ficar vazia** e vazio não completa trinca; Ditto continua coringa (2 = 1×, 3 = 4×). Os pesos das figuras foram reajustados para manter o retorno médio perto de 93%, e a tela mostra as regras e a tabela de prêmios.
+
+## Anteriores: 2.0.0-alpha.21
 
 - **Itens dos NPCs**: líderes, treinadores e adversários de copa usam no máximo **5 itens por batalha** (a bolsa de cada um continua valendo se tiver menos).
 - **Pokédex**: filtros na própria tela da lista (busca por nome/nº, registro, geração e tipo), sem tela de filtro separada.

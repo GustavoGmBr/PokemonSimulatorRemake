@@ -104,8 +104,16 @@ const BALL_COLOR: Record<string, string> = {
   'sport-ball': '#e86020', 'premier-ball': '#f4f0e0',
 };
 
-/** Poké Bola desenhada em CSS; a cor muda conforme o tipo de bola. */
+/** Poké Bola: a sprite real do item; sem imagem (offline), cai para a bola desenhada em CSS. */
 export function BallIcon({ item, small = false, className = '' }: { item: string; small?: boolean; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!failed) {
+    return (
+      <span aria-hidden="true" className={`gb-ballicon${small ? ' gb-ballicon--small' : ''} ${className}`}>
+        <img className="pixel" src={itemSpriteUrl(item)} alt="" draggable={false} onError={() => setFailed(true)} />
+      </span>
+    );
+  }
   const variant = item in BALL_VARIANT ? BALL_VARIANT[item] : 'other';
   const color = BALL_COLOR[item];
   return (
