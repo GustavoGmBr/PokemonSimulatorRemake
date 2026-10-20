@@ -62,7 +62,7 @@ jobs:
           $env:POKESIM_HOME = Join-Path $env:RUNNER_TEMP 'pokesim-home'
           $env:WEB_DIST = Join-Path $stage 'app/web'
           $env:ASSETS_DIR = Join-Path $env:RUNNER_TEMP 'sprites-vazio'
-          $server = Start-Process -FilePath (Join-Path $stage 'runtime/node.exe') -ArgumentList (Join-Path $stage 'app/server.mjs') -PassThru -WindowStyle Hidden
+          $server = Start-Process -FilePath (Join-Path $stage 'runtime/node.exe') -ArgumentList (Join-Path $stage 'app/server.mjs') -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'srv.out') -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'srv.err')
           try {
             $html = $null
             foreach ($i in 1..30) { try { $html = (Invoke-WebRequest 'http://127.0.0.1:34655/' -UseBasicParsing).Content; break } catch { Start-Sleep -Seconds 1 } }
@@ -74,6 +74,10 @@ jobs:
               if ($response.StatusCode -ne 200) { throw "$ref respondeu $($response.StatusCode)" }
               Write-Host "OK $ref"
             }
+          } catch {
+            Write-Host "::error::$($_.Exception.Message)"
+            foreach ($f in 'srv.out', 'srv.err') { Get-Content (Join-Path $env:RUNNER_TEMP $f) -ErrorAction SilentlyContinue | Select-Object -First 15 | ForEach-Object { Write-Host "::warning::$f $_" } }
+            exit 1
           } finally { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
       - name: Publicar a release
         shell: pwsh
