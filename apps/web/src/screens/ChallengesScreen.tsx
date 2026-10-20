@@ -173,7 +173,7 @@ function ChallengeDetail({ challenge: c }: { challenge: ChallengeView }) {
       </div>
       <p className="gb-muted" style={{ margin: '6px 0 0', fontSize: 20 }}>
         IA {SKILL_LABEL[c.skill] ?? c.skill}
-        {c.bag.length > 0 ? ` · usa ${c.bag.map((b) => `${b.quantity}× ${b.name}`).join(', ')}` : ' · sem itens'}
+        {c.bag.length > 0 ? ` · usa ${c.bag.map((b) => `${b.quantity}× ${b.name}`).join(', ')} (máx. 5 por batalha)` : ' · sem itens'}
       </p>
       <p className="gb-muted" style={{ margin: '4px 0 0', fontSize: 20 }}>
         Só vale equipe da Pokédex #{c.dex[0]}–#{c.dex[1]}. Seus Pokémon acima do Nv {c.level} lutam nesse nível e não ganham XP.

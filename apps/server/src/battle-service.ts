@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
+  foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
   type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
@@ -202,7 +202,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       .map((item) => ({ item: item.name, displayName: item.displayName, quantity: quantities.get(item.name) ?? 0 }));
     const caughtBefore = (db.prepare('SELECT caught FROM pokedex WHERE save_id = ? AND species_id = ?').get(saveId, foe.speciesId) as { caught: number } | undefined)?.caught === 1;
     return {
-      trainer: trainer ? { name: trainer.name, title: trainer.title, skill: trainer.skill, bagLeft: trainer.bag.reduce((n, b) => n + b.qty, 0) } : null,
+      trainer: trainer ? { name: trainer.name, title: trainer.title, skill: trainer.skill, bagLeft: foeItemsLeft(trainer) } : null,
       phase: state.phase,
       turn: state.turn,
       player: { active: state.player.active, team: state.player.team.map(monView), moves },

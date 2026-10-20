@@ -76,6 +76,14 @@ export type BattlePhase = 'choose' | 'replace' | 'ended';
 export type BattleResult = 'win' | 'lose' | 'fled' | 'captured';
 
 /** Item de cura que o treinador carrega. `heal` = HP recuperado (9999 = tudo). */
+/** Máximo de itens que um treinador usa numa mesma batalha. */
+export const MAX_FOE_ITEMS = 5;
+/** Itens que ainda podem ser usados: o que sobrou na bolsa, limitado ao teto da batalha. */
+export function foeItemsLeft(trainer: Pick<TrainerInfo, 'bag' | 'itemsUsed'>): number {
+  const stock = trainer.bag.reduce((total, item) => total + Math.max(0, item.qty), 0);
+  return Math.max(0, Math.min(stock, MAX_FOE_ITEMS - (trainer.itemsUsed ?? 0)));
+}
+
 export interface FoeBagItem { item: string; name: string; heal: number; cures: boolean; qty: number }
 
 export interface TrainerInfo {
@@ -85,6 +93,8 @@ export interface TrainerInfo {
   /** 1 = básico, 2 = escolhe pela efetividade e usa itens, 3 = também troca de Pokémon e acerta quase sempre o melhor golpe */
   skill: 1 | 2 | 3;
   bag: FoeBagItem[];
+  /** itens já usados nesta batalha (teto: MAX_FOE_ITEMS) */
+  itemsUsed?: number;
   /** turno da última troca (para não ficar trocando sem parar) */
   lastSwitch: number;
   /** desafio em disputa (`kanto:gym1`…); ausente nos treinadores aleatórios */
@@ -344,7 +354,7 @@ function foeChoice(state: BattleState, ctx: BattleContext, rng: Rng): FoeChoice 
     const fraction = me.hp / me.stats.hp;
     const chance = skill === 1 ? 40 : skill === 2 ? 70 : 100;
     const wantsHeal = fraction < (skill === 1 ? 0.2 : 0.35) || (skill >= 2 && me.status !== null && fraction < 0.7);
-    if (wantsHeal && rng.int(100) < chance) {
+    if (wantsHeal && foeItemsLeft(trainer) > 0 && rng.int(100) < chance) {
       const usable = trainer.bag
         .map((b, index) => ({ b, index }))
         .filter(({ b }) => b.qty > 0 && (b.heal >= me.stats.hp * 0.3 || (b.cures && me.status !== null)))
@@ -703,8 +713,9 @@ function doFoeSwitch(run: Run, to: number) {
 function useFoeItem(run: Run, index: number) {
   const { state } = run;
   const item = state.trainer?.bag[index];
-  if (!item || item.qty <= 0) return;
+  if (!state.trainer || !item || item.qty <= 0 || foeItemsLeft(state.trainer) <= 0) return;
   item.qty -= 1;
+  state.trainer.itemsUsed = (state.trainer.itemsUsed ?? 0) + 1;
   const me = activeOf(state, 'foe');
   push(run, { k: 'text', text: `${state.trainer?.name} usou ${item.name} em ${me.name}!` });
   if (item.cures && me.status) {

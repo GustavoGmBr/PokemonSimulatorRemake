@@ -1,5 +1,6 @@
 ## Pokémon Simulator (remake) 2.0.0-alpha.21
 
+- **Itens dos NPCs**: líderes, treinadores e adversários de copa usam no máximo **5 itens por batalha** (a bolsa de cada um continua valendo se tiver menos).
 - **Pokédex**: filtros na própria tela da lista (busca por nome/nº, registro, geração e tipo), sem tela de filtro separada.
 - **Auto-batalha**: cartões da equipe para escolher o lutador e a opção "Só ele luta" (para se ele desmaiar).
 - **PC**: arrastar e soltar entre equipe e caixa (cair em cima de outro troca os dois) e **seleção de vários** (botão Selecionar vários, Shift para intervalo, Ctrl para marcar) com vender, favoritar e tirar favorito em lote.
