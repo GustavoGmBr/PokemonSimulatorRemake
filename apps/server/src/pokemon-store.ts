@@ -545,6 +545,22 @@ export function createPokemonStore(db: Db) {
       return rowToView(getRow(saveId, pokemonId));
     },
 
+    /** Muda a posição de um golpe (1 a 4); os demais deslizam. A ordem vale para a ficha e para os atalhos 1-4 da batalha. */
+    reorderMoves(saveId: string, pokemonId: string, input: { from?: unknown; to?: unknown }): PokemonView {
+      const row = getRow(saveId, pokemonId);
+      const slots = JSON.parse(row.moves) as MoveSlot[];
+      const from = Number(input.from);
+      const to = Number(input.to);
+      const valid = (index: number) => Number.isInteger(index) && index >= 0 && index < slots.length;
+      if (!valid(from) || !valid(to)) throw badRequest('Escolha posições de golpe válidas.');
+      if (from !== to) {
+        const [moved] = slots.splice(from, 1);
+        slots.splice(to, 0, moved!);
+        db.prepare('UPDATE pokemon SET moves = ? WHERE id = ?').run(JSON.stringify(slots), row.id);
+      }
+      return rowToView(getRow(saveId, pokemonId));
+    },
+
     team(saveId: string): PokemonView[] {
       return teamRows(saveId).map(rowToView);
     },

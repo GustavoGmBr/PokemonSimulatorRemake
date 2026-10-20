@@ -158,6 +158,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     .get('/api/saves/:id/pokemon/:pid/moves', ({ params }) => store.moveOptions(params.id as string, params.pid as string))
     .post('/api/saves/:id/pokemon/:pid/tm', ({ params, body }) => store.buyTm(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/teach', ({ params, body }) => store.teachMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; slot?: unknown }))
+    .post('/api/saves/:id/pokemon/:pid/reorder-moves', ({ params, body }) => store.reorderMoves(params.id as string, params.pid as string, (body ?? {}) as { from?: unknown; to?: unknown }))
     .post('/api/saves/:id/pokemon/:pid/learn', ({ params, body }) => store.learnMove(params.id as string, params.pid as string, (body ?? {}) as { move?: unknown; replace?: unknown }))
     .get('/api/saves/:id/shop', ({ params }) => items.shop(params.id as string))
     .post('/api/saves/:id/shop/buy', ({ params, body }) => items.buy(params.id as string, (body as { cart?: unknown } | null)?.cart))

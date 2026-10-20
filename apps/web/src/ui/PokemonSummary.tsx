@@ -10,7 +10,7 @@ export function locationLabel(mon: PokemonView): string {
   return mon.location.kind === 'team' ? `Equipe · posição ${mon.location.slot + 1}` : `Caixa ${mon.location.box + 1} · vaga ${mon.location.slot + 1}`;
 }
 
-type Panel = null | 'evolve' | 'forms' | 'items' | 'learn' | 'slots' | 'tms' | { learn: string } | { teach: number } | { confirmForm: string };
+type Panel = null | 'evolve' | 'forms' | 'items' | 'learn' | 'slots' | 'tms' | 'order' | { orderFrom: number } | { learn: string } | { teach: number } | { confirmForm: string };
 
 /**
  * Ficha de um Pokémon do jogador: sprite, atributos, IVs e golpes.
@@ -114,6 +114,15 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     })),
     { id: '__back', label: 'Voltar' },
   ];
+  const orderFrom = typeof panel === 'object' && panel && 'orderFrom' in panel ? panel.orderFrom : null;
+  const orderPickItems: MenuItem[] = [
+    ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `${index + 1}. ${move.displayName}`, extra: `${move.type}` })),
+    { id: '__back', label: 'Voltar' },
+  ];
+  const orderToItems: MenuItem[] = orderFrom === null ? [] : [
+    ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `Posição ${index + 1}`, extra: index === orderFrom ? 'atual' : move.displayName, disabled: index === orderFrom })),
+    { id: '__back', label: 'Voltar' },
+  ];
   const pendingMove = typeof panel === 'object' && panel && 'learn' in panel ? mon.pendingMoves.find((move) => move.name === panel.learn) : undefined;
   const replaceItems: MenuItem[] = pendingMove ? [
     ...mon.moves.map((move, index): MenuItem => ({ id: String(index), label: `Esquecer ${move.displayName}` })),
@@ -176,6 +185,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                   <button type="button" className="gb-button" disabled={busy} onClick={() => void openItems()}>Doces e Essências</button>
                   {canLearn ? <button type="button" className="gb-button gb-button--blue" onClick={() => setPanel('learn')}>Novos golpes ({mon.pendingMoves.length}) (G)</button> : null}
                   <button type="button" className="gb-button" disabled={busy} onClick={() => void openSlots()}>Trocar golpes (F)</button>
+                  {mon.moves.length > 1 ? <button type="button" className="gb-button" disabled={busy} onClick={() => { setPanel('order'); playSound('confirm'); }}>Ordenar golpes</button> : null}
                   <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void openTms()}>Comprar TMs</button>
                 </div>
               ) : null}
@@ -278,6 +288,31 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                   />
                 </>
               ) : null}
+              {panel === 'order' ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Escolha o golpe que quer mover. A ordem vale para a ficha e para as teclas 1-4 da batalha.</p>
+                  <Menu label="Ordenar golpes" items={orderPickItems} active={!busy} onBack={() => setPanel(null)}
+                    onSelect={(id) => setPanel(id === '__back' ? null : { orderFrom: Number(id) })}
+                  />
+                </>
+              ) : null}
+              {orderFrom !== null && saveId ? (
+                <>
+                  <p style={{ margin: '0 0 6px' }}>Mover {mon.moves[orderFrom]?.displayName} para qual posição?</p>
+                  <Menu label="Nova posição" items={orderToItems} active={!busy} onBack={() => setPanel('order')}
+                    onSelect={(id) => {
+                      if (id === '__back') { setPanel('order'); return; }
+                      void run(async () => {
+                        const to = Number(id);
+                        const next = await api.reorderMoves(saveId, mon.id, orderFrom, to);
+                        playSound('save');
+                        setMon(next); onChanged?.(next); setNote(`${next.moves[to]?.displayName ?? 'Golpe'} agora é o golpe ${to + 1}.`);
+                        setPanel('order');
+                      });
+                    }}
+                  />
+                </>
+              ) : null}
               {pendingMove ? (
                 <>
                   <p style={{ margin: '0 0 6px' }}>{mon.name} quer aprender {pendingMove.displayName}. Qual golpe esquecer?</p>
@@ -300,9 +335,9 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
 
           <h3 className="gb-title" style={{ fontSize: 22, marginTop: 8 }}>Golpes</h3>
           <div className="gb-grid-2">
-            {mon.moves.map((move) => (
+            {mon.moves.map((move, index) => (
               <div key={move.name} className="gb-window gb-window--tight" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="gb-label" style={{ textTransform: 'uppercase' }}>{move.displayName}</span>
+                <span className="gb-label" style={{ textTransform: 'uppercase' }}>{index + 1}. {move.displayName}</span>
                 <span className="gb-spread" style={{ fontSize: 20 }}>
                   <TypeBadge type={move.type} />
                 </span>

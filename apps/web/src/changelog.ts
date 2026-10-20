@@ -2,6 +2,9 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.21', items: [
+    'Ordenar golpes: na ficha do Pokémon, o botão "Ordenar golpes" escolhe qual golpe fica no 1, 2, 3 ou 4 (vale também para as teclas 1-4 da batalha).',
+  ] },
   { version: '2.0.0-alpha.20', items: [
     'Player do YouTube no canto superior esquerdo (botão ▸ Vídeo): cole o link de um vídeo, live ou playlist para ouvir música própria ou assistir enquanto joga; dá para silenciar a música do jogo.',
   ] },

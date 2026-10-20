@@ -98,6 +98,8 @@ export const api = {
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/evolve`, { speciesId }),
   learnMove: (id: string, pokemonId: string, move: string, replace: number | null) =>
     request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/learn`, { move, replace }),
+  reorderMoves: (id: string, pokemonId: string, from: number, to: number) =>
+    request<PokemonView>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/reorder-moves`, { from, to }),
   moveOptions: (id: string, pokemonId: string) => request<MoveOptions>('GET', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/moves`),
   buyTm: (id: string, pokemonId: string, move: string) =>
     request<MoveOptions>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/tm`, { move }),

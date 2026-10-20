@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.20
+## Pokémon Simulator (remake) 2.0.0-alpha.21
+
+- **Ordenar golpes**: na ficha do Pokémon (Equipe/PC), o botão "Ordenar golpes" escolhe o golpe e a posição (1 a 4). A ordem vale para a ficha e para as teclas 1-4 da batalha. Os golpes agora aparecem numerados.
+
+## Anteriores: 2.0.0-alpha.20
 
 - **Player do YouTube** no canto superior esquerdo (botão ▸ Vídeo): cole o link de um vídeo, live ou playlist para ouvir música ou assistir enquanto joga. Precisa de internet; a opção "Silenciar a música do jogo" desliga a trilha interna. Ao clicar no vídeo, as teclas do jogo ficam com o player até você clicar fora.
 
