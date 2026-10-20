@@ -61,6 +61,7 @@ jobs:
           $env:PORT = '34655'
           $env:POKESIM_HOME = Join-Path $env:RUNNER_TEMP 'pokesim-home'
           $env:WEB_DIST = Join-Path $stage 'app/web'
+          $env:POKESIM_CATALOG_DIR = Join-Path $stage 'app/catalog'
           $env:ASSETS_DIR = Join-Path $env:RUNNER_TEMP 'sprites-vazio'
           $server = Start-Process -FilePath (Join-Path $stage 'runtime/node.exe') -ArgumentList (Join-Path $stage 'app/server.mjs') -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'srv.out') -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'srv.err')
           try {
