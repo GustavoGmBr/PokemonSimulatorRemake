@@ -1,4 +1,11 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.22
+## Pokémon Simulator (remake) 2.0.0-alpha.23
+
+- **Mercado Pokémon** com visual novo (cartões por tipo, selos shiny/bloqueado, barra de renovação) e filtros de IV até **4 estrelas**. A aba Vender ganhou busca, ordenação, filtro de estrelas e total da venda.
+- **Valor de venda**: (bola + nível + itens investidos) × espécie (lendário/mítico ×3) × shiny (×10) × IVs (3★ ×1,5; 4★ ×2), arredondado para baixo. Preço de compra: 10.000 ₽ base, região bloqueada ×2, shiny ×5, 3★ ×1,5, 4★ ×2. Coberto por testes.
+- **Cassino**: a aposta com Pokémon usa esse valor de venda como base do prêmio.
+- **Selvagens**: botão **Buscar um novo mapa** quando os giros acabam.
+
+## Anteriores: 2.0.0-alpha.22
 
 - **Poké Bolas com sprite real** (loja, batalha, caça-níqueis): usam a imagem do item; sem a imagem (offline) aparece a bola desenhada.
 - **Caça-níqueis**: cada posição tem **25% de chance de ficar vazia** e vazio não completa trinca; Ditto continua coringa (2 = 1×, 3 = 4×). Os pesos das figuras foram reajustados para manter o retorno médio perto de 93%, e a tela mostra as regras e a tabela de prêmios.

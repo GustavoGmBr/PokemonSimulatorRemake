@@ -815,3 +815,82 @@ html[data-contrast='high'] .gb-menu__item[aria-current='true'] *, html[data-cont
 .gb-paytable__name { flex: 1; }
 .gb-paytable__wide { grid-column: 1 / -1; }
 .gb-paytable li b { white-space: nowrap; }
+
+/* Mercado Pokémon */
+.gb-mkt-art--normal { --tc: #a8a878; }
+.gb-mkt-art--fire { --tc: #e8682c; }
+.gb-mkt-art--water { --tc: #5878e8; }
+.gb-mkt-art--electric { --tc: #d8b818; }
+.gb-mkt-art--grass { --tc: #58a838; }
+.gb-mkt-art--ice { --tc: #68c8c8; }
+.gb-mkt-art--fighting { --tc: #b83028; }
+.gb-mkt-art--poison { --tc: #985098; }
+.gb-mkt-art--ground { --tc: #c8a048; }
+.gb-mkt-art--flying { --tc: #8878e0; }
+.gb-mkt-art--psychic { --tc: #e84878; }
+.gb-mkt-art--bug { --tc: #98a820; }
+.gb-mkt-art--rock { --tc: #a89038; }
+.gb-mkt-art--ghost { --tc: #685088; }
+.gb-mkt-art--dragon { --tc: #6838e8; }
+.gb-mkt-art--dark { --tc: #685848; }
+.gb-mkt-art--steel { --tc: #a0a0b8; }
+.gb-mkt-art--fairy { --tc: #e080a8; }
+.gb-mkt { gap: 12px; }
+.gb-mkt-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border: 4px solid var(--ink); background: linear-gradient(135deg, var(--sky), #a8d8f0); }
+.gb-mkt-title { font-size: 28px; margin: 0; }
+.gb-mkt-sub { margin: 2px 0 0; color: var(--night); font-size: 18px; }
+.gb-mkt-wallet { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 16px; border: 3px solid var(--ink); background: var(--paper); }
+.gb-mkt-wallet b { font-size: 26px; color: var(--ink); }
+.gb-mkt-tabs { display: flex; gap: 8px; }
+.gb-mkt-tab { font: inherit; font-size: 20px; padding: 6px 18px; border: 4px solid var(--ink); border-bottom-width: 6px; background: var(--paper-2); color: var(--ink); cursor: pointer; }
+.gb-mkt-tab[aria-selected='true'] { background: var(--yellow); border-bottom-color: var(--red); }
+.gb-mkt-count { display: inline-block; min-width: 24px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 16px; text-align: center; }
+.gb-mkt-panel { display: flex; flex-direction: column; gap: 10px; }
+.gb-mkt-renew { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gb-mkt-renew__info { flex: 1 1 260px; display: flex; flex-direction: column; gap: 4px; }
+.gb-mkt-meter { height: 12px; border: 3px solid var(--ink); background: var(--muted); }
+.gb-mkt-meter span { display: block; height: 100%; background: var(--green); }
+.gb-mkt-alert { padding: 6px 12px; border: 3px solid var(--ink); background: #fff3c4; }
+.gb-mkt-filters { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 3px solid var(--rim); background: var(--paper-2); }
+.gb-mkt-filter { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.gb-mkt-filter .gb-input { min-width: 150px; }
+.gb-mkt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.gb-mkt-card { display: flex; flex-direction: column; border: 4px solid var(--ink); background: var(--paper); box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3); position: relative; }
+.gb-mkt-card.is-top { border-color: var(--red); }
+.gb-mkt-card.is-shiny { border-color: #d8a010; box-shadow: 0 0 0 3px #f8e070, 4px 4px 0 rgba(0, 0, 0, 0.3); }
+.gb-mkt-card.is-pinned { outline: 3px dashed var(--blue); outline-offset: 2px; }
+.gb-mkt-card.is-sold { opacity: 0.55; filter: grayscale(0.6); }
+.gb-mkt-card__art { --tc: #a8a878; position: relative; display: grid; place-items: center; padding: 10px 6px 6px; border-bottom: 4px solid var(--ink); background: radial-gradient(circle at 50% 60%, #fff 0 30%, transparent 31%), repeating-linear-gradient(45deg, color-mix(in srgb, var(--tc) 55%, #fff) 0 8px, color-mix(in srgb, var(--tc) 40%, #fff) 8px 16px); }
+.gb-mkt-badge { position: absolute; top: 4px; padding: 0 6px; font-size: 13px; border: 2px solid var(--ink); background: var(--paper); }
+.gb-mkt-badge--shiny { left: 4px; background: #f8e070; }
+.gb-mkt-badge--lock { right: 4px; }
+.gb-mkt-stamp { position: absolute; inset: 40% 0 auto 0; transform: rotate(-8deg); text-align: center; font-size: 22px; color: var(--red); border: 4px solid var(--red); background: rgba(255, 255, 255, 0.85); text-transform: uppercase; }
+.gb-mkt-card__body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.gb-mkt-card__name { margin: 0; font-size: 20px; text-transform: uppercase; }
+.gb-mkt-card__meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 16px; }
+.gb-mkt-types { display: flex; gap: 4px; flex-wrap: wrap; }
+.gb-mkt-stars { letter-spacing: 1px; color: var(--rim); }
+.gb-mkt-stars .is-on { color: #e8a010; text-shadow: 1px 1px 0 var(--ink); }
+.gb-mkt-price { align-self: flex-start; margin-top: 2px; padding: 1px 10px; font-size: 22px; font-weight: 700; color: var(--ink); background: var(--yellow); border: 3px solid var(--ink); }
+.gb-mkt-price--sell { background: var(--green); font-size: 18px; }
+.gb-mkt-short { color: var(--red); font-size: 14px; }
+.gb-mkt-card__actions { display: flex; gap: 6px; padding: 0 10px 10px; }
+.gb-mkt-buy { flex: 1; }
+.gb-mkt-pin[aria-pressed='true'] { background: var(--sky); }
+.gb-mkt-sellgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; max-height: 52vh; overflow-y: auto; padding: 2px; }
+.gb-mkt-sell { font: inherit; position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+.gb-mkt-sell:hover:not(:disabled) { background: var(--paper-2); }
+.gb-mkt-sell:disabled { opacity: 0.5; cursor: not-allowed; }
+.gb-mkt-sell.is-shiny { border-color: #d8a010; }
+.gb-mkt-sell.is-on { background: #d8e8ff; outline: 4px solid var(--blue); outline-offset: -4px; }
+.gb-mkt-sell__name { font-size: 18px; text-transform: uppercase; text-align: center; }
+.gb-mkt-sell__meta { display: flex; gap: 6px; align-items: center; font-size: 15px; }
+.gb-mkt-sell__tag { position: absolute; top: 4px; left: 4px; font-size: 12px; padding: 0 5px; background: var(--sky); border: 2px solid var(--ink); }
+.gb-mkt-check { position: absolute; top: 2px; right: 6px; font-size: 22px; color: var(--blue); }
+.gb-mkt-sellbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border: 3px solid var(--ink); background: var(--paper-2); font-size: 20px; }
+.gb-mkt-note { margin: 0; font-size: 16px; }
+.gb-mkt-filter .gb-input { width: auto; flex: 0 1 230px; min-width: 150px; }
+.gb-mkt-card__actions .gb-button { padding: 4px 8px; min-width: 0; }
+.gb-mkt-pin { flex: none; }
+.gb-mkt-card__meta .gb-muted { white-space: nowrap; }
+.gb-mkt-card__body .gb-mkt-card__meta:first-of-type { align-items: flex-start; }

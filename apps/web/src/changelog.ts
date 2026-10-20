@@ -2,6 +2,12 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.23', items: [
+    'Mercado Pokémon redesenhado: cartões com arte colorida pelo tipo, selo shiny/região bloqueada, preço em destaque, barra de renovação e filtros no máximo até 4 estrelas.',
+    'Aba Vender com busca, ordenação, filtro de estrelas e total da venda; o valor segue a fórmula (bola + nível + itens) × espécie × shiny × IVs.',
+    'Cassino: apostar um Pokémon usa o mesmo valor de venda (lendário/mítico ×3) como base do prêmio.',
+    'Selvagens: ao terminar os giros aparece "Buscar um novo mapa", sem voltar ao menu.',
+  ] },
   { version: '2.0.0-alpha.22', items: [
     'Poké Bolas com a sprite real do item (loja, batalha e cassino), em vez da bola desenhada.',
     'Caça-níqueis: cada posição tem 25% de chance de ficar vazia (vazio não completa trinca), com os pesos das figuras reajustados para manter o retorno perto de 93%. A tela agora mostra as regras e a tabela de prêmios.',

@@ -117,6 +117,21 @@ export function WildScreen({ saveId, onBack }: Props) {
     const b = next.board;
     setMessage(b ? `${b.habitatName}! Escolha um POKÉMON (${b.spinsLeft} giros para trocar todos).` : '');
   });
+  /** Mesma procura (região, níveis, mapa e espécie) sem passar pelo menu: um mapa novo com todos os giros. */
+  const newMap = () => run(async () => {
+    if (!board) return;
+    const option = state?.regions.find((r) => r.id === board.region);
+    const request = {
+      region: board.region as never, minLevel: board.levelRange[0], maxLevel: board.levelRange[1],
+      ...(board.targetSpeciesId ? { speciesId: board.targetSpeciesId } : option?.chooseHabitat ? { habitat: board.habitat } : {}),
+    };
+    const next = await api.wildSearch(saveId, request);
+    setState(next);
+    setCursor(0);
+    playSound('confirm');
+    const b = next.board;
+    setMessage(b ? `Novo mapa: ${b.habitatName}! Escolha um POKÉMON (${b.spinsLeft} giros para trocar todos).` : '');
+  });
   const spin = () => run(async () => {
     if (!board) return;
     const pay = board.spinsLeft === 0;
@@ -365,10 +380,15 @@ export function WildScreen({ saveId, onBack }: Props) {
               {board.spinsLeft > 0 ? (
                 <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void spin()}>Girar (Q)</button>
               ) : (
+                <button type="button" className="gb-button gb-button--blue" disabled={busy || Boolean(auto)} onClick={() => void newMap()}>
+                  Buscar um novo mapa
+                </button>
+              )}
+              {board.spinsLeft === 0 ? (
                 <button type="button" className="gb-button gb-button--red" disabled={busy || state.money < state.refreshCost} onClick={() => void spin()}>
                   Renovar mapa — {yen(state.refreshCost)} (Q)
                 </button>
-              )}
+              ) : null}
             </div>
             {!auto ? (
               <div className="gb-autopick" role="group" aria-label="Pokémon da auto-batalha">
