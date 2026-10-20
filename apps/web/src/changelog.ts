@@ -4,6 +4,9 @@ export interface ChangelogEntry { version: string; items: string[] }
 export const CHANGELOG: ChangelogEntry[] = [
   { version: '2.0.0-alpha.21', items: [
     'Ordenar golpes: na ficha do Pokémon, o botão "Ordenar golpes" escolhe qual golpe fica no 1, 2, 3 ou 4 (vale também para as teclas 1-4 da batalha).',
+    'Pokédex: os filtros (busca, registro, geração e tipo) ficam na mesma tela da lista, sem abrir outra tela.',
+    'Auto-batalha: escolha o Pokémon que luta (cartões da equipe) e, se quiser, "só ele luta" — ela para se ele desmaiar.',
+    'PC: arraste os Pokémon entre a equipe e a caixa (soltar em cima de outro troca os dois) e selecione vários (modo Selecionar, Shift e Ctrl) para vender ou favoritar de uma vez.',
   ] },
   { version: '2.0.0-alpha.20', items: [
     'Player do YouTube no canto superior esquerdo (botão ▸ Vídeo): cole o link de um vídeo, live ou playlist para ouvir música própria ou assistir enquanto joga; dá para silenciar a música do jogo.',

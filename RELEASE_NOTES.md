@@ -1,5 +1,8 @@
 ## Pokémon Simulator (remake) 2.0.0-alpha.21
 
+- **Pokédex**: filtros na própria tela da lista (busca por nome/nº, registro, geração e tipo), sem tela de filtro separada.
+- **Auto-batalha**: cartões da equipe para escolher o lutador e a opção "Só ele luta" (para se ele desmaiar).
+- **PC**: arrastar e soltar entre equipe e caixa (cair em cima de outro troca os dois) e **seleção de vários** (botão Selecionar vários, Shift para intervalo, Ctrl para marcar) com vender, favoritar e tirar favorito em lote.
 - **Ordenar golpes**: na ficha do Pokémon (Equipe/PC), o botão "Ordenar golpes" escolhe o golpe e a posição (1 a 4). A ordem vale para a ficha e para as teclas 1-4 da batalha. Os golpes agora aparecem numerados.
 
 ## Anteriores: 2.0.0-alpha.20

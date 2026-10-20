@@ -314,6 +314,15 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     });
   }
 
+  /** Posição de `leadId` na equipe; 400 se ele não está nela ou desmaiou. */
+  function leadIndex(team: Combatant[], leadId: string): number {
+    const at = team.findIndex((mon) => mon.ref === leadId);
+    if (at < 0) throw badRequest('Esse Pokémon não está na sua equipe.');
+    const mon = team[at] as Combatant;
+    if (mon.hp <= 0) throw badRequest(`${mon.name} está desmaiado e não pode lutar.`);
+    return at;
+  }
+
   return {
     /** Peças compartilhadas com o serviço de duplas. */
     shared: { playerTeam, settleTournament, monView, contextFor, extraGenerations, wonIds, hasBattle },
@@ -325,13 +334,20 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       return state ? view(saveId, state, null) : null;
     },
 
+    /** Confere (sem lutar) se `leadId` está na equipe e em pé; lança 400 se não. */
+    assertLead(saveId: string, leadId: string): void {
+      assertSave(saveId);
+      leadIndex(playerTeam(saveId, null), leadId);
+    },
+
     /** Começa a luta contra o selvagem escolhido no mapa. */
-    start(saveId: string): BattleTurnResult {
+    start(saveId: string, leadId?: string | null): BattleTurnResult {
       assertSave(saveId);
       if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
       const foe = wild.encounter(saveId);
       return transaction(db, () => {
         const player = playerTeam(saveId, null);
+        if (leadId) player.unshift(...player.splice(leadIndex(player, leadId), 1));
         const species = ctxBase.species(foe.speciesId);
         if (foe.shiny) journal.record(saveId, { kind: 'shiny_encontrado', speciesId: foe.speciesId, text: `Encontrou um ${species.displayName} shiny! ✨` });
         const { state, events } = createBattle({ player, foe: [combatantFrom(foe, species, species.displayName)], seed: seedOf() });

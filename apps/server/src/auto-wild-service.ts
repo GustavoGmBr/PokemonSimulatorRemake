@@ -26,11 +26,16 @@ export function pickMove(view: BattleView): number {
  */
 export function createAutoWildService(wild: WildService, battle: BattleService) {
   return {
-    run(saveId: string): AutoWildResult {
+    /** `lead` (opcional): id do Pokémon da equipe que abre cada luta; os outros só entram se ele cair. */
+    /** `solo` (com `lead`): só ele luta; se desmaiar, a auto-batalha para ao fim da luta. */
+    run(saveId: string, lead?: unknown, solo?: unknown): AutoWildResult {
+      if (lead !== undefined && lead !== null && typeof lead !== 'string') throw badRequest('Pokémon inválido.');
       const initial = wild.state(saveId);
       if (!initial.board) throw badRequest('Procure um selvagem primeiro.');
       if (initial.chosen !== null) throw badRequest('Termine o encontro atual primeiro.');
       if (battle.current(saveId)) throw badRequest('Termine a batalha em andamento primeiro.');
+      if (typeof lead === 'string' && lead) battle.assertLead(saveId, lead);
+      const onlyLead = solo === true && typeof lead === 'string' && lead !== '';
 
       const report: AutoWildReport = { fights: 0, wins: 0, losses: 0, money: 0, levelUps: [], stopped: null };
       const levels = new Map<string, number>();
@@ -48,10 +53,12 @@ export function createAutoWildService(wild: WildService, battle: BattleService) 
 
       for (const slot of initial.board.slots) {
         wild.choose(saveId, slot.slot);
-        let view = battle.start(saveId).view;
+        let view = battle.start(saveId, typeof lead === 'string' && lead ? lead : null).view;
+        let leadFell = false;
         for (let guard = 0; view.outcome === null; guard++) {
           if (guard > MAX_ACTIONS_PER_FIGHT) throw badRequest('A auto-batalha foi interrompida: a luta não terminou.');
           if (view.phase === 'replace') {
+            leadFell = true;
             const next = view.player.team.find((mon) => mon.hp > 0);
             view = battle.act(saveId, { kind: 'switch', to: next?.index ?? 0 }).view;
           } else {
@@ -69,6 +76,10 @@ export function createAutoWildService(wild: WildService, battle: BattleService) 
           report.wins++;
           report.money += outcome.money;
           for (const up of outcome.levels) levels.set(up.name, up.level);
+          if (onlyLead && leadFell) {
+            report.stopped = { reason: 'lead', message: 'O lutador escolhido desmaiou, então a auto-batalha parou. Escolha outro (ou desmarque "Só ele luta").' };
+            break;
+          }
         } else {
           report.losses++;
           report.stopped = { reason: 'defeat', message: 'Sua equipe foi derrotada. A auto-batalha parou.' };

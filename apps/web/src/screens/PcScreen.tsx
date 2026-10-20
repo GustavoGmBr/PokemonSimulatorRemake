@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import {
   BOX_SIZE, MAX_BOX_INDEX, MAX_NICKNAME, SORT_KEYS, TEAM_SIZE, TYPE_LABELS, TYPE_NAMES,
-  type BoxView, type PokemonView, type SearchPokemonQuery, type SortKey,
+  type BoxView, type PokemonLocation, type PokemonView, type SearchPokemonQuery, type SortKey,
 } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { TextPrompt } from '../ui/TextPrompt.tsx';
 import { PokemonSummary, locationLabel } from '../ui/PokemonSummary.tsx';
-import { HpBar, KeyHints, Sprite, Stars, TypeBadge } from '../ui/bits.tsx';
+import { HpBar, KeyHints, Sprite, Stars, TypeBadge, formatMoney } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
 
@@ -86,6 +86,14 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
   const [devTools, setDevTools] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
 
+  // arrastar e soltar
+  const [dragging, setDragging] = useState<PokemonView | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  // seleção de vários (para vender, favoritar…)
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Map<string, PokemonView>>(new Map());
+  const lastPicked = useRef<number | null>(null);
+
   // busca
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [page, setPage] = useState(0);
@@ -147,6 +155,7 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
 
   // ---- quem está sob o cursor ----
   const boxSlots = box?.slots ?? Array.from({ length: BOX_SIZE }, () => null);
+  const picked = selected;
   const hovered: PokemonView | null = mode === 'search'
     ? (searchZone === 'results' ? results.items[resultIndex] ?? null : null)
     : zone === 'team' ? team[cursor] ?? null : boxSlots[cursor] ?? null;
@@ -174,6 +183,81 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
     await reload();
   });
 
+  /** Solta o Pokémon arrastado no destino (equipe ou caixa atual); se estiver ocupado, os dois trocam. */
+  const dropAt = (to: PokemonLocation, label: string) => {
+    const mon = dragging;
+    setDragging(null);
+    setOver(null);
+    if (!mon) return;
+    void guarded(async () => {
+      await api.movePokemon(saveId, mon.id, to);
+      playSound('save');
+      setMessage(`${mon.name} foi ${label}.`);
+      await reload();
+    });
+  };
+  const dragProps = (mon: PokemonView | null | undefined) => (mon && !selecting && !carrying && !busy ? {
+    draggable: true,
+    onDragStart: (event: DragEvent) => { event.dataTransfer.setData('text/plain', mon.id); event.dataTransfer.effectAllowed = 'move'; setDragging(mon); },
+    onDragEnd: () => { setDragging(null); setOver(null); },
+  } : {});
+  const dropProps = (key: string, to: PokemonLocation, label: string) => ({
+    onDragOver: (event: DragEvent) => { if (!dragging) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; if (over !== key) setOver(key); },
+    onDragLeave: () => { if (over === key) setOver(null); },
+    onDrop: (event: DragEvent) => { event.preventDefault(); dropAt(to, label); },
+  });
+
+  const toggleSelect = (mon: PokemonView) => setSelected((now) => {
+    const next = new Map(now);
+    if (next.has(mon.id)) next.delete(mon.id); else next.set(mon.id, mon);
+    return next;
+  });
+  /** Clique em Pokémon da caixa: no modo seleção (ou com Ctrl/Shift) marca; Shift marca o intervalo. */
+  const pickInBox = (mon: PokemonView, index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): boolean => {
+    if (!selecting && !event.ctrlKey && !event.metaKey && !event.shiftKey) return false;
+    if (event.shiftKey && lastPicked.current !== null) {
+      const [a, b] = [Math.min(lastPicked.current, index), Math.max(lastPicked.current, index)];
+      setSelected((now) => {
+        const next = new Map(now);
+        for (let i = a; i <= b; i++) { const m = boxSlots[i]; if (m) next.set(m.id, m); }
+        return next;
+      });
+    } else toggleSelect(mon);
+    lastPicked.current = index;
+    playSound('move');
+    return true;
+  };
+  const selectBox = () => setSelected((now) => {
+    const next = new Map(now);
+    for (const mon of boxSlots) if (mon && !mon.favorite) next.set(mon.id, mon);
+    return next;
+  });
+  const clearSelection = () => { setSelected(new Map()); lastPicked.current = null; };
+  const sellSelected = () => guarded(async () => {
+    const mons = [...selected.values()];
+    if (mons.length === 0) return;
+    const favorites = mons.filter((mon) => mon.favorite);
+    if (favorites.length > 0) { setMessage(`Tire o favorito de ${favorites.map((mon) => mon.name).join(', ')} antes de vender.`); playSound('error'); return; }
+    const market = await api.market(saveId);
+    const values = new Map(market.sellable.map((offer) => [offer.id, offer.value]));
+    const total = mons.reduce((sum, mon) => sum + (values.get(mon.id) ?? 0), 0);
+    const inTeam = mons.filter((mon) => team.some((member) => member.id === mon.id)).length;
+    const warning = inTeam ? ` Inclui ${inTeam} da equipe.` : '';
+    if (!window.confirm(`Vender ${mons.length} Pokémon por ${formatMoney(total)}?${warning} Não dá para desfazer.`)) return;
+    const result = await api.marketSell(saveId, mons.map((mon) => mon.id));
+    playSound('confirm');
+    setMessage(`Vendeu ${result.sold} Pokémon por ${formatMoney(total)}!`);
+    clearSelection();
+    await reload();
+  });
+  const favoriteSelected = (value: boolean) => guarded(async () => {
+    const mons = [...selected.values()].filter((mon) => mon.favorite !== value);
+    for (const mon of mons) await api.updatePokemon(saveId, mon.id, { favorite: value });
+    setMessage(`${mons.length} Pokémon ${value ? 'favoritados' : 'sem favorito'}.`);
+    clearSelection();
+    await refreshAll();
+  });
+
   const goToBox = (next: number) => {
     const clamped = Math.max(0, Math.min(MAX_BOX_INDEX, next));
     if (clamped !== boxNo) { setBoxNo(clamped); playSound('move'); }
@@ -197,7 +281,8 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
     } else if (key === 'prev') goToBox(boxNo - 1);
     else if (key === 'next') goToBox(boxNo + 1);
     else if (key === 'confirm') {
-      if (carrying) void drop();
+      if (selecting && hovered) { toggleSelect(hovered); playSound('move'); }
+      else if (carrying) void drop();
       else if (hovered) { setMenuOpen(true); playSound('confirm'); }
     } else if (key === 'back') {
       if (carrying) { setCarrying(null); playSound('back'); }
@@ -320,7 +405,7 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
   const boxCountInView = boxSlots.filter(Boolean).length;
   const info = carrying
     ? `Levando ${carrying.name}. Escolha o destino e aperte Z (X cancela).`
-    : message || (mode === 'search' ? 'Filtre e ordene todos os seus Pokémon.' : 'Z em um Pokémon abre as ações. Q/E trocam de caixa.');
+    : message || (mode === 'search' ? 'Filtre e ordene todos os seus Pokémon.' : 'Arraste um Pokémon para a equipe ou para outra vaga da caixa. Z abre as ações; Q/E trocam de caixa.');
 
   return (
     <main className="gb-screen">
@@ -329,9 +414,26 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
           <h1 className="gb-title" style={{ fontSize: 26 }}>PC de {trainer || '…'}</h1>
           <span className="gb-row" style={{ alignItems: 'center', gap: 12 }}>
             <span className="gb-muted">{box ? `${box.totalInBoxes.toLocaleString('pt-BR')} no PC · ${team.length}/${TEAM_SIZE} na equipe` : 'Carregando…'}</span>
+            {mode === 'main' ? (
+              <button type="button" className="gb-button" aria-pressed={selecting} disabled={Boolean(carrying)} onClick={() => { setSelecting((v) => !v); playSound('confirm'); }}>
+                {selecting ? '☑ Selecionando' : '☐ Selecionar vários'}
+              </button>
+            ) : null}
             <button type="button" className="gb-button" onClick={onOpenSell} disabled={Boolean(carrying)}>Vender…</button>
           </span>
         </header>
+
+        {mode === 'main' && (selecting || selected.size > 0) ? (
+          <section className="gb-window gb-window--accent gb-selbar" aria-label="Seleção de Pokémon">
+            <span className="gb-label">{selected.size} selecionado{selected.size === 1 ? '' : 's'}</span>
+            <button type="button" className="gb-button" disabled={busy} onClick={selectBox}>Marcar a caixa toda</button>
+            <button type="button" className="gb-button" disabled={busy || selected.size === 0} onClick={() => void favoriteSelected(true)}>♥ Favoritar</button>
+            <button type="button" className="gb-button" disabled={busy || selected.size === 0} onClick={() => void favoriteSelected(false)}>Tirar favorito</button>
+            <button type="button" className="gb-button gb-button--red" disabled={busy || selected.size === 0} onClick={() => void sellSelected()}>Vender selecionados</button>
+            <button type="button" className="gb-button" disabled={selected.size === 0} onClick={clearSelection}>Limpar</button>
+            <span className="gb-muted gb-selbar__hint">Clique para marcar · Shift marca um intervalo · Ctrl marca sem entrar no modo.</span>
+          </section>
+        ) : null}
 
         {mode === 'main' ? (
           <div className="gb-row" style={{ alignItems: 'flex-start' }}>
@@ -345,9 +447,16 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
                     <button
                       key={mon.id}
                       type="button"
-                      className={`gb-mon gb-mon--compact${carrying?.id === mon.id ? ' gb-mon--lifted' : ''}`}
+                      className={`gb-mon gb-mon--compact${carrying?.id === mon.id ? ' gb-mon--lifted' : ''}${over === `t${i}` ? ' is-over' : ''}${picked.has(mon.id) ? ' gb-mon--picked' : ''}`}
                       aria-current={selected}
-                      onClick={() => { setZone('team'); setCursor(i); if (carrying) void drop(); else setMenuOpen(true); }}
+                      aria-pressed={selecting ? picked.has(mon.id) : undefined}
+                      {...dragProps(mon)}
+                      {...dropProps(`t${i}`, { kind: 'team', slot: i }, 'para a equipe')}
+                      onClick={(event) => {
+                        setZone('team'); setCursor(i);
+                        if (selecting || event.ctrlKey || event.metaKey) { toggleSelect(mon); return; }
+                        if (carrying) void drop(); else setMenuOpen(true);
+                      }}
                     >
                       <span className="gb-mon__sprite gb-mon__sprite--small"><Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={48} /></span>
                       <span className="gb-mon__body">
@@ -362,8 +471,9 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
                     <button
                       key={`empty-${i}`}
                       type="button"
-                      className="gb-mon gb-mon--compact gb-mon--empty"
+                      className={`gb-mon gb-mon--compact gb-mon--empty${over === `t${i}` ? ' is-over' : ''}`}
                       aria-current={selected}
+                      {...dropProps(`t${i}`, { kind: 'team', slot: i }, 'para a equipe')}
                       onClick={() => { setZone('team'); setCursor(i); if (carrying) void drop(); }}
                     >
                       <span className="gb-muted">— vazio —</span>
@@ -387,12 +497,20 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
                     key={i}
                     type="button"
                     role="gridcell"
-                    className={`gb-cell${mon && carrying?.id === mon.id ? ' gb-cell--lifted' : ''}`}
+                    className={`gb-cell${mon && carrying?.id === mon.id ? ' gb-cell--lifted' : ''}${over === `b${i}` ? ' is-over' : ''}${mon && picked.has(mon.id) ? ' gb-cell--picked' : ''}`}
                     aria-current={zone === 'box' && cursor === i}
+                    aria-selected={mon ? picked.has(mon.id) : undefined}
+                    {...dragProps(mon)}
+                    {...dropProps(`b${i}`, { kind: 'box', box: boxNo, slot: i }, `para a caixa ${boxNo + 1}`)}
                     aria-label={mon ? `${mon.name}, nível ${mon.level}` : 'Vaga vazia'}
                     onMouseEnter={() => { if (!overlay) { setZone('box'); setCursor(i); } }}
-                    onClick={() => { setZone('box'); setCursor(i); if (carrying) void drop(); else if (mon) setMenuOpen(true); }}
+                    onClick={(event) => {
+                      setZone('box'); setCursor(i);
+                      if (mon && pickInBox(mon, i, event)) return;
+                      if (carrying) void drop(); else if (mon) setMenuOpen(true);
+                    }}
                   >
+                    {mon && picked.has(mon.id) ? <span className="gb-cell__check" aria-hidden="true">✔</span> : null}
                     {mon ? <Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt="" size={56} /> : null}
                     {mon?.favorite ? <span className="gb-cell__fav" aria-hidden="true">♥</span> : null}
                     {mon?.shiny ? <span className="gb-cell__shiny" aria-hidden="true">✦</span> : null}

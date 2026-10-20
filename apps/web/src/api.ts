@@ -53,7 +53,7 @@ export const api = {
   wild: (id: string) => request<WildState>('GET', `/api/saves/${encodeURIComponent(id)}/wild`),
   wildSearch: (id: string, input: SearchWildRequest) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/search`, input),
   wildSpin: (id: string, pay = false) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/spin`, { pay }),
-  wildAuto: (id: string) => request<AutoWildResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/auto`),
+  wildAuto: (id: string, lead?: string | null, solo = false) => request<AutoWildResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/auto`, lead ? { lead, solo } : undefined),
   wildLeave: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/leave`),
   wildChoose: (id: string, slot: number) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/choose`, { slot }),
   wildFlee: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/flee`),

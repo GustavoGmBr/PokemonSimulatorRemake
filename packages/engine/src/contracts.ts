@@ -749,7 +749,7 @@ export interface AutoWildReport {
   levelUps: { name: string; level: number }[];
   /** por que parou antes de limpar o mapa (null = limpou) */
   stopped: null | {
-    reason: 'shiny' | 'stars' | 'defeat';
+    reason: 'shiny' | 'stars' | 'defeat' | 'lead';
     message: string;
     /** Pokémon especial que está no mapa */
     slot?: { slot: number; speciesId: number; name: string; level: number; shiny: boolean; ivStars: number };

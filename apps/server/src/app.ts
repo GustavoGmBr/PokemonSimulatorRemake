@@ -115,7 +115,7 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
     .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }))
     .post('/api/saves/:id/wild/spin', ({ params, body }) => wild.spin(params.id as string, (body as { pay?: unknown } | null)?.pay === true))
-    .post('/api/saves/:id/wild/auto', ({ params }) => autoWild.run(params.id as string))
+    .post('/api/saves/:id/wild/auto', ({ params, body }) => autoWild.run(params.id as string, (body as { lead?: unknown } | null)?.lead, (body as { solo?: unknown } | null)?.solo))
     .post('/api/saves/:id/wild/leave', ({ params }) => wild.leave(params.id as string))
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
     .post('/api/saves/:id/wild/flee', ({ params }) => wild.flee(params.id as string))

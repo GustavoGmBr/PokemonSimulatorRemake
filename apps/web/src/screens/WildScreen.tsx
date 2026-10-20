@@ -41,6 +41,21 @@ export function WildScreen({ saveId, onBack }: Props) {
   const autoStop = useRef(false);
   const [auto, setAuto] = useState<{ maps: number; wins: number; money: number } | null>(null);
   const [autoAlert, setAutoAlert] = useState<string | null>(null);
+  /** Pokémon que abre cada luta da auto-batalha ('' = o primeiro da equipe). */
+  const [lead, setLead] = useState<string>(() => {
+    try { return window.localStorage.getItem(`pokesim.autolead.${saveId}`) ?? ''; } catch { return ''; }
+  });
+  const pickLead = (id: string) => {
+    setLead(id);
+    try { window.localStorage.setItem(`pokesim.autolead.${saveId}`, id); } catch { /* sem armazenamento */ }
+  };
+  const [solo, setSolo] = useState<boolean>(() => {
+    try { return window.localStorage.getItem(`pokesim.autosolo.${saveId}`) === '1'; } catch { return false; }
+  });
+  const pickSolo = (value: boolean) => {
+    setSolo(value);
+    try { window.localStorage.setItem(`pokesim.autosolo.${saveId}`, value ? '1' : '0'); } catch { /* sem armazenamento */ }
+  };
   const loadTeam = () => api.getSave(saveId).then((save) => { if (alive.current) setTeam(save.team); }, () => undefined);
 
   useEffect(() => {
@@ -132,7 +147,7 @@ export function WildScreen({ saveId, onBack }: Props) {
     let finish = 'Auto-batalha concluída.';
     try {
       while (alive.current) {
-        const { report, state: next } = await api.wildAuto(saveId);
+        const { report, state: next } = await api.wildAuto(saveId, team.some((mon) => mon.id === lead) ? lead : null, solo);
         totals.maps += 1; totals.wins += report.wins; totals.money += report.money;
         setState(next);
         setAuto({ ...totals });
@@ -343,7 +358,9 @@ export function WildScreen({ saveId, onBack }: Props) {
                   Parar auto ({auto.wins} vitórias · {yen(auto.money)})
                 </button>
               ) : (
-                <button type="button" className="gb-button" disabled={busy || board.slots.length === 0 && board.spinsLeft === 0} onClick={() => void autoBattle()}>Auto-batalha</button>
+                <>
+                  <button type="button" className="gb-button" disabled={busy || board.slots.length === 0 && board.spinsLeft === 0} onClick={() => void autoBattle()}>Auto-batalha</button>
+                </>
               )}
               {board.spinsLeft > 0 ? (
                 <button type="button" className="gb-button gb-button--blue" disabled={busy} onClick={() => void spin()}>Girar (Q)</button>
@@ -353,6 +370,35 @@ export function WildScreen({ saveId, onBack }: Props) {
                 </button>
               )}
             </div>
+            {!auto ? (
+              <div className="gb-autopick" role="group" aria-label="Pokémon da auto-batalha">
+                <span className="gb-label">Lutador da auto-batalha</span>
+                <div className="gb-autopick__row">
+                  <button type="button" className="gb-autopick__card" aria-pressed={!team.some((mon) => mon.id === lead)} disabled={busy} onClick={() => pickLead('')}>
+                    <b>1º da equipe</b>
+                    <span className="gb-muted">padrão</span>
+                  </button>
+                  {team.map((mon) => (
+                    <button
+                      key={mon.id}
+                      type="button"
+                      className="gb-autopick__card"
+                      aria-pressed={mon.id === lead}
+                      disabled={busy || mon.currentHp <= 0}
+                      onClick={() => { pickLead(mon.id); playSound('confirm'); }}
+                    >
+                      <Sprite speciesId={mon.spriteId} shiny={mon.shiny} alt={mon.speciesName} size={48} />
+                      <b>{mon.name}</b>
+                      <span className="gb-muted">Nv{mon.level} · {mon.currentHp <= 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`}</span>
+                    </button>
+                  ))}
+                </div>
+                <label className="gb-autopick__solo">
+                  <input type="checkbox" checked={solo} disabled={busy || !team.some((mon) => mon.id === lead)} onChange={(event) => pickSolo(event.target.checked)} />
+                  Só ele luta (a auto-batalha para se ele desmaiar)
+                </label>
+              </div>
+            ) : null}
           </section>
         ) : null}
 

@@ -761,3 +761,38 @@ html[data-contrast='high'] .gb-menu__item[aria-current='true'] *, html[data-cont
 .gb-yt__check { font-size: 13px; display: flex; gap: 6px; align-items: center; color: var(--paper); }
 .gb-yt__error { margin: 0; font-size: 13px; color: var(--red); }
 @media (min-width: 1000px) and (max-width: 1500px) { html[data-yt='open'] body { padding-left: 404px; } }
+
+/* Filtros da Pokédex na mesma tela da lista */
+.gb-dexfilter { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
+.gb-dexfilter__top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gb-dexfilter__search { flex: 1 1 220px; min-width: 0; font-size: 20px; }
+.gb-dexfilter__count { font-size: 20px; white-space: nowrap; }
+.gb-dexfilter__clear { font-size: 18px; padding: 2px 12px; }
+.gb-dexfilter__row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.gb-dexfilter__row > .gb-label { min-width: 84px; font-size: 18px; }
+.gb-dexfilter__note { margin: 0; font-size: 15px; }
+.gb-pill { font: inherit; font-size: 16px; line-height: 1.1; padding: 2px 9px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+.gb-pill:hover { background: var(--paper-2); }
+.gb-pill[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.gb-pill--type { color: #fff; opacity: 0.9; text-transform: uppercase; font-size: 13px; }
+.gb-pill--type:hover { opacity: 1; background: inherit; }
+.gb-pill--type[aria-pressed='true'] { opacity: 1; outline: 3px solid var(--ink); outline-offset: 1px; color: #fff; }
+.gb-autolead { display: inline-flex; align-items: center; gap: 6px; }
+.gb-autolead select { min-width: 150px; max-width: 220px; }
+
+/* Escolha do lutador da auto-batalha */
+.gb-autopick { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.gb-autopick__row { display: flex; gap: 8px; flex-wrap: wrap; }
+.gb-autopick__card { font: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 104px; padding: 6px 8px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; font-size: 14px; }
+.gb-autopick__card[aria-pressed='true'] { background: var(--yellow); outline: 3px solid var(--ink); outline-offset: 1px; }
+.gb-autopick__card:disabled { opacity: 0.5; cursor: not-allowed; }
+.gb-autopick__solo { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+
+/* PC: arrastar, soltar e seleção */
+.gb-cell[draggable='true'], .gb-mon[draggable='true'] { cursor: grab; }
+.gb-cell.is-over, .gb-mon.is-over { outline: 4px dashed var(--yellow); outline-offset: -4px; background: rgba(232, 176, 32, 0.25); }
+.gb-cell.gb-cell--picked, .gb-mon.gb-mon--picked { outline: 4px solid var(--blue); outline-offset: -4px; background: rgba(56, 120, 208, 0.22); }
+.gb-cell { position: relative; }
+.gb-cell__check { position: absolute; top: 2px; left: 4px; z-index: 2; font-size: 20px; font-weight: 700; color: var(--blue); text-shadow: 0 0 2px #fff; }
+.gb-selbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; }
+.gb-selbar__hint { font-size: 14px; }

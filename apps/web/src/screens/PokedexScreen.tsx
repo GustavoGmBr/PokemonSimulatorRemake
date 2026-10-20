@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   TYPE_LABELS, TYPE_NAMES, normalizeText,
   type DexState, type PokedexView, type SpeciesIndexEntry, type TypeName,
 } from '@pokesim/engine';
 import { api } from '../api.ts';
-import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
-import { TextPrompt } from '../ui/TextPrompt.tsx';
 import { KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
@@ -39,8 +37,8 @@ export function PokedexScreen({ saveId, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [cursor, setCursor] = useState(0);
-  const [view, setView] = useState<'list' | 'filters' | 'sheet'>('list');
-  const [prompt, setPrompt] = useState(false);
+  const [view, setView] = useState<'list' | 'sheet'>('list');
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([api.pokedex(saveId), api.speciesIndex()]).then(([d, i]) => { setDex(d); setIndex(i); }, (e: Error) => setError(e.message));
@@ -88,7 +86,7 @@ export function PokedexScreen({ saveId, onBack }: Props) {
     else if (key === 'right') move(VISIBLE_ROWS);
     else if (key === 'prev') jumpGeneration(-1);
     else if (key === 'next') jumpGeneration(1);
-    else if (key === 'filter') { setView('filters'); playSound('confirm'); }
+    else if (key === 'filter') { searchRef.current?.focus(); playSound('confirm'); }
     else if (key === 'confirm') {
       if (selected && selectedState > 0) { setView('sheet'); playSound('confirm'); }
       else playSound('error');
@@ -111,13 +109,7 @@ export function PokedexScreen({ saveId, onBack }: Props) {
     setFilters((f) => ({ ...f, [key]: value }));
     setCursor(0);
   };
-  const rows: FilterRow[] = [
-    { id: 'text', label: 'Nome / Nº', value: filters.text || 'Todos', kind: 'text' },
-    { id: 'generation', label: 'Geração', value: filters.generation ? `Geração ${filters.generation}` : 'Todas', kind: 'cycle' },
-    { id: 'status', label: 'Registro', value: STATUS_LABEL[filters.status], kind: 'cycle' },
-    { id: 'type', label: 'Tipo (já vistos)', value: filters.type ? TYPE_LABELS[filters.type] : 'Todos', kind: 'cycle' },
-    { id: 'clear', label: 'Limpar filtros', value: '', kind: 'action' },
-  ];
+  const activeFilters = (filters.text ? 1 : 0) + (filters.generation ? 1 : 0) + (filters.status !== 'all' ? 1 : 0) + (filters.type ? 1 : 0);
 
   if (view === 'sheet' && selected) {
     return (
@@ -159,36 +151,66 @@ export function PokedexScreen({ saveId, onBack }: Props) {
           </span>
         </header>
 
-        {view === 'filters' ? (
-          <div className="gb-row" style={{ alignItems: 'flex-start' }}>
-            <div className="gb-side" style={{ maxWidth: 420 }}>
-              <FilterPanel
-                title="Filtros"
-                rows={rows}
-                active={!prompt}
-                onCycle={(id, direction) => {
-                  if (id === 'generation') setFilter('generation', cycle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], filters.generation, direction));
-                  else if (id === 'status') setFilter('status', cycle(STATUSES, filters.status, direction));
-                  else if (id === 'type') setFilter('type', cycle<'' | TypeName>(['', ...TYPE_NAMES], filters.type, direction));
-                }}
-                onEdit={() => setPrompt(true)}
-                onAction={() => { setFilters(NO_FILTERS); setCursor(0); }}
-                onBack={() => setView('list')}
-              />
-            </div>
-            <div className="gb-window gb-grow">
-              <h2 className="gb-title" style={{ fontSize: 20 }}>{filtered.length.toLocaleString('pt-BR')} na lista</h2>
-              <p className="gb-muted">Os filtros de nome e tipo só enxergam POKÉMON que você já viu — o resto continua um mistério.</p>
-            </div>
+        <section className="gb-window gb-dexfilter" aria-label="Filtros da Pokédex">
+          <div className="gb-dexfilter__top">
+            <input
+              ref={searchRef}
+              className="gb-input gb-dexfilter__search"
+              type="search"
+              value={filters.text}
+              placeholder="Buscar por nome ou nº (F)"
+              aria-label="Buscar por nome ou número"
+              maxLength={30}
+              spellCheck={false}
+              onChange={(event) => setFilter('text', event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape' || event.key === 'Enter' || event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+            <span className="gb-muted gb-dexfilter__count">{filtered.length.toLocaleString('pt-BR')} na lista</span>
+            <button type="button" className="gb-button gb-dexfilter__clear" disabled={activeFilters === 0} onClick={() => { setFilters(NO_FILTERS); setCursor(0); playSound('back'); }}>
+              Limpar{activeFilters ? ` (${activeFilters})` : ''}
+            </button>
           </div>
-        ) : (
+          <div className="gb-dexfilter__row" role="group" aria-label="Registro">
+            <span className="gb-label">Registro</span>
+            {STATUSES.map((status) => (
+              <button key={status} type="button" className="gb-pill" aria-pressed={filters.status === status} onClick={() => { setFilter('status', status); playSound('move'); }}>
+                {STATUS_LABEL[status]}
+              </button>
+            ))}
+          </div>
+          <div className="gb-dexfilter__row" role="group" aria-label="Geração">
+            <span className="gb-label">Geração</span>
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((generation) => (
+              <button key={generation} type="button" className="gb-pill" aria-pressed={filters.generation === generation} onClick={() => { setFilter('generation', generation); playSound('move'); }}>
+                {generation === 0 ? 'Todas' : generation}
+              </button>
+            ))}
+          </div>
+          <div className="gb-dexfilter__row" role="group" aria-label="Tipo">
+            <span className="gb-label">Tipo</span>
+            <button type="button" className="gb-pill" aria-pressed={filters.type === ''} onClick={() => { setFilter('type', ''); playSound('move'); }}>Todos</button>
+            {TYPE_NAMES.map((type) => (
+              <button key={type} type="button" className={`gb-pill gb-pill--type gb-type gb-type--${type}`} aria-pressed={filters.type === type} onClick={() => { setFilter('type', filters.type === type ? '' : type); playSound('move'); }}>
+                {TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+          <p className="gb-muted gb-dexfilter__note">Nome e tipo só enxergam POKÉMON que você já viu; o resto continua um mistério. Q/E trocam a geração.</p>
+        </section>
+
           <div className="gb-row" style={{ alignItems: 'flex-start' }}>
             <nav className="gb-window gb-side" style={{ maxWidth: 420 }} aria-label="Lista da Pokédex">
               <div className="gb-spread" style={{ marginBottom: 6 }}>
                 <span className="gb-label">{filters.generation ? `Geração ${filters.generation}` : 'Todas as gerações'}</span>
                 <span className="gb-muted">{filtered.length ? `${current + 1}/${filtered.length}` : '0'}</span>
               </div>
-              {filtered.length === 0 ? <p className="gb-muted">Nada com esses filtros. Aperte F para ajustá-los.</p> : null}
+              {filtered.length === 0 ? <p className="gb-muted">Nada com esses filtros. Ajuste os filtros acima.</p> : null}
               <ul className="gb-menu">
                 {visible.map((entry) => {
                   const state = dex.states[entry.id - 1] ?? 0;
@@ -243,23 +265,10 @@ export function PokedexScreen({ saveId, onBack }: Props) {
               ) : null}
             </section>
           </div>
-        )}
 
-        <KeyHints hints={view === 'list'
-          ? [['↑↓', 'mover'], ['←→', 'pular 12'], ['Q E', 'geração'], ['F', 'filtros'], ['Z', 'abrir ficha'], ['X', 'voltar']]
-          : [['↑↓', 'linha'], ['←→', 'valor'], ['Z', 'editar'], ['X', 'voltar à lista']]}
+        <KeyHints hints={[['↑↓', 'mover'], ['←→', 'pular 12'], ['Q E', 'geração'], ['F', 'buscar'], ['Z', 'abrir ficha'], ['X', 'voltar']]}
         />
 
-        {prompt ? (
-          <TextPrompt
-            label="Buscar por nome ou nº"
-            initial={filters.text}
-            maxLength={30}
-            submitLabel="Buscar"
-            onCancel={() => setPrompt(false)}
-            onSubmit={(value) => { setPrompt(false); setFilter('text', value.trim()); }}
-          />
-        ) : null}
       </div>
     </main>
   );
