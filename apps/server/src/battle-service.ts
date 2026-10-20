@@ -4,7 +4,7 @@ import {
   type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
-  levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, rollPrizeItems, regionOfSpecies, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds,
+  levelProgress, luckyEggMultiplier, TOURNAMENT_ROUNDS, rollPrizeItems, regionOfSpecies, rollOpponent, tournamentTier, formOf, resumableRng, rngFrom, rollTrainer, statsOf, unlockedRegionIds, pokemonLevelCap,
   type TournamentProgress, type ChallengesState, type ChallengeView, type Difficulty, type TrainerInfo,
   type BallOption, type BattleActRequest, type BattleContext, type BattleEvent, type BattleMonView, type BattleMoveView,
   type BattleOutcome, type BattleState, type BattleTurnResult, type BattleView, type CaptureInput, type Combatant, type PokemonInstance,
@@ -127,6 +127,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
   function playerTeam(saveId: string, cap: number | null, tournament?: string[]): Combatant[] {
     const team = tournament ? tournament.map((id) => store.view(saveId, id)) : store.team(saveId);
     if (team.length === 0) throw badRequest('Você não tem Pokémon na equipe.');
+    const wonList = [...wonIds(saveId)];
     const player = team.map((mon) => {
       const species = ctxBase.species(mon.speciesId);
       const capped = tournament ? true : cap !== null && mon.level > cap;
@@ -136,6 +137,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
         moves: mon.moves.map((m) => ({ name: m.name, pp: m.pp, maxPp: m.maxPp })), currentHp: mon.currentHp, friendship: mon.friendship, ball: mon.ball, form: mon.form,
       };
       const combatant = combatantFrom(instance, species, mon.name, mon.id);
+      if (!capped) combatant.levelCap = pokemonLevelCap(wonList, mon.speciesId);
       if (capped) {
         combatant.capped = true;
         combatant.hp = tournament ? combatant.stats.hp : mon.currentHp <= 0 ? 0 : Math.max(1, Math.round((combatant.stats.hp * mon.currentHp) / mon.stats.hp));
@@ -367,9 +369,9 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       if (reason) throw badRequest(reason);
       const region = REGIONS.find((entry) => entry.id === challenge.region);
       const dex = region?.dex ?? [1, 1025];
-      const outsiders = store.team(saveId).filter((mon) => mon.speciesId < dex[0] || mon.speciesId > dex[1]);
+      const outsiders = wonIds(saveId).has(challenge.id) ? [] : store.team(saveId).filter((mon) => mon.speciesId < dex[0] || mon.speciesId > dex[1]);
       if (outsiders.length > 0) {
-        throw badRequest(`Neste desafio, use apenas Pokémon da região ${region?.name ?? ''} (#${dex[0]}–#${dex[1]}). Troque: ${outsiders.map((m) => m.name).join(', ')}.`);
+        throw badRequest(`Na 1ª vez deste desafio, use apenas Pokémon da região ${region?.name ?? ''} (#${dex[0]}–#${dex[1]}); depois de vencer, qualquer Pokémon vale. Troque: ${outsiders.map((m) => m.name).join(', ')}.`);
       }
       return transaction(db, () => {
         const rng = rngFrom(randomInt);

@@ -146,6 +146,7 @@ test('Essência de IV: +1 e não gasta se já está no máximo', async () => {
 
 test('Doces: EXP fixo, Doce Raro sobe um nível, golpes novos e nível máximo', async () => {
   const { save, url, mon } = await setup();
+  db.prepare("INSERT OR IGNORE INTO badges (save_id, challenge_id, won_at) VALUES (?, 'kanto:champion', '2026-01-01')").run(save.id);
   give(save.id, 'exp-candy-g', 1); give(save.id, 'rare-candy', 1);
   const big = await call<UseItemResult>('POST', `${url}/items/use`, { item: 'exp-candy-g', pokemonId: mon.id });
   assert.equal(big.status, 201);

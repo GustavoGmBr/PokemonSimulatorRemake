@@ -65,6 +65,8 @@ export interface Combatant {
   fought: boolean;
   /** nível reduzido pelo limite do desafio: não ganha XP e não muda no save */
   capped?: boolean;
+  /** nível máximo liberado para este Pokémon (ginásios da região dele): não ganha XP além dele */
+  levelCap?: number;
 }
 
 export interface BattleSide {
@@ -614,8 +616,15 @@ export function awardExp(run: { state: BattleState; ctx: BattleContext; events: 
   const c = run.state.player.team[index];
   if (!c || amount <= 0) return;
   const species = run.ctx.species(c.speciesId);
-  const maxExp = expForLevel(species.growthRate, MAX_LEVEL);
-  c.exp = Math.min(maxExp, c.exp + amount);
+  const hardMax = expForLevel(species.growthRate, MAX_LEVEL);
+  const maxExp = c.levelCap !== undefined && c.levelCap < MAX_LEVEL ? Math.min(hardMax, expForLevel(species.growthRate, c.levelCap + 1) - 1) : hardMax;
+  if (c.exp >= maxExp) {
+    if (c.levelCap !== undefined && c.level >= c.levelCap) run.events.push({ k: 'text', text: `${c.name} está no nível máximo liberado (${c.levelCap}). Vença mais ginásios para liberar mais níveis.` });
+    return;
+  }
+  const gained = Math.min(amount, maxExp - c.exp);
+  c.exp += gained;
+  amount = gained;
   run.events.push({ k: 'xp', index, amount, exp: c.exp, progress: levelProgress(species.growthRate, c.level, c.exp), text: `${c.name} ganhou ${amount} pontos de experiência!` });
   const target = levelForExp(species.growthRate, c.exp);
   while (c.level < target) {

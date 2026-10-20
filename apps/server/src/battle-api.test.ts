@@ -59,6 +59,7 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   const { save, url } = await setup();
   // deixa o inicial forte para garantir a vitória
   db.prepare('UPDATE pokemon SET level = 30, exp = 27000, current_hp = 9999 WHERE save_id = ?').run(save.id);
+  db.prepare("INSERT INTO badges (save_id, challenge_id, won_at) VALUES (?, 'kanto:champion', '2026-01-01')").run(save.id); // libera o nível 100 em Kanto
   await startFight(url);
   let view = (await call<BattleView>('GET', `${url}/battle`)).json;
   let final: BattleTurnResult | null = null;
@@ -84,7 +85,7 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   const wild = (await call<WildState>('GET', `${url}/wild`)).json;
   assert.ok(wild.board, 'vitória mantém o mapa');
   assert.equal(wild.chosen, null);
-  assert.equal(wild.board?.slots.length, 2, 'só o derrotado sai do mapa (3 no início)');
+  assert.equal(wild.board?.slots.length, 14, 'só o derrotado sai do mapa (15 no início, com o campeão de Kanto vencido)');
   assert.ok(!wild.board?.slots.some((slot) => slot.slot === 0), 'a vaga 0 ficou vazia, as outras não mudam de lugar');
 });
 

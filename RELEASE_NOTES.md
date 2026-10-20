@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.23
+## Pokémon Simulator (remake) 2.0.0-alpha.24
+
+- **Limite de nível**: cada Pokémon sobe só até o nível liberado na região da geração dele (10 antes do 1º ginásio; 16, 22, 28, 34, 40, 46, 52, 58 pelos ginásios; 70, 82, 94, 100 pela Elite; 100 com o campeão). Vale para XP de batalha e doces; o XP guardado vira nível quando o limite sobe.
+- **Ginásios/Elite/campeões**: a restrição de região da equipe vale só na 1ª vitória; depois, qualquer Pokémon.
+- **Loja** com visual novo (cartões, botões − / +, carrinho tipo recibo).
+
+## Anteriores: 2.0.0-alpha.23
 
 - **Mercado Pokémon** com visual novo (cartões por tipo, selos shiny/bloqueado, barra de renovação) e filtros de IV até **4 estrelas**. A aba Vender ganhou busca, ordenação, filtro de estrelas e total da venda.
 - **Valor de venda**: (bola + nível + itens investidos) × espécie (lendário/mítico ×3) × shiny (×10) × IVs (3★ ×1,5; 4★ ×2), arredondado para baixo. Preço de compra: 10.000 ₽ base, região bloqueada ×2, shiny ×5, 3★ ×1,5, 4★ ×2. Coberto por testes.

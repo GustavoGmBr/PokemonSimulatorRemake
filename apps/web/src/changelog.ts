@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.24', items: [
+    'Limite de nível: cada Pokémon só sobe até o nível liberado pelos ginásios, Elite e campeão da região da geração dele (10 antes do 1º ginásio, 16, 22… até 100). Vale para XP de batalha e doces.',
+    'Ginásios, Elite e campeões: a equipe só precisa ser da região na 1ª vez; depois de vencer o desafio, qualquer Pokémon pode lutar.',
+    'Loja redesenhada: cartões com ícone, descrição, preço e botões − / + por produto; carrinho em formato de recibo.',
+  ] },
   { version: '2.0.0-alpha.23', items: [
     'Mercado Pokémon redesenhado: cartões com arte colorida pelo tipo, selo shiny/região bloqueada, preço em destaque, barra de renovação e filtros no máximo até 4 estrelas.',
     'Aba Vender com busca, ordenação, filtro de estrelas e total da venda; o valor segue a fórmula (bola + nível + itens) × espécie × shiny × IVs.',

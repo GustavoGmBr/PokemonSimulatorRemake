@@ -104,66 +104,83 @@ export function ShopScreen({ saveId, onBack }: Props) {
   return (
     <main className="gb-screen">
       <div className="gb-stage">
-        <header className="gb-window gb-spread" style={{ alignItems: 'center', padding: '10px 20px' }}>
-          <h1 className="gb-title" style={{ fontSize: 26 }}>Loja</h1>
-          <span style={{ fontSize: 26 }}>{formatMoney(money)}</span>
+        <header className="gb-shop-head">
+          <div>
+            <h1 className="gb-title gb-mkt-title">🛍️ Loja</h1>
+            <p className="gb-mkt-sub">Bolas, curas, itens de evolução e amuletos.</p>
+          </div>
+          <div className="gb-mkt-wallet"><span className="gb-muted">Seu dinheiro</span><b>{formatMoney(money)}</b></div>
         </header>
 
         <div className="gb-row" style={{ alignItems: 'flex-start' }}>
           <section className="gb-window gb-grow" aria-label="Produtos">
-            <div className="gb-tabs" role="tablist">
-              {TABS.map((t, i) => (
-                <button key={t.id} type="button" role="tab" aria-selected={i === tab} className="gb-tab" onClick={() => { setTab(i); setIndex(0); }}>{t.label}</button>
-              ))}
+            <div className="gb-shop-tabs" role="tablist">
+              {TABS.map((t, i) => {
+                const inCart = (items ?? []).filter((it) => it.category === t.id).reduce((sum, it) => sum + (cart[it.item] ?? 0), 0);
+                return (
+                  <button key={t.id} type="button" role="tab" aria-selected={i === tab} className="gb-mkt-tab" onClick={() => { setTab(i); setIndex(0); }}>
+                    {t.label}{inCart > 0 ? <span className="gb-mkt-count">{inCart}</span> : null}
+                  </button>
+                );
+              })}
             </div>
             {items === null ? <p className="gb-muted">Carregando…</p> : null}
-            <ul className="gb-menu" aria-label="Produtos" ref={listRef} style={{ maxHeight: '58vh', overflowY: 'auto' }}>
-              {visible.map((entry, i) => (
-                <li key={entry.item}>
-                  <button
-                    type="button"
-                    className="gb-menu__item"
-                    aria-current={current?.item === entry.item}
-                    onMouseEnter={() => setIndex(i)}
-                    onClick={() => { setIndex(i); change(entry, 1); }}
-                  >
-                    <span className="gb-cursor" aria-hidden="true">▶</span>
-                    <span className="gb-shop-row">
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {entry.category === 'captura' ? <BallIcon item={entry.item} small /> : <ItemIcon item={entry.item} size={24} />}{entry.displayName}
+            <ul className="gb-shop-list" aria-label="Produtos" ref={listRef}>
+              {visible.map((entry, i) => {
+                const qty = cart[entry.item] ?? 0;
+                const limit = UNIQUE.has(entry.item) ? 1 : MAX_STACK;
+                const maxed = entry.owned >= limit;
+                return (
+                  <li key={entry.item}>
+                    <div
+                      className={`gb-shop-item${qty > 0 ? ' is-in-cart' : ''}${maxed ? ' is-maxed' : ''}`}
+                      aria-current={current?.item === entry.item}
+                      onMouseEnter={() => setIndex(i)}
+                    >
+                      <span className="gb-shop-item__icon" aria-hidden="true">
+                        {entry.category === 'captura' ? <BallIcon item={entry.item} /> : <ItemIcon item={entry.item} size={36} />}
                       </span>
-                      <span className="gb-muted">tem {entry.owned}</span>
-                      <span>{formatMoney(entry.price)}</span>
-                      <span className="gb-cartqty">{cart[entry.item] ? `×${cart[entry.item]}` : ''}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <span className="gb-shop-item__text">
+                        <strong>{entry.displayName}</strong>
+                        <span className="gb-shop-item__desc">{entry.description}</span>
+                      </span>
+                      <span className="gb-shop-item__own" title="Você já tem">{maxed ? 'no máximo' : `tem ${entry.owned}`}</span>
+                      <span className="gb-mkt-price">{formatMoney(entry.price)}</span>
+                      <span className="gb-shop-stepper">
+                        <button type="button" className="gb-button" aria-label={`Tirar ${entry.displayName}`} disabled={qty === 0} onClick={() => { setIndex(i); change(entry, -1); }}>−</button>
+                        <b className="gb-cartqty">{qty}</b>
+                        <button type="button" className="gb-button" aria-label={`Pôr ${entry.displayName} no carrinho`} disabled={maxed || entry.owned + qty >= limit} onClick={() => { setIndex(i); change(entry, 1); }}>+</button>
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 
-          <aside className="gb-window gb-side" style={{ maxWidth: 380 }} aria-label="Carrinho">
-            <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>Carrinho</h2>
-            {lines.length === 0 ? <p className="gb-muted">Vazio.</p> : (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <aside className="gb-shop-cart" aria-label="Carrinho">
+            <h2 className="gb-title" style={{ fontSize: 20, margin: '0 0 6px' }}>🧾 Carrinho</h2>
+            {lines.length === 0 ? <p className="gb-muted">Vazio. Use + nos produtos.</p> : (
+              <ul className="gb-shop-cart__lines">
                 {lines.map((line) => (
-                  <li key={line.entry.item} className="gb-spread" style={{ fontSize: 22 }}>
+                  <li key={line.entry.item} className="gb-spread">
                     <span>{line.entry.displayName} ×{line.qty}</span>
                     <span>{formatMoney(line.entry.price * line.qty)}</span>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="gb-spread" style={{ borderTop: '2px solid var(--rim)', marginTop: 8, paddingTop: 6, fontSize: 24 }}>
+            <div className="gb-spread gb-shop-cart__total">
               <span className="gb-label">Total</span>
               <span style={{ color: total > money ? 'var(--red)' : undefined }}>{formatMoney(total)}</span>
             </div>
-            <div className="gb-spread" style={{ fontSize: 20 }}>
-              <span className="gb-muted">Sobra</span><span className="gb-muted">{formatMoney(money - total)}</span>
+            <div className="gb-spread" style={{ fontSize: 18 }}>
+              <span className="gb-muted">Sobra</span><span className="gb-muted" style={{ color: money - total < 0 ? 'var(--red)' : undefined }}>{formatMoney(money - total)}</span>
             </div>
             <button type="button" className="gb-button gb-button--red" style={{ marginTop: 10, width: '100%' }} disabled={count === 0 || total > money || busy} onClick={() => setConfirming(true)}>
               Comprar (T)
             </button>
+            {count > 0 ? <button type="button" className="gb-button" style={{ marginTop: 6, width: '100%' }} onClick={() => { setCart({}); setMessage('Carrinho esvaziado.'); }}>Esvaziar</button> : null}
             {confirming ? (
               <div style={{ marginTop: 10 }}>
                 <p style={{ margin: '0 0 6px' }}>Pagar {formatMoney(total)}?</p>

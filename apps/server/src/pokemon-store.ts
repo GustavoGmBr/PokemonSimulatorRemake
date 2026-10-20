@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
   ivQuality, isValidLocation, levelProgress, searchCollection, statsOf, availableForms, typesOf, formOf, REGIONS, unlockedRegionIds,
-  EXP_CANDIES, IV_ESSENCES, RARE_CANDY, expForLevel, levelForExp, isUsableMove, MAX_LEVEL, type TransformChoice,
+  EXP_CANDIES, IV_ESSENCES, RARE_CANDY, expForLevel, levelForExp, isUsableMove, MAX_LEVEL, pokemonLevelCap, type TransformChoice,
   type BoxView, type Combatant, type LearnableMove, type MoveOptions, type CollectionEntry, type MoveView, type EvolutionChoice, type CollectionQuery, type DexState, type MoveSlot, type PokedexView,
   type PokemonInstance, type PokemonLocation, type PokemonSearchResult, type PokemonView,
   type SearchPokemonQuery, type SortKey, type Stats, type TypeName, SORT_KEYS,
@@ -457,11 +457,13 @@ export function createPokemonStore(db: Db) {
       const species = data.speciesById.get(row.species_id);
       if (!species) throw notFound('Espécie desconhecida.');
       if (row.level >= MAX_LEVEL) throw badRequest('Esse Pokémon já está no nível máximo.');
+      const cap = pokemonLevelCap((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((b) => b.challenge_id), row.species_id);
+      if (row.level >= cap) throw badRequest(`Esse Pokémon está no nível máximo liberado (${cap}). Vença mais ginásios da região dele para liberar mais níveis.`);
       const amount = item === RARE_CANDY ? expForLevel(species.growthRate, row.level + 1) - row.exp : EXP_CANDIES[item];
       if (amount === undefined) throw badRequest('Esse item não é um doce.');
       return transaction(db, () => {
         if (!inventory.take(saveId, item)) throw badRequest('Você não tem esse item.');
-        const maxExp = expForLevel(species.growthRate, MAX_LEVEL);
+        const maxExp = Math.min(expForLevel(species.growthRate, MAX_LEVEL), cap < MAX_LEVEL ? expForLevel(species.growthRate, cap + 1) - 1 : Infinity);
         const exp = Math.min(maxExp, row.exp + amount);
         const level = levelForExp(species.growthRate, exp);
         const before = rowToView(row).stats.hp;
