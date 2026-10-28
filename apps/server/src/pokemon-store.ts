@@ -457,7 +457,7 @@ export function createPokemonStore(db: Db) {
       const species = data.speciesById.get(row.species_id);
       if (!species) throw notFound('Espécie desconhecida.');
       if (row.level >= MAX_LEVEL) throw badRequest('Esse Pokémon já está no nível máximo.');
-      const cap = pokemonLevelCap((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((b) => b.challenge_id), row.species_id);
+      const cap = pokemonLevelCap((db.prepare('SELECT challenge_id FROM badges WHERE save_id = ?').all(saveId) as { challenge_id: string }[]).map((b) => b.challenge_id), row.species_id, data.challenges);
       if (row.level >= cap) throw badRequest(`Esse Pokémon está no nível máximo liberado (${cap}). Vença mais ginásios da região dele para liberar mais níveis.`);
       const amount = item === RARE_CANDY ? expForLevel(species.growthRate, row.level + 1) - row.exp : EXP_CANDIES[item];
       if (amount === undefined) throw badRequest('Esse item não é um doce.');

@@ -137,7 +137,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
         moves: mon.moves.map((m) => ({ name: m.name, pp: m.pp, maxPp: m.maxPp })), currentHp: mon.currentHp, friendship: mon.friendship, ball: mon.ball, form: mon.form,
       };
       const combatant = combatantFrom(instance, species, mon.name, mon.id);
-      if (!capped) combatant.levelCap = pokemonLevelCap(wonList, mon.speciesId);
+      if (!capped) combatant.levelCap = pokemonLevelCap(wonList, mon.speciesId, data.challenges);
       if (capped) {
         combatant.capped = true;
         combatant.hp = tournament ? combatant.stats.hp : mon.currentHp <= 0 ? 0 : Math.max(1, Math.round((combatant.stats.hp * mon.currentHp) / mon.stats.hp));

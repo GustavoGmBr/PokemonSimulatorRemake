@@ -2,6 +2,9 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.0-alpha.25', items: [
+    'Limite de nível agora é o nível dos Pokémon do próximo ginásio da região (15, 22, 28…), depois os da Elite e o do campeão, em vez do nível dos selvagens.',
+  ] },
   { version: '2.0.0-alpha.24', items: [
     'Limite de nível: cada Pokémon só sobe até o nível liberado pelos ginásios, Elite e campeão da região da geração dele (10 antes do 1º ginásio, 16, 22… até 100). Vale para XP de batalha e doces.',
     'Ginásios, Elite e campeões: a equipe só precisa ser da região na 1ª vez; depois de vencer o desafio, qualquer Pokémon pode lutar.',

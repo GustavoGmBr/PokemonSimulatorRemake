@@ -71,12 +71,6 @@ export function levelCap(progress: RegionProgress): number {
   return BASE_LEVEL_CAP;
 }
 
-/** Nível máximo que um Pokémon pode alcançar: o liberado na região da sua geração (ginásios, Elite e campeão dela). */
-export function pokemonLevelCap(challengeIds: readonly string[], speciesId: number): number {
-  const region = REGIONS.find((entry) => speciesId >= entry.dex[0] && speciesId <= entry.dex[1]);
-  return region ? levelCap(regionProgress(challengeIds, region.id)) : 100;
-}
-
 // ---------------------------------------------------------------- habitats (mapas)
 
 export interface Habitat {

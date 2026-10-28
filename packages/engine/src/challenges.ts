@@ -1,5 +1,6 @@
 import type { Species } from './types.ts';
-import { championId, eliteId, evolutionStage, gymId, isLegendary, unlockedRegionIds } from './wild.ts';
+import { championId, eliteId, evolutionStage, gymId, isLegendary, regionProgress, unlockedRegionIds } from './wild.ts';
+import { REGIONS } from './regions.ts';
 import type { FoeBagItem } from './battle.ts';
 import { pick, type Rng } from './rng.ts';
 
@@ -91,6 +92,23 @@ export function challengeLockReason(challenge: Challenge, won: ReadonlySet<strin
   const gymsDone = Array.from({ length: 8 }, (_, i) => won.has(gymId(challenge.circuit, i + 1))).every(Boolean);
   if (!gymsDone) return 'Vença os 8 ginásios antes.';
   return challenge.kind === 'elite' ? 'Vença os membros anteriores da Elite.' : 'Vença os 4 da Elite.';
+}
+
+/**
+ * Nível máximo que um Pokémon pode alcançar: o nível dos Pokémon do próximo desafio da região da geração dele
+ * (1º ginásio = 15, depois 22, 28…; depois dos 8 ginásios, os da Elite; depois da Elite, o campeão; vencido o campeão, 100).
+ */
+export function pokemonLevelCap(challengeIds: readonly string[], speciesId: number, challenges: readonly Challenge[]): number {
+  const region = REGIONS.find((entry) => speciesId >= entry.dex[0] && speciesId <= entry.dex[1]);
+  if (!region) return 100;
+  const progress = regionProgress(challengeIds, region.id);
+  if (progress.champion) return 100;
+  const main = challenges.filter((entry) => entry.circuit === region.id);
+  const nextOf = (kind: ChallengeKind, number: number) => main.find((entry) => entry.kind === kind && entry.number === number)?.level;
+  const next = progress.gyms < 8 ? nextOf('gym', progress.gyms + 1)
+    : progress.eliteMembers < 4 ? nextOf('elite', progress.eliteMembers + 1)
+    : nextOf('champion', 1);
+  return next ?? 100;
 }
 
 /** Região de Pokémon permitida no desafio (só Pokémon da geração da região, como no jogo antigo). */

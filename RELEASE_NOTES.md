@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.24
+## Pokémon Simulator (remake) 2.0.0-alpha.25
+
+- **Limite de nível = nível do próximo desafio**: cada Pokémon sobe até o nível dos Pokémon do próximo ginásio da região da geração dele (15, 22, 28, 30 em Kanto…), depois os da Elite (65, 70, 80, 90) e o do campeão (100). Antes era o nível liberado para os selvagens. Vale para XP de batalha e doces.
+
+## Anteriores: 2.0.0-alpha.24
 
 - **Limite de nível**: cada Pokémon sobe só até o nível liberado na região da geração dele (10 antes do 1º ginásio; 16, 22, 28, 34, 40, 46, 52, 58 pelos ginásios; 70, 82, 94, 100 pela Elite; 100 com o campeão). Vale para XP de batalha e doces; o XP guardado vira nível quando o limite sobe.
 - **Ginásios/Elite/campeões**: a restrição de região da equipe vale só na 1ª vitória; depois, qualquer Pokémon.
