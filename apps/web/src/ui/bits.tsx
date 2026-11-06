@@ -46,9 +46,20 @@ interface SpriteProps {
   onFail?: () => void;
 }
 
-export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 64, className, onFail }: SpriteProps) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
+export function Sprite(props: SpriteProps) {
+  return <SpriteImage key={`${props.speciesId}:${props.view}:${props.shiny}`} {...props} />;
+}
+
+function SpriteImage({ speciesId, view = 'front', shiny = false, alt, size = 64, className, onFail }: SpriteProps) {
+  const sources = [...new Set([
+    spriteUrl(speciesId, view, shiny),
+    spriteUrl(speciesId, 'front', shiny),
+    spriteUrl(speciesId, 'artwork', shiny),
+    spriteUrl(speciesId, 'front', false),
+    spriteUrl(speciesId, 'artwork', false),
+  ])];
+  const [attempt, setAttempt] = useState(0);
+  if (attempt >= sources.length) {
     return (
       <div className="gb-sprite-missing" style={{ width: size, height: size }} role="img" aria-label={alt}>
         {size >= 70 ? 'sem sprite' : '?'}
@@ -58,12 +69,12 @@ export function Sprite({ speciesId, view = 'front', shiny = false, alt, size = 6
   return (
     <img
       className={`pixel ${className ?? ''}`}
-      src={spriteUrl(speciesId, view, shiny)}
+      src={sources[attempt]}
       alt={alt}
       width={size}
       height={size}
       style={{ width: size, height: size, objectFit: 'contain' }}
-      onError={() => { setFailed(true); onFail?.(); }}
+      onError={() => { setAttempt((value) => value + 1); if (attempt + 1 >= sources.length) onFail?.(); }}
       draggable={false}
     />
   );

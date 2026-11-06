@@ -79,13 +79,13 @@ test('treinadores aleatórios: equipe, nível, pool e prêmios por dificuldade',
       assert.equal(evolutionStage(species), 0);
       assert.ok(Object.values(species.baseStats).reduce((a, b) => a + b, 0) <= 400);
     }
-    assert.equal(easy.money, 1000);
+    assert.equal(easy.money, 500);
     const mid = rollTrainer('medio', data.species, rng);
     assert.ok(mid.team.length >= 3 && mid.team.length <= 4 && mid.team.every((m) => m.level >= 40 && m.level <= 50));
     const hard = rollTrainer('dificil', data.species, rng);
     assert.equal(hard.team.length, 6);
     assert.ok(hard.team.every((m) => m.level === 100));
-    assert.equal(hard.money, 10000);
+    assert.equal(hard.money, 5000);
   }
   assert.deepEqual(TRAINER_DIFFICULTIES.dificil.rewards.map((r) => r.item), ['ultra-ball', 'hyper-potion', 'revive']);
   assert.ok(leaderSkill({ kind: 'champion', number: 1 }) === 3 && leaderSkill({ kind: 'gym', number: 1 }) === 1);

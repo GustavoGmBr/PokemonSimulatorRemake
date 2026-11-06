@@ -58,7 +58,7 @@ async function fight(url: string, first: BattleTurnResult) {
   return view;
 }
 
-test('motor: times e níveis seguem a categoria do jogo antigo', () => {
+test('motor: times, níveis e preços das categorias', () => {
   const data = loadGameData();
   for (const tier of TOURNAMENT_TIERS) {
     for (let round = 1; round <= TOURNAMENT_ROUNDS; round++) {
@@ -69,7 +69,7 @@ test('motor: times e níveis seguem a categoria do jogo antigo', () => {
       if (tier.id !== 'muito-dificil' && tier.id !== 'copa-prime') for (const member of opp.team) { const sp = data.speciesById.get(member.speciesId); assert.ok(sp && !sp.legendary && !sp.mythical); }
     }
   }
-  assert.deepEqual(TOURNAMENT_TIERS.map((t) => [t.entry, t.prize.money]), [[150, 120], [500, 400], [1500, 1200], [4000, 3200], [10000, 8000], [25000, 20000]]);
+  assert.deepEqual(TOURNAMENT_TIERS.map((t) => [t.entry, t.prize.money]), [[150, 60], [500, 200], [1500, 600], [4000, 1600], [10000, 4000], [25000, 10000]]);
 });
 
 test('torneio: validações da inscrição', async () => {

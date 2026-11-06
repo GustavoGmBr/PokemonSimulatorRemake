@@ -1,3 +1,4 @@
+import { itemPrice } from '@pokesim/engine';
 import { randomUUID } from 'node:crypto';
 import {
   BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
@@ -36,8 +37,8 @@ export interface PokemonRow {
 
 /** Preço da TM: golpes de status ₽ 1.500; os de dano custam 25 por ponto de poder (mín. ₽ 1.000), em centenas. */
 export function tmPrice(move: { category: string; power: number }): number {
-  if (move.category === 'status') return 1500;
-  return Math.max(1000, Math.round((move.power * 25) / 100) * 100);
+  if (move.category === 'status') return itemPrice(1500);
+  return itemPrice(Math.max(1000, Math.round((move.power * 25) / 100) * 100));
 }
 
 export const DEFAULT_SEARCH_LIMIT = 30;

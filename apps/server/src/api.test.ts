@@ -518,7 +518,7 @@ test('mapas: cada procura usa um habitat e os Pokémon combinam com ele', async 
 test('loja: compra em carrinho, dinheiro e limites', async () => {
   const save = await newSave();
   const shop = (await call<ShopEntry[]>('GET', `/api/saves/${save.id}/shop`)).json;
-  assert.ok(shop.some((e) => e.item === 'poke-ball' && e.price === 200));
+  assert.ok(shop.some((e) => e.item === 'poke-ball' && e.price === 300));
   assert.ok(!shop.some((e) => e.item === 'master-ball'), 'Master Ball não é vendida');
   assert.ok(!shop.some((e) => e.item === 'premier-ball'), 'Premier só de brinde');
   const categories = new Set(shop.map((e) => e.category));
@@ -526,24 +526,24 @@ test('loja: compra em carrinho, dinheiro e limites', async () => {
   assert.ok(!categories.has('treino'));
   assert.equal(shop.filter((e) => e.category === 'mega').length, 97);
   assert.equal(shop.filter((e) => e.category === 'ivs').length, 6);
-  assert.ok(shop.filter((e) => e.category === 'ivs').every((e) => e.price === 5000));
-  assert.equal(shop.find((e) => e.item === 'shiny-stone')?.price, 1_000_000);
-  assert.equal(shop.filter((e) => e.category === 'captura' && e.price === 1000).length, 16);
+  assert.ok(shop.filter((e) => e.category === 'ivs').every((e) => e.price === 7500));
+  assert.equal(shop.find((e) => e.item === 'shiny-stone')?.price, 1_500_000);
+  assert.equal(shop.filter((e) => e.category === 'captura' && e.price === 1500).length, 16);
 
   const bought = await call<BuyResult>('POST', `/api/saves/${save.id}/shop/buy`, {
-    cart: [{ item: 'poke-ball', quantity: 5 }, { item: 'potion', quantity: 3 }, { item: 'poke-ball', quantity: 1 }],
+    cart: [{ item: 'poke-ball', quantity: 4 }, { item: 'potion', quantity: 3 }, { item: 'poke-ball', quantity: 1 }],
   });
   assert.equal(bought.status, 201);
-  assert.equal(bought.json.spent, 6 * 200 + 3 * 300);
-  assert.equal(bought.json.money, 3000 - 2100);
+  assert.equal(bought.json.spent, 5 * 300 + 3 * 450);
+  assert.equal(bought.json.money, 3000 - 2850);
   const detail = (await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json;
-  assert.equal(detail.money, 900);
-  assert.deepEqual(detail.inventory.map((i) => [i.item, i.quantity]), [['poke-ball', 16], ['potion', 8]]);
+  assert.equal(detail.money, 150);
+  assert.deepEqual(detail.inventory.map((i) => [i.item, i.quantity]), [['poke-ball', 15], ['potion', 8]]);
 
   const broke = await call<{ error: string }>('POST', `/api/saves/${save.id}/shop/buy`, { cart: [{ item: 'ultra-ball', quantity: 1 }] });
   assert.equal(broke.status, 400);
   assert.match(broke.json.error, /Dinheiro/);
-  assert.equal((await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.money, 900, 'nada foi cobrado');
+  assert.equal((await call<SaveDetail>('GET', `/api/saves/${save.id}`)).json.money, 150, 'nada foi cobrado');
 
   for (const cart of [[], [{ item: 'master-ball', quantity: 1 }], [{ item: 'potion', quantity: 0 }], [{ item: 'potion', quantity: 1.5 }], [{ item: 'potion', quantity: 99 }]]) {
     assert.equal((await call('POST', `/api/saves/${save.id}/shop/buy`, { cart })).status, 400, JSON.stringify(cart));

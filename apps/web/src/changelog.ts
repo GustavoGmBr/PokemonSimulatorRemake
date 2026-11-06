@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.1', items: [
+    'Corrigidas as imagens Mega e o download das formas alternativas, com outras vistas como alternativa quando necessário.',
+    'Conferidas as 97 Mega Pedras: todas as formas Mega do catálogo têm sua pedra disponível na loja.',
+    'Recompensas em dinheiro de batalhas, copas, missões e Novo Ciclo reduzidas em 50%; itens da loja e TMs 50% mais caros.',
+  ] },
   { version: '2.0.0-alpha.25', items: [
     'Limite de nível agora é o nível dos Pokémon do próximo ginásio da região (15, 22, 28…), depois os da Elite e o do campeão, em vez do nível dos selvagens.',
   ] },

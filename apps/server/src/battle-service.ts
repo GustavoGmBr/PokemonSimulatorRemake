@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
+  rewardMoney, foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
   type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
@@ -237,9 +237,9 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     }
     const coinBonus = () => (inventory.quantity(saveId, 'amulet-coin') > 0 ? amuletCoinMultiplier(extraGenerations(saveId)) : 1);
     if (result === 'win' && !trainer) {
-      money = Math.floor(foe.level * 10 * coinBonus());
+      money = Math.floor(rewardMoney(foe.level * 10) * coinBonus());
     } else if (result === 'win' && trainer) {
-      const base = trainer.money ?? state.foe.team.reduce((sum, c) => sum + c.level * 10, 0);
+      const base = trainer.money ?? rewardMoney(state.foe.team.reduce((sum, c) => sum + c.level * 10, 0));
       money = Math.floor(base * coinBonus());
       for (const reward of trainer.rewards ?? []) {
         inventory.add(saveId, reward.item, reward.quantity);

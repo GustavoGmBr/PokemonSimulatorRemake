@@ -22,3 +22,5 @@ export * from './journey.ts';
 export * from './sprites.ts';
 export * from './ngplus.ts';
 export * from './battle2.ts';
+
+export * from './economy.ts';

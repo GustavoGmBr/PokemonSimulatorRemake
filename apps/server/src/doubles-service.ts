@@ -1,3 +1,4 @@
+import { rewardMoney } from '@pokesim/engine';
 import { randomInt } from 'node:crypto';
 import {
   TOURNAMENT_ROUNDS, TRAINER_DIFFICULTIES, DIFFICULTIES, amuletCoinMultiplier, chooseDoubles, chooseReplacements, combatantFrom, createDoubles, createPokemon,
@@ -83,7 +84,7 @@ export function createDoublesService(db: Db, store: PokemonStore, inventory: Inv
     const rewards: BattleOutcome['rewards'] = [];
     if (result === 'win') {
       const coin = inventory.quantity(saveId, 'amulet-coin') > 0 ? amuletCoinMultiplier(shared.extraGenerations(saveId)) : 1;
-      money = Math.floor((trainer.money ?? state.foe.team.reduce((sum, c) => sum + c.level * 10, 0)) * coin);
+      money = Math.floor((trainer.money ?? rewardMoney(state.foe.team.reduce((sum, c) => sum + c.level * 10, 0))) * coin);
       for (const reward of trainer.rewards ?? []) {
         inventory.add(saveId, reward.item, reward.quantity);
         const name = data.itemsByName.get(reward.item)?.displayName ?? reward.item;

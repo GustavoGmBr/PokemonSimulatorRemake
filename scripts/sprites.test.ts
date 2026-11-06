@@ -24,9 +24,14 @@ test('cada espécie tem 10 imagens (5 vistas × normal/shiny); animações só a
   assert.ok(pokemonSpriteSources(25).some((s) => s.file === 'pokemon/25-animatedBackShiny.gif'
     && s.url.endsWith('/versions/generation-v/black-white/animated/back/shiny/25.gif')));
   assert.equal(planSprites([1, 2], ['potion'], 'basico').length, 8 + 1);
+  const megas = planSprites([10034, 10034, 10304], [], 'basico');
+  assert.equal(megas.length, 8, 'formas repetidas não duplicam downloads');
+  assert.ok(megas.some((source) => source.file === 'pokemon/10304-front.png'));
 });
 
 test('remoteSpriteUrl só aceita os nomes que o jogo gera', () => {
+  assert.match(remoteSpriteUrl('pokemon/10034-front.png')!, /sprites\/pokemon\/10034\.png$/);
+  assert.match(remoteSpriteUrl('pokemon/10304-backShiny.png')!, /sprites\/pokemon\/back\/shiny\/10304\.png$/);
   assert.match(remoteSpriteUrl('pokemon/6-frontShiny.png')!, /sprites\/pokemon\/shiny\/6\.png$/);
   assert.match(remoteSpriteUrl('items/exp-candy-p.png')!, /items\/exp-candy-xs\.png$/);
   assert.equal(remoteSpriteUrl('../../etc/passwd'), null);

@@ -519,7 +519,7 @@ export function auraOf(mon: BattleMonView): string {
   return mon.confused ? ' gb-aura gb-aura--confusion' : '';
 }
 
-export function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; trainer: BattleView['trainer'] }) {
+export function OutcomePanel({ outcome, trainer }: { outcome: BattleOutcome; trainer: { name: string; title: string } | null }) {
   return (
     <div className="gb-outcome">
       {outcome.trainerName && trainer ? <TrainerSprite name={trainer.name} title={trainer.title} size={96} /> : null}

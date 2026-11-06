@@ -1,5 +1,4 @@
-import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import type { BattleOutcome, BattleTurnResult, DoublesTurnResult, TeamMemberView, TournamentState, TournamentTierView } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';

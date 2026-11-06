@@ -1,3 +1,4 @@
+import { rewardMoney } from './economy.ts';
 import type { Species } from './types.ts';
 import type { FoeBagItem } from './battle.ts';
 import { evolutionStage, isLegendary } from './wild.ts';
@@ -39,17 +40,17 @@ export interface TournamentTier {
 /** Valores do jogo antigo (inscrição, prêmio, níveis e tamanho dos times). */
 export const TOURNAMENT_TIERS: readonly TournamentTier[] = [
   { id: 'muito-facil', name: 'Muito Fácil', description: 'Pokémon básicos, nível 2–10.', entry: 150, cap: 10, minLevel: 2, minTeam: 3, maxTeam: 3,
-    prize: { money: 120, essences: 1, items: [{ item: 'random-ball', min: 2, max: 4 }, { item: 'great-ball', min: 0, max: 2 }, { item: 'exp-candy-p', min: 1, max: 3 }, { item: 'exp-candy-m', min: 0, max: 1 }] } },
+    prize: { money: rewardMoney(120), essences: 1, items: [{ item: 'random-ball', min: 2, max: 4 }, { item: 'great-ball', min: 0, max: 2 }, { item: 'exp-candy-p', min: 1, max: 3 }, { item: 'exp-candy-m', min: 0, max: 1 }] } },
   { id: 'facil', name: 'Fácil', description: 'Nível 10–30, sem lendários.', entry: 500, cap: 30, minLevel: 10, minTeam: 3, maxTeam: 4,
-    prize: { money: 400, essences: 1, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 0, max: 2 }, { item: 'exp-candy-m', min: 2, max: 3 }, { item: 'exp-candy-g', min: 0, max: 1 }] } },
+    prize: { money: rewardMoney(400), essences: 1, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 0, max: 2 }, { item: 'exp-candy-m', min: 2, max: 3 }, { item: 'exp-candy-g', min: 0, max: 1 }] } },
   { id: 'intermediario', name: 'Intermediário', description: 'Nível 30–50, sem lendários.', entry: 1_500, cap: 50, minLevel: 30, minTeam: 4, maxTeam: 5,
-    prize: { money: 1_200, essences: 2, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 1, max: 3 }, { item: 'exp-candy-g', min: 2, max: 3 }, { item: 'exp-candy-gg', min: 0, max: 1 }] } },
+    prize: { money: rewardMoney(1_200), essences: 2, items: [{ item: 'great-ball', min: 2, max: 4 }, { item: 'ultra-ball', min: 1, max: 3 }, { item: 'exp-candy-g', min: 2, max: 3 }, { item: 'exp-candy-gg', min: 0, max: 1 }] } },
   { id: 'dificil', name: 'Difícil', description: 'Nível 50–70; evoluídos e fortes, sem lendários.', entry: 4_000, cap: 70, minLevel: 50, minTeam: 5, maxTeam: 6,
-    prize: { money: 3_200, essences: 2, items: [{ item: 'ultra-ball', min: 3, max: 4 }, { item: 'exp-candy-gg', min: 2, max: 4 }, { item: 'rare-candy', min: 1, max: 2 }] } },
+    prize: { money: rewardMoney(3_200), essences: 2, items: [{ item: 'ultra-ball', min: 3, max: 4 }, { item: 'exp-candy-gg', min: 2, max: 4 }, { item: 'rare-candy', min: 1, max: 2 }] } },
   { id: 'muito-dificil', name: 'Muito Difícil', description: 'Nível 70–99; lendários liberados.', entry: 10_000, cap: 99, minLevel: 70, minTeam: 6, maxTeam: 6,
-    prize: { money: 8_000, essences: 3, items: [{ item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 3, max: 4 }, { item: 'rare-candy', min: 2, max: 3 }] } },
+    prize: { money: rewardMoney(8_000), essences: 3, items: [{ item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 3, max: 4 }, { item: 'rare-candy', min: 2, max: 3 }] } },
   { id: 'copa-prime', name: 'Copa Prime', description: 'Nível 100 e sem limites: a elite da elite.', entry: 25_000, cap: 100, minLevel: 100, minTeam: 6, maxTeam: 6,
-    prize: { money: 20_000, essences: 3, items: [{ item: 'master-ball', min: 0, max: 1 }, { item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 4, max: 4 }, { item: 'rare-candy', min: 3, max: 4 }] } },
+    prize: { money: rewardMoney(20_000), essences: 3, items: [{ item: 'master-ball', min: 0, max: 1 }, { item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 4, max: 4 }, { item: 'rare-candy', min: 3, max: 4 }] } },
 ];
 
 /** Copas em duplas: inscrição 2,5× maior; dinheiro 3×, itens 1,5× e uma Essência a mais. */

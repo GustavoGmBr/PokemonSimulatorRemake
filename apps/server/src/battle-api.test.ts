@@ -297,7 +297,7 @@ test('treinador aleatório: recompensa em dinheiro e itens, sem bolas nem fuga',
   if (end.outcome?.result === 'win') {
     assert.equal(end.outcome.badge, null);
     assert.ok(end.outcome.rewards.length > 0);
-    assert.ok((await call<SaveDetail>('GET', url)).json.money >= money0 + 1000);
+    assert.ok((await call<SaveDetail>('GET', url)).json.money >= money0 + 500);
   }
 });
 

@@ -1,3 +1,4 @@
+import { rewardMoney } from './economy.ts';
 import { REGIONS } from './regions.ts';
 import { REWARD_BALLS } from './challenges.ts';
 import { IV_ESSENCES } from './transform.ts';
@@ -7,7 +8,7 @@ import { ALL_TOURNAMENT_TIERS } from './tournaments.ts';
 
 export const MISSION_DURATION_MS = 2 * 60 * 60 * 1000;
 export const MISSION_COUNT = 10;
-export const MISSION_COMPLETION_REWARD = { money: 5_000, chips: 500, items: [{ item: 'rare-candy', quantity: 1 }] } as const;
+export const MISSION_COMPLETION_REWARD = { money: rewardMoney(5_000), chips: 500, items: [{ item: 'rare-candy', quantity: 1 }] } as const;
 export const missionPeriod = (now = Date.now()): number => Math.floor(now / MISSION_DURATION_MS);
 
 export type MissionKind = 'capturar' | 'derrotar' | 'vencer_treinador' | 'vencer_torneio';
@@ -61,7 +62,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
     missions.push({
       index: missions.length, kind: 'capturar', region: region.id, target: goal,
       title: `Capture ${goal} espécie${goal > 1 ? 's' : ''} diferente${goal > 1 ? 's' : ''} de ${region.name}`,
-      reward: { money: 150 + region.generation * 50 + i * 100, chips: 0, items: [{ item: ball, quantity: 2 + i }] },
+      reward: { money: rewardMoney(150 + region.generation * 50 + i * 100), chips: 0, items: [{ item: ball, quantity: 2 + i }] },
     });
   }
   for (let i = 0; i < 3; i++) {
@@ -70,7 +71,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
     missions.push({
       index: missions.length, kind: 'derrotar', region: region.id, target: goal,
       title: `Derrote ${goal} Pokémon selvagens de ${region.name}`,
-      reward: { money: 200 + region.generation * 60 + i * 100, chips: 0, items: [{ item: 'exp-candy-p', quantity: 1 + i }] },
+      reward: { money: rewardMoney(200 + region.generation * 60 + i * 100), chips: 0, items: [{ item: 'exp-candy-p', quantity: 1 + i }] },
     });
   }
   for (let i = 0; i < 2; i++) {
@@ -79,7 +80,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
     missions.push({
       index: missions.length, kind: 'vencer_treinador', difficulty, target: goal,
       title: `Vença ${goal} treinador${goal > 1 ? 'es' : ''} no modo ${{ facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' }[difficulty]}`,
-      reward: { money: 300 + DIFFICULTIES.indexOf(difficulty) * 200 + i * 200, chips: 0, items: [{ item: 'great-ball', quantity: 1 + i }] },
+      reward: { money: rewardMoney(300 + DIFFICULTIES.indexOf(difficulty) * 200 + i * 200), chips: 0, items: [{ item: 'great-ball', quantity: 1 + i }] },
     });
   }
   for (let i = 0; i < 2; i++) {
@@ -88,7 +89,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
     missions.push({
       index: missions.length, kind: 'vencer_torneio', tournament, target: goal,
       title: `Vença ${goal} vez${goal > 1 ? 'es' : ''} a Copa ${tierName(tournament)}`,
-      reward: { money: 500 + tiers.indexOf(tournament) * 300 + i * 400, chips: 0, items: [{ item: 'exp-candy-m', quantity: 1 + i }] },
+      reward: { money: rewardMoney(500 + tiers.indexOf(tournament) * 300 + i * 400), chips: 0, items: [{ item: 'exp-candy-m', quantity: 1 + i }] },
     });
   }
   const essences = Object.keys(IV_ESSENCES);

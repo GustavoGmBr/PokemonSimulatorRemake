@@ -65,7 +65,7 @@ test('Novo Ciclo: bloqueado até vencer todos os campeões; depois campeões for
   for (let i = 0; i < 3 && result.view.phase !== 'ended'; i++) result = (await call<BattleTurnResult>('POST', `${url}/battle/act`, { kind: 'move', slot: 0 })).json;
   assert.equal(result.view.outcome?.result, 'win');
   assert.ok(result.view.outcome!.rewards.some((r) => r.item === 'master-ball'), 'bônus da primeira vitória');
-  assert.equal((await call<SaveDetail>('GET', url)).json.money, money + 120_000);
+  assert.equal((await call<SaveDetail>('GET', url)).json.money, money + 60_000);
   const after1 = (await call<ChallengesState>('GET', `${url}/challenges`)).json.ngplus.entries.find((e) => e.id === 'ng:iconic:red')!;
   assert.equal(after1.wins, 1);
   // não vira insígnia comum (não contamina Lucky Egg/Amulet Coin)

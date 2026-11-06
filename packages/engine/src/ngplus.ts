@@ -1,3 +1,4 @@
+import { rewardMoney } from './economy.ts';
 import type { Challenge } from './challenges.ts';
 import type { Species } from './types.ts';
 import { championId } from './wild.ts';
@@ -89,7 +90,7 @@ export function ngRewards(challenge: Pick<NgChallenge, 'kind'>, firstWin: boolea
     items.push({ item: 'master-ball', quantity: 1 });
     for (const essence of ['iv-hp', 'iv-attack', 'iv-defense', 'iv-special-attack', 'iv-special-defense', 'iv-speed']) items.push({ item: essence, quantity: iconic ? 2 : 1 });
   }
-  return { money: iconic ? 120_000 : 60_000, items };
+  return { money: rewardMoney(iconic ? 120_000 : 60_000), items };
 }
 
 export function ngLeaderBag() {

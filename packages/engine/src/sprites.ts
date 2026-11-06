@@ -55,7 +55,7 @@ export function itemSpriteSource(name: string): SpriteSource {
  * Só aceita os nomes que o jogo gera; qualquer outra coisa retorna null.
  */
 export function remoteSpriteUrl(file: string): string | null {
-  let m = /^pokemon\/(\d{1,4})-(front|back|artwork|animated|animatedBack)(Shiny)?\.(png|gif)$/.exec(file);
+  let m = /^pokemon\/(\d{1,5})-(front|back|artwork|animated|animatedBack)(Shiny)?\.(png|gif)$/.exec(file);
   if (m) {
     const id = Number(m[1]);
     const hit = pokemonSpriteSources(id).find((s) => s.file === file);

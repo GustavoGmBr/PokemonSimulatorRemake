@@ -46,7 +46,7 @@ const BASIC_VIEWS = /-(front|back)(Shiny)?\.png$/;
 
 export function planSprites(speciesIds: number[], itemNames: string[], profile: SpriteProfile = 'completo'): SpriteSource[] {
   const list: SpriteSource[] = [];
-  for (const id of speciesIds) {
+  for (const id of new Set(speciesIds)) {
     for (const source of pokemonSpriteSources(id)) {
       if (profile === 'basico' && !BASIC_VIEWS.test(source.file)) continue;
       list.push(source);
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
   console.log(`Pasta de sprites: ${assetsDir}`);
   const result = await downloadSprites({
     assetsDir,
-    speciesIds: data.species.map((species) => species.id),
+    speciesIds: data.species.flatMap((species) => [species.id, ...species.forms.map((form) => form.spriteId)]),
     itemNames: [...names],
     profile,
     report: (message) => console.log(message),

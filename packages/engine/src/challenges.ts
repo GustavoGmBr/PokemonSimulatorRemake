@@ -1,3 +1,4 @@
+import { rewardMoney } from './economy.ts';
 import type { Species } from './types.ts';
 import { championId, eliteId, evolutionStage, gymId, isLegendary, regionProgress, unlockedRegionIds } from './wild.ts';
 import { REGIONS } from './regions.ts';
@@ -157,19 +158,19 @@ export const REWARD_BALLS = ['net-ball', 'dusk-ball', 'nest-ball', 'repeat-ball'
 
 export const TRAINER_DIFFICULTIES: Record<Difficulty, DifficultyRules> = {
   facil: {
-    name: 'Fácil', minTeam: 2, maxTeam: 3, minLevel: 20, maxLevel: 30, money: 1000, skill: 1, bag: [],
+    name: 'Fácil', minTeam: 2, maxTeam: 3, minLevel: 20, maxLevel: 30, money: rewardMoney(1000), skill: 1, bag: [],
     rewards: [{ item: 'random-ball', quantity: 2 }, { item: 'potion', quantity: 1 }],
     names: ['Jovem Treinador', 'Escoteira', 'Colecionador'],
     description: '2 a 3 Pokémon básicos, nível 20–30. Sem itens.',
   },
   medio: {
-    name: 'Médio', minTeam: 3, maxTeam: 4, minLevel: 40, maxLevel: 50, money: 3000, skill: 2, bag: [bag('super-potion', 'Super Potion', 60, 1)],
+    name: 'Médio', minTeam: 3, maxTeam: 4, minLevel: 40, maxLevel: 50, money: rewardMoney(3000), skill: 2, bag: [bag('super-potion', 'Super Potion', 60, 1)],
     rewards: [{ item: 'great-ball', quantity: 2 }, { item: 'super-potion', quantity: 2 }],
     names: ['Veterana', 'Domador', 'Ace Trainer'],
     description: '3 a 4 Pokémon, nível 40–50. Escolhe golpes pela efetividade e usa poção.',
   },
   dificil: {
-    name: 'Difícil', minTeam: 6, maxTeam: 6, minLevel: 100, maxLevel: 100, money: 10000, skill: 3,
+    name: 'Difícil', minTeam: 6, maxTeam: 6, minLevel: 100, maxLevel: 100, money: rewardMoney(10000), skill: 3,
     bag: [bag('hyper-potion', 'Hyper Potion', 120, 2), { ...FULL_RESTORE, qty: 1 }],
     rewards: [{ item: 'ultra-ball', quantity: 3 }, { item: 'hyper-potion', quantity: 2 }, { item: 'revive', quantity: 1 }],
     names: ['Campeão Errante', 'Lenda da Arena', 'Mestre Pokémon'],

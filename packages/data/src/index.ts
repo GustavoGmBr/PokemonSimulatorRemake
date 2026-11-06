@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type PokeapiItem, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
+import { itemPrice, buildTypeChart, listChallenges, type Challenge, type ChallengeCatalog, type Item, type Move, type PokeapiItem, type Species, type TypeChart, type TypeInfo } from '@pokesim/engine';
 
 /** POKESIM_CATALOG_DIR é usado pelo pacote empacotado, onde este arquivo vira um único bundle. */
 export const CATALOG_DIR = process.env.POKESIM_CATALOG_DIR
@@ -40,7 +40,7 @@ export function loadGameData(): GameData {
   const species = readJson<Species[]>('species');
   const moves = readJson<Move[]>('moves');
   const types = readJson<TypeInfo[]>('types');
-  const items = readJson<Item[]>('items');
+  const items = readJson<Item[]>('items').map((item) => ({ ...item, price: item.price === null ? null : itemPrice(item.price) }));
   const pokeapiItems = readJson<PokeapiItem[]>('pokeapi-items');
   const challenges = listChallenges(readJson<ChallengeCatalog>('challenges'));
   cached = {

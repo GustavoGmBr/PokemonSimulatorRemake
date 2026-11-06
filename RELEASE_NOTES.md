@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.0.0-alpha.25
+## Pokémon Simulator (remake) 2.0.1
+
+- Corrige imagens das formas Mega: rota aceita IDs de cinco dígitos, download inclui formas alternativas e a interface tenta outras vistas disponíveis.
+- Verificadas as 97 Mega Pedras: todas as formas Mega do catálogo possuem sua pedra à venda.
+- Economia: recompensas em dinheiro de batalhas, treinadores, Novo Ciclo, copas e missões reduzidas à metade; preços dos itens da loja e TMs aumentados em 50%. Saldos já existentes são preservados.
+
+## Anteriores: 2.0.0-alpha.25
 
 - **Limite de nível = nível do próximo desafio**: cada Pokémon sobe até o nível dos Pokémon do próximo ginásio da região da geração dele (15, 22, 28, 30 em Kanto…), depois os da Elite (65, 70, 80, 90) e o do campeão (100). Antes era o nível liberado para os selvagens. Vale para XP de batalha e doces.
 

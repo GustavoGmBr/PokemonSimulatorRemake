@@ -16,20 +16,13 @@ test('zip gerado pode ser lido por ferramentas padrão (python zipfile) e preser
   assert.deepEqual(files, ['app/server.mjs', 'app/web/índice.html', 'vazio.txt']);
   const archive = path.join(root, '..', `${path.basename(root)}.zip`);
   await writeZip(root, files, archive);
-  const script = `
+  const check = spawnSync(process.platform === 'win32' ? 'python' : 'python3', ['-X', 'utf8', '-I', '-c', `
 import zipfile,sys
 z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None
-print(ascii(sorted(z.namelist()))); print(len(z.read('app/server.mjs')))
-`;
-  // no Windows o Python se chama "python" (ou "py"); sem nenhum deles, só confere o hash
-  let check: ReturnType<typeof spawnSync> | null = null;
-  for (const exe of ['python3', 'python', 'py']) {
-    const result = spawnSync(exe, ['-I', '-c', script, archive], { encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
-    if (result.status === 0) { check = result; break; }
-  }
-  if (check) {
-    assert.match(String(check.stdout), /\\xedndice\.html/);
-    assert.match(String(check.stdout), /\r?\n10500\r?\n/);
-  }
+print(sorted(z.namelist())); print(len(z.read('app/server.mjs')))
+`, archive], { encoding: 'utf8' });
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, /índice\.html/);
+  assert.match(check.stdout, /\r?\n10500\r?\n/);
   assert.match(await sha256File(archive), /^[a-f0-9]{64}$/);
 });

@@ -84,7 +84,7 @@ test('duplas: treinador em dupla — exige 2 Pokémon, joga até vencer, paga o 
   const money = moneyOf(save.id);
   const end = await fightDoubles(url, start);
   assert.equal(end.outcome?.result, 'win');
-  assert.ok(end.outcome!.money >= 2000, 'dobro do prêmio do Fácil (₽ 1.000)');
+  assert.ok(end.outcome!.money >= 1000, 'dobro do prêmio do Fácil (₽ 500)');
   assert.equal(moneyOf(save.id), money + end.outcome!.money);
   assert.equal((await call<DoublesView | null>('GET', `${url}/battle2`)).json, null);
   assert.ok(end.outcome!.rewards.length >= 1);
