@@ -184,7 +184,9 @@ const extraItems: Item[] = [
 ].map((item, index) => ({ id: EXTRA_ID_BASE + index, ...item }));
 const known = new Set(legacyItems.map((item) => item.name));
 const items: Item[] = [
-  ...legacyItems.map((item) => ({ ...item, price: PRICE_OVERRIDES[item.name] ?? item.price })),
+  ...legacyItems.map((item) => ({ ...item, price: PRICE_OVERRIDES[item.name] ?? item.price,
+    description: item.name === 'shiny-charm' ? 'Aumenta as rolagens shiny somente nas gerações cuja Pokédex foi totalmente capturada. Cada geração é ativada separadamente; exige o amuleto na mochila.' : item.description,
+  })),
   ...extraItems.filter((item) => !known.has(item.name)),
 ];
 

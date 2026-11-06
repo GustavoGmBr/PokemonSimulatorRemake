@@ -1,8 +1,9 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { shinyCharmGenerations } from './dex-progress.ts';
 import {
-  MARKET_REFRESH_MS, MARKET_REFRESH_PRICE, MARKET_SHINY_DENOMINATOR, MARKET_SIZE, createPokemon, isLegendary, ivQuality, marketPeriod, marketPrice,
+  SHINY_CHARM_EXTRA_ROLLS, MARKET_REFRESH_MS, MARKET_REFRESH_PRICE, MARKET_SHINY_DENOMINATOR, MARKET_SIZE, createPokemon, isLegendary, ivQuality, marketPeriod, marketPrice,
   regionOfSpecies, regionProgress, rngFrom, rollIvs, saleValue, unlockedRegionIds,
-  type MarketEntry, type MarketState, type PokemonView, type Stats,
+  type MarketEntry, type MarketState, type PokemonView, type Stats, type Rng,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
 import { transaction, type Db } from './db.ts';
@@ -25,9 +26,8 @@ interface Stored {
 }
 
 /** Mercado de Pokémon (15 à venda, renova por hora, favoritos ficam fixos) e venda de Pokémon da coleção. */
-export function createMarketService(db: Db, store: PokemonStore, inventory: Inventory, journal: Journal, now: () => number = Date.now) {
+export function createMarketService(db: Db, store: PokemonStore, inventory: Inventory, journal: Journal, now: () => number = Date.now, rng: Rng = rngFrom(randomInt)) {
   const data = loadGameData();
-  const rng = rngFrom(randomInt);
 
   function assertSave(saveId: string): void {
     if (!db.prepare('SELECT 1 FROM saves WHERE id = ?').get(saveId)) throw notFound('Save não encontrado.');
@@ -38,7 +38,7 @@ export function createMarketService(db: Db, store: PokemonStore, inventory: Inve
   function makeStock(saveId: string, size: number, excluded: number[]): Stored[] {
     const done = doneChallenges(saveId);
     const unlocked = unlockedRegionIds(done);
-    const rolls = 1 + (inventory.quantity(saveId, 'shiny-charm') > 0 ? 2 : 0);
+    const boosted = new Set(shinyCharmGenerations(db, saveId));
     const skip = new Set(excluded);
     const pool = data.species.filter((species) => {
       if (skip.has(species.id)) return false;
@@ -52,6 +52,7 @@ export function createMarketService(db: Db, store: PokemonStore, inventory: Inve
       if (!species) break;
       const region = regionOfSpecies(species.id);
       const regionUnlocked = region ? unlocked.includes(region.id) : false;
+      const rolls = 1 + (boosted.has(species.generation) ? SHINY_CHARM_EXTRA_ROLLS : 0);
       let shiny = false;
       for (let i = 0; i < rolls && !shiny; i++) shiny = rng.int(MARKET_SHINY_DENOMINATOR) === 0;
       let ivs = rollIvs(rng);

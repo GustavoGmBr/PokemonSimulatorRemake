@@ -19,6 +19,21 @@ before(async () => {
 });
 after(() => { server.close(); db.close(); });
 
+test('Copa Prime: API informa 10–20 itens e 20% para cada especial em solo e duplas', async () => {
+  const save = (await call<SaveDetail>('POST', '/api/saves', { trainerName: 'Prêmios', starterSpeciesId: 4 })).json;
+  const state = (await call<TournamentState>('GET', `/api/saves/${save.id}/tournaments`)).json;
+  for (const id of ['copa-prime', 'dupla-copa-prime']) {
+    const tier = state.tiers.find((entry) => entry.id === id)!;
+    assert.deepEqual(tier.randomItems, { min: 10, max: 20 });
+    assert.deepEqual(tier.prizeItems.map(({ item, min, max, chance }) => ({ item, min, max, chance })), [
+      { item: 'master-ball', min: 1, max: 1, chance: 20 },
+      { item: 'shiny-stone', min: 1, max: 1, chance: 20 },
+    ]);
+    assert.equal(tier.essences, 0, 'essências participam do sorteio de 10–20 unidades');
+  }
+  assert.equal(state.tiers.find((entry) => entry.id === 'muito-dificil')!.randomItems, undefined);
+});
+
 async function call<T>(method: string, url: string, body?: unknown): Promise<{ status: number; json: T }> {
   const res = await fetch(base + url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
   return { status: res.status === 201 ? 200 : res.status, json: (res.status === 204 ? null : await res.json()) as T };

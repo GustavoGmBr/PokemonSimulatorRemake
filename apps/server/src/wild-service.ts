@@ -1,7 +1,8 @@
 import { randomInt } from 'node:crypto';
+import { shinyCharmGenerations } from './dex-progress.ts';
 import {
   HABITATS, LEGENDARY_SLOT_CHANCE, REFRESH_COST, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
-  habitatById, habitatOfType, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor, boardSizeFor,
+  habitatById, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor, boardSizeFor,
   speciesInHabitat, statsOf, MIN_WILD_LEVEL, GYMS_PER_REGION, DEFAULT_MIN_LEVEL, levelCap, HEAL_BALL, unlockedRegionIds,   type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
   type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
 } from '@pokesim/engine';
@@ -18,7 +19,6 @@ interface BoardRow {
   chosen: number | null;
   region: string;
   habitat: string;
-  target_species: number | null;
   min_level: number;
   max_level: number;
   throws: number;
@@ -30,7 +30,6 @@ interface Board {
   chosen: number | null;
   region: string;
   habitat: string;
-  target: number | null;
   levels: [number, number];
   /** bolas já lançadas no encontro atual */
   throws: number;
@@ -67,7 +66,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         id: region.id, name: region.name, generation: region.generation, unlocked: unlocked.includes(region.id),
         gyms: progress.gyms, eliteMembers: progress.eliteMembers, elite: progress.elite, champion: progress.champion,
         levelCap: levelCap(progress),
-        spins: spinsFor(progress), mapSize: boardSizeFor(progress), legendaries: progress.elite, specific: progress.champion,
+        spins: spinsFor(progress), mapSize: boardSizeFor(progress), legendaries: progress.elite,
         chooseHabitat: progress.gyms >= GYMS_PER_REGION,
       };
     });
@@ -75,7 +74,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     const latest = list.filter((region) => region.unlocked).at(-1) as WildRegionOption;
     const all: WildRegionOption = {
       ...latest, id: 'all', name: 'Todas as gerações', generation: 0, unlocked: true,
-      legendaries: list.some((region) => region.unlocked && region.elite), specific: false,
+      legendaries: list.some((region) => region.unlocked && region.elite),
     };
     return [all, ...list];
   }
@@ -113,23 +112,18 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
   }
 
   /** Sorteia os Pokémon do mapa (3 a 15, conforme os desafios da região). */
-  function generate(saveId: string, region: string, habitat: Habitat, target: number | null, range: [number, number]): PokemonInstance[] {
+  function generate(saveId: string, region: string, habitat: Habitat, range: [number, number]): PokemonInstance[] {
     const ids = challenges(saveId);
     const unlocked = unlockedRegionIds(ids);
     const badges = gymCount(ids);
     const size = regionOptions(ids).find((option) => option.id === region)?.mapSize ?? 3;
-    const extraRolls = inventory.quantity(saveId, 'shiny-charm') > 0 ? SHINY_CHARM_EXTRA_ROLLS : 0;
-    if (target !== null) {
-      const species = data.speciesById.get(target);
-      if (!species) throw badRequest('Espécie desconhecida.');
-      return Array.from({ length: size }, () => makeMon(species, range, extraRolls));
-    }
+    const boosted = new Set(shinyCharmGenerations(db, saveId));
     const { common, rare } = pools(scopeOf(region, unlocked), unlocked, badges, habitat, ids);
     if (common.length === 0 && rare.length === 0) throw badRequest('Nenhum POKÉMON disponível neste mapa.');
     return Array.from({ length: size }, () => {
       const useRare = rare.length > 0 && (common.length === 0 || rng.int(1000) < LEGENDARY_SLOT_CHANCE * 1000);
       const species = useRare ? randomOf(rare) : randomOf(common);
-      return makeMon(species, range, extraRolls);
+      return makeMon(species, range, boosted.has(species.generation) ? SHINY_CHARM_EXTRA_ROLLS : 0);
     });
   }
 
@@ -138,17 +132,17 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     if (!row) return null;
     return {
       slots: JSON.parse(row.slots) as (PokemonInstance | null)[], spinsLeft: row.spins_left, chosen: row.chosen,
-      region: row.region, habitat: row.habitat, target: row.target_species, levels: [row.min_level, row.max_level], throws: row.throws,
+      region: row.region, habitat: row.habitat, levels: [row.min_level, row.max_level], throws: row.throws,
     };
   }
 
   function writeBoard(saveId: string, board: Board): void {
     db.prepare(`
-      INSERT INTO wild_boards (save_id, slots, spins_left, chosen, region, habitat, target_species, min_level, max_level, throws) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wild_boards (save_id, slots, spins_left, chosen, region, habitat, target_species, min_level, max_level, throws) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
       ON CONFLICT (save_id) DO UPDATE SET slots = excluded.slots, spins_left = excluded.spins_left, chosen = excluded.chosen,
-        region = excluded.region, habitat = excluded.habitat, target_species = excluded.target_species,
+        region = excluded.region, habitat = excluded.habitat, target_species = NULL,
         min_level = excluded.min_level, max_level = excluded.max_level, throws = excluded.throws
-    `).run(saveId, JSON.stringify(board.slots), board.spinsLeft, board.chosen, board.region, board.habitat, board.target, board.levels[0], board.levels[1], board.throws);
+    `).run(saveId, JSON.stringify(board.slots), board.spinsLeft, board.chosen, board.region, board.habitat, board.levels[0], board.levels[1], board.throws);
   }
 
   function speciesOf(pokemon: PokemonInstance): Species {
@@ -232,7 +226,6 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         regionName: regions.find((region) => region.id === board.region)?.name ?? board.region,
         habitat: habitat.id,
         habitatName: habitat.name,
-        targetSpeciesId: board.target,
         levelRange: board.levels,
       };
     }
@@ -244,6 +237,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       money: moneyOf(saveId),
       refreshCost: REFRESH_COST,
       shinyCharm: (quantities.get('shiny-charm') ?? 0) > 0,
+      shinyCharmGenerations: shinyCharmGenerations(db, saveId),
       catchingCharm: (quantities.get('catching-charm') ?? 0) > 0,
     };
   }
@@ -252,12 +246,13 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     state,
 
     /**
-     * "Procurar selvagem": escolhe a região (e, com o campeão derrotado, uma espécie específica).
-     * Sem espécie, o mapa (habitat) é sorteado entre os que têm Pokémon disponíveis.
+     * "Procurar selvagem": escolhe a região e sorteia as espécies do habitat.
+     * O mapa (habitat) é sorteado entre os disponíveis, salvo escolha após os oito ginásios.
      */
     search(saveId: string, input: { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }): WildState {
       assertSave(saveId);
       guardBattle(saveId);
+      if (input.speciesId !== undefined && input.speciesId !== null) throw badRequest('A busca por espécie específica não está mais disponível.');
       const ids = challenges(saveId);
       const options = regionOptions(ids);
       const option = options.find((entry) => entry.id === input.region);
@@ -272,16 +267,8 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       if (min > max) throw badRequest('O nível mínimo não pode ser maior que o máximo.');
       const levels: [number, number] = [min, max];
 
-      let target: number | null = null;
       let habitat: Habitat;
-      if (input.speciesId !== undefined && input.speciesId !== null) {
-        if (option.id === 'all') throw badRequest('Escolha uma região para procurar um POKÉMON específico.');
-        if (!option.specific) throw badRequest(`Derrote o campeão de ${option.name} para procurar um POKÉMON específico.`);
-        const species = data.speciesById.get(Number(input.speciesId));
-        if (!species || regionOfSpecies(species.id)?.id !== option.id) throw badRequest(`Escolha um POKÉMON de ${option.name}.`);
-        target = species.id;
-        habitat = habitatOfType(species.types[0] as Species['types'][number]);
-      } else if (typeof input.habitat === 'string' && input.habitat !== '') {
+      if (typeof input.habitat === 'string' && input.habitat !== '') {
         if (!option.chooseHabitat) throw badRequest(`Vença os ${GYMS_PER_REGION} ginásios de ${option.name} para escolher o mapa.`);
         const chosenHabitat = habitatById(input.habitat);
         if (!chosenHabitat) throw badRequest('Mapa desconhecido.');
@@ -300,8 +287,8 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         habitat = randomOf(candidates);
       }
       writeBoard(saveId, {
-        slots: generate(saveId, option.id, habitat, target, levels), spinsLeft: option.spins, chosen: null, throws: 0,
-        region: option.id, habitat: habitat.id, target, levels,
+        slots: generate(saveId, option.id, habitat, levels), spinsLeft: option.spins, chosen: null, throws: 0,
+        region: option.id, habitat: habitat.id, levels,
       });
       return state(saveId);
     },
@@ -323,7 +310,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
           if (moneyOf(saveId) < REFRESH_COST) throw badRequest('Dinheiro insuficiente para renovar o mapa.');
           db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(REFRESH_COST, new Date().toISOString(), saveId);
         }
-        writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.target, board.levels), spinsLeft, chosen: null, throws: 0 });
+        writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.levels), spinsLeft, chosen: null, throws: 0 });
         return state(saveId);
       });
     },

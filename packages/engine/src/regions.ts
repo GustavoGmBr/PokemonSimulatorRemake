@@ -28,6 +28,16 @@ export function generationOf(speciesId: number): number {
   return region?.generation ?? 0;
 }
 
+/** Gerações com todas as espécies registradas como capturadas, incluindo lendários e míticos. */
+export function completedDexGenerations(caught: ReadonlySet<number>): number[] {
+  return REGIONS.filter((region) => {
+    for (let id = region.dex[0]; id <= region.dex[1]; id++) {
+      if (!caught.has(id)) return false;
+    }
+    return true;
+  }).map((region) => region.generation);
+}
+
 export function regionById(id: string): Region | undefined {
   return REGIONS.find((entry) => entry.id === id);
 }

@@ -389,7 +389,7 @@ test('sem bolas não dá para lançar', async () => {
 
 const reg = (state: WildState, id: string) => state.regions.find((r) => r.id === id);
 
-test('regiões: só Kanto no início; progresso libera regiões, giros, lendários e busca específica', async () => {
+test('regiões: só Kanto no início; progresso libera regiões, giros e lendários; busca específica removida', async () => {
   const save = await newSave();
   const base = `/api/saves/${save.id}`;
   const initial = (await call<WildState>('GET', `${base}/wild`)).json;
@@ -426,15 +426,13 @@ test('regiões: só Kanto no início; progresso libera regiões, giros, lendári
   assert.ok(reg(afterChampion, 'johto')?.unlocked, 'Johto abriu');
   assert.ok(!reg(afterChampion, 'hoenn')?.unlocked);
 
-  // busca específica: os 10 são o escolhido e o mapa é o do tipo dele
-  const specific = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).json.board;
-  assert.equal(specific?.slots.length, 15);
-  assert.ok(specific?.slots.every((slot) => slot.speciesId === 25));
-  assert.equal(specific?.habitat, 'industrial');
-  assert.equal(specific?.spinsLeft, 12);
-  assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 152 })).status, 400, 'espécie de outra região');
-  const water = (await call<WildState>('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 7 })).json.board;
-  assert.equal(water?.habitat, 'coast');
+  // Nem o campeão libera a busca por espécie.
+  for (const speciesId of [25, 152, 7]) {
+    assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId })).status, 400);
+  }
+  const random = (await call<WildState>('POST', `${base}/wild/search`, KANTO)).json.board;
+  assert.equal(random?.slots.length, 15);
+  assert.equal(random?.spinsLeft, 12);
 
   // sair do mapa
   const left = (await call<WildState>('POST', `${base}/wild/leave`)).json;

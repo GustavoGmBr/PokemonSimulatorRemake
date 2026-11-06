@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.0.1
+## Pokémon Simulator (remake) 2.0.2
+
+- Removida a busca por Pokémon específico. Amuleto Brilhante: exige a Pokédex totalmente capturada da geração (incluindo lendários e míticos); o bônus é ativado separadamente por geração, em selvagens e no mercado.
+
+- Copa Prime (solo e duplas): prêmio de 10–20 unidades, incluindo Poké Bolas, curas, todos os doces de XP/Doce Raro e Essências de IV. Master Ball e Pedra Brilhante têm 20% de chance cada, em sorteios independentes, e contam nesse total. As regras aparecem na seleção do torneio.
+
+## Anteriores: 2.0.1
 
 - Corrige imagens das formas Mega: rota aceita IDs de cinco dígitos, download inclui formas alternativas e a interface tenta outras vistas disponíveis.
 - Verificadas as 97 Mega Pedras: todas as formas Mega do catálogo possuem sua pedra à venda.

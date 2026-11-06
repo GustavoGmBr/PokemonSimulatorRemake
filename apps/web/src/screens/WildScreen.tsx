@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type BattleTurnResult, type PokemonView, type SpeciesIndexEntry, type WildRegionOption, type WildState } from '@pokesim/engine';
+import { DEFAULT_MIN_LEVEL, HABITATS, MIN_WILD_LEVEL, REGIONS, type BattleTurnResult, type PokemonView, type WildRegionOption, type WildState } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HabitatBoard, neighbour } from '../ui/HabitatBoard.tsx';
 import { FilterPanel, type FilterRow } from '../ui/FilterPanel.tsx';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
-import { HpBar, KeyHints, Sprite, TypeBadge } from '../ui/bits.tsx';
+import { HpBar, KeyHints, Sprite } from '../ui/bits.tsx';
 import { BattleScreen } from './BattleScreen.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 import { playSound } from '../sound.ts';
@@ -20,7 +20,7 @@ interface Props {
   onBack: () => void;
 }
 
-type Step = 'regions' | 'region' | 'species';
+type Step = 'regions' | 'region';
 
 export function WildScreen({ saveId, onBack }: Props) {
   const [state, setState] = useState<WildState | null>(null);
@@ -32,8 +32,6 @@ export function WildScreen({ saveId, onBack }: Props) {
   const [regionId, setRegionId] = useState<string>('kanto');
   const [hoverRegion, setHoverRegion] = useState<string>('kanto');
   const [battle, setBattle] = useState<{ start: BattleTurnResult; habitat: string } | null>(null);
-  const [index, setIndex] = useState<SpeciesIndexEntry[]>([]);
-  const [filter, setFilter] = useState('');
   const [levels, setLevels] = useState<[number, number] | null>(null);
   const [habitatPick, setHabitatPick] = useState('');
   const [team, setTeam] = useState<PokemonView[]>([]);
@@ -66,7 +64,6 @@ export function WildScreen({ saveId, onBack }: Props) {
       else if (next.board) setMessage('Você voltou ao mapa da última procura.');
     }, (e: Error) => setError(e.message));
     void loadTeam();
-    api.speciesIndex().then(setIndex, () => undefined);
     return () => { alive.current = false; };
   }, [saveId]);
 
@@ -107,23 +104,23 @@ export function WildScreen({ saveId, onBack }: Props) {
     return [Math.max(MIN_WILD_LEVEL, Math.min(max, lo)), max];
   };
 
-  const search = (region: string, speciesId?: number) => run(async () => {
+  const search = (region: string) => run(async () => {
     const option = state?.regions.find((r) => r.id === region);
     const [minLevel, maxLevel] = rangeFor(option);
-    const request = { region: region as never, minLevel, maxLevel, ...(speciesId ? { speciesId } : option?.chooseHabitat && habitatPick ? { habitat: habitatPick } : {}) };
+    const request = { region: region as never, minLevel, maxLevel, ...(option?.chooseHabitat && habitatPick ? { habitat: habitatPick } : {}) };
     const next = await api.wildSearch(saveId, request);
     setState(next);
     setCursor(0);
     const b = next.board;
     setMessage(b ? `${b.habitatName}! Escolha um POKÉMON (${b.spinsLeft} giros para trocar todos).` : '');
   });
-  /** Mesma procura (região, níveis, mapa e espécie) sem passar pelo menu: um mapa novo com todos os giros. */
+  /** Mesma procura (região, níveis e mapa) sem passar pelo menu: um mapa novo com todos os giros. */
   const newMap = () => run(async () => {
     if (!board) return;
     const option = state?.regions.find((r) => r.id === board.region);
     const request = {
       region: board.region as never, minLevel: board.levelRange[0], maxLevel: board.levelRange[1],
-      ...(board.targetSpeciesId ? { speciesId: board.targetSpeciesId } : option?.chooseHabitat ? { habitat: board.habitat } : {}),
+      ...(option?.chooseHabitat ? { habitat: board.habitat } : {}),
     };
     const next = await api.wildSearch(saveId, request);
     setState(next);
@@ -201,7 +198,6 @@ export function WildScreen({ saveId, onBack }: Props) {
     }
   };
 
-  const speciesChoices = useSpeciesChoices(index, regionId, filter);
 
   // ---- teclado (mapa e captura; as listas usam o próprio Menu) ----
   useKeys((key) => {
@@ -253,7 +249,7 @@ export function WildScreen({ saveId, onBack }: Props) {
           <h1 className="gb-title" style={{ fontSize: 26 }}>Selvagens</h1>
           <span className="gb-muted">
             {board ? `${board.regionName} · ${board.habitatName} · Nv ${board.levelRange[0]}–${board.levelRange[1]}` : 'Nenhuma procura em andamento'}
-            {state.shinyCharm ? ' · Amuleto Brilhante' : ''}{state.catchingCharm ? ' · Amuleto de Captura' : ''}
+            {state.shinyCharm ? ' · Amuleto Brilhante por geração' : ''}{state.catchingCharm ? ' · Amuleto de Captura' : ''}
             {' · '}{yen(state.money)}
           </span>
         </header>
@@ -298,7 +294,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                   <li>Pokémon no mapa: <b>{selected.mapSize}</b> <span className="gb-muted">(3 + 1 por ginásio e membro da Elite · campeão 15)</span></li>
                   <li>Giros por mapa: <b>{selected.spins}</b> <span className="gb-muted">(ginásio 5 · Elite dos 4 8 · campeão 12)</span></li>
                   <li>Lendários: <b>{selected.legendaries ? 'liberados' : 'derrote a Elite dos 4'}</b></li>
-                  <li>Pokémon específico: <b>{selected.id === 'all' ? 'escolha uma geração' : selected.specific ? 'liberado' : 'derrote o campeão'}</b></li>
+                  <li>Amuleto Brilhante: <b>{!state.shinyCharm ? 'não adquirido' : selected.id === 'all' ? (state.shinyCharmGenerations.length ? `ativo nas gerações ${state.shinyCharmGenerations.join(', ')}` : 'complete a Pokédex de uma geração') : state.shinyCharmGenerations.includes(selected.generation) ? 'ativo · Pokédex completa' : 'complete a Pokédex desta geração'}</b></li>
                 </ul>
               </section>
               {step !== 'regions' && selected.unlocked ? (
@@ -314,11 +310,7 @@ export function WildScreen({ saveId, onBack }: Props) {
                         onCycle={(id, d) => cycleRow(id, d)}
                         onAction={(id) => {
                           if (id === 'search') void search(regionId);
-                          else if (id === 'specific') {
-                            if (selected.id === 'all') { setMessage('Escolha uma geração para procurar um POKÉMON específico.'); playSound('error'); return; }
-                            if (!selected.specific) { setMessage(`Derrote o campeão de ${selected.name} para procurar um POKÉMON específico.`); playSound('error'); return; }
-                            setFilter(''); setStep('species'); setMessage('Digite o nome e escolha o POKÉMON.');
-                          } else setStep('regions');
+                          else setStep('regions');
                         }}
                         onBack={() => setStep('regions')}
                       />
@@ -327,16 +319,6 @@ export function WildScreen({ saveId, onBack }: Props) {
                         {selected.chooseHabitat && habitatPick ? ` ${HABITATS.find((h) => h.id === habitatPick)?.description ?? ''}` : ''}
                       </p>
                     </>
-                  ) : null}
-                  {step === 'species' ? (
-                    <SpeciesPicker
-                      choices={speciesChoices}
-                      filter={filter}
-                      onFilter={setFilter}
-                      busy={busy}
-                      onPick={(id) => void search(regionId, id)}
-                      onBack={() => setStep('region')}
-                    />
                   ) : null}
                 </section>
               ) : null}
@@ -353,9 +335,6 @@ export function WildScreen({ saveId, onBack }: Props) {
               </div>
             ) : null}
             {autoAlert ? <div className="gb-banner" role="alert" style={{ marginBottom: 10 }}>{autoAlert}</div> : null}
-            {board.targetSpeciesId !== null ? (
-              <p className="gb-muted" style={{ margin: '0 0 8px' }}>Procura específica: todos os POKÉMON do mapa são da mesma espécie. Escolha o de melhores estrelas.</p>
-            ) : null}
             <HabitatBoard
               habitat={board.habitat}
               slots={board.slots}
@@ -436,66 +415,12 @@ function actionRows(region: WildRegionOption, levels: [number, number], habitatP
   const habitat = HABITATS.find((h) => h.id === habitatPick);
   return [
     { id: 'search', label: 'Procurar selvagem', value: '', kind: 'action' },
-    { id: 'specific', label: 'POKÉMON específico', value: region.id === 'all' ? '— por geração' : region.specific ? '' : '🔒 campeão', kind: 'action' },
     { id: 'min', label: 'Nível mínimo', value: String(levels[0]), kind: 'cycle' },
     { id: 'max', label: 'Nível máximo', value: String(levels[1]), kind: 'cycle' },
     { id: 'habitat', label: 'Mapa', value: region.chooseHabitat ? (habitat ? habitat.name : 'Aleatório') : '🔒 8 ginásios', kind: 'cycle' },
     { id: 'back', label: 'Voltar', value: '', kind: 'action' },
   ];
 }
-
-function useSpeciesChoices(index: SpeciesIndexEntry[], regionId: string, filter: string): SpeciesIndexEntry[] {
-  const generation = REGIONS.find((region) => region.id === regionId)?.generation ?? 1;
-  return useMemo(() => {
-    const text = filter.trim().toLowerCase();
-    return index.filter((entry) => entry.generation === generation && (!text || entry.name.toLowerCase().includes(text)));
-  }, [index, generation, filter]);
-}
-
-interface PickerProps {
-  choices: SpeciesIndexEntry[];
-  filter: string;
-  onFilter: (value: string) => void;
-  onPick: (speciesId: number) => void;
-  onBack: () => void;
-  busy: boolean;
-}
-
-function SpeciesPicker({ choices, filter, onFilter, onPick, onBack, busy }: PickerProps) {
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => { input.current?.focus(); }, []);
-  useKeys((key) => {
-    if (key === 'back') onBack();
-    else if (key === 'confirm' && choices[0] && !busy) onPick(choices[0].id);
-  }, true);
-  return (
-    <div>
-      <h2 className="gb-title" style={{ fontSize: 20, marginBottom: 6 }}>POKÉMON específico</h2>
-      <input
-        ref={input}
-        className="gb-input"
-        value={filter}
-        placeholder="Digite o nome…"
-        aria-label="Nome do POKÉMON"
-        maxLength={20}
-        onChange={(event) => onFilter(event.target.value)}
-        style={{ width: '100%' }}
-      />
-      <p className="gb-hint" style={{ margin: '6px 0 0' }}>Enter escolhe o primeiro da lista · Esc volta. O mapa terá 10 do mesmo POKÉMON, no habitat do tipo dele.</p>
-      <div className="gb-species-grid" role="list">
-        {choices.length === 0 ? <p className="gb-muted" style={{ gridColumn: '1 / -1' }}>Nenhum POKÉMON com esse nome nesta região.</p> : null}
-        {choices.slice(0, 80).map((entry) => (
-          <button key={entry.id} type="button" role="listitem" className="gb-species-pick" disabled={busy} onClick={() => onPick(entry.id)}>
-            <Sprite speciesId={entry.id} alt="" size={56} />
-            <span>{entry.name}</span>
-            <span style={{ display: 'flex', gap: 3 }}>{entry.types.map((t) => <TypeBadge key={t} type={t} />)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 
 /** Sua equipe, sempre à vista na tela de Selvagens (HP e condição de cada um). */
 function TeamStrip({ team }: { team: PokemonView[] }) {

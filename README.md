@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.1**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.2**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
 ## Jogar no Windows (sem instalar nada)
 
@@ -94,15 +94,16 @@ packages/
      da anterior). Cada procura sorteia um mapa pixel GBA (8 habitats por tipo) com Pokémon soltos,
      brilhantes visíveis e "Nome · Nv · ★" em cima de cada um. Giros para trocar os 10: 3, e 5 / 8 / 12
      após ginásio / Elite dos 4 / campeão da região; sem giros, renovar custa ₽ 1.000. Lendários só
-     depois da Elite dos 4 da região; busca por Pokémon específico (10 iguais, mapa do tipo dele) só
-     depois do campeão. Brilhante 1/4096 (Amuleto Brilhante = +2 sorteios), fórmula de captura por HP e
+     depois da Elite dos 4 da região. Não há busca por espécie específica. Brilhante 1/4096;
+     o Amuleto Brilhante dá +2 sorteios somente para espécies de gerações com a Pokédex totalmente capturada
+     (incluindo lendários e míticos), e cada geração é ativada separadamente. Vale em mapas mistos e no mercado. Fórmula de captura por HP e
      status, todas as Poké Bolas, animação de 3 balanços e alerta de brilhante / ★★★ ou mais.
      Os Pokémon "andam" pelo mapa (param ao passar o mouse). Você escolhe o nível mínimo e máximo de cada
      procura, de 1 até o limite liberado (padrão: do 2 ao limite) e, com os 8 ginásios da região vencidos,
      também o mapa (habitat). **Limite de nível:** 10 antes do 1º ginásio; 16, 22, 28, 34, 40, 46, 52 e 58
      após cada ginásio; 70, 82, 94 e 100 após cada membro da Elite dos 4; 100 após o campeão. A opção
      **Todas as gerações** mistura as regiões liberadas e segue giros, lendários e limite da região mais
-     recente liberada (sem busca específica). Iniciais: só os da 1ª geração por enquanto.
+     recente liberada. Iniciais: só os da 1ª geração por enquanto.
    - ✅ Itens e loja: poções e revives na Mochila, loja com carrinho e todos os itens do jogo antigo:
      Poké Bolas (as 16 especiais com os mesmos multiplicadores; Bola Premier de brinde a cada 10 Poké
      Bolas), curas, pedras de evolução, Mega (97), Primal, Essências de IV (₽ 5.000; o uso vem com a
@@ -155,7 +156,7 @@ packages/
      (favoritos e o seu último Pokémon ficam protegidos). Rodadas de Voltorb Flip, Pokejack e Pula Piplup ficam salvas.
    - ✅ **Torneios por categoria:** Muito Fácil, Fácil, Intermediário, Difícil, Muito Difícil e Copa Prime. Oito rodadas
      eliminatórias, inscrição em ₽, nível máximo da categoria, vida cheia entre rodadas, sem XP; prêmio (₽, Doces e
-     Essências) só para o campeão.
+     Essências) só para o campeão. Na **Copa Prime** (solo e duplas), o campeão recebe **10–20 unidades** sorteadas entre todas as Poké Bolas comuns/especiais, curas, doces e Essências de IV. **Master Ball** e **Pedra Brilhante** têm **20% de chance cada**, em sorteios independentes, com uma unidade de cada e contando no total de 10–20.
    - ✅ **Catálogo de itens do PokéAPI (alpha.11):** os ~2.200 itens oficiais (nome, bolso, preço, efeito e texto) em
      `packages/data/catalog/pokeapi-items.json`, gerado por `npm run data:pokeapi` a partir dos dados do PokéAPI.
      Menu **Catálogo de itens** (busca, bolsos, o que já funciona no jogo e quanto você tem); ícones oficiais na Loja,
@@ -201,7 +202,7 @@ as próximas alphas, quem está numa estável só recebe estáveis. O repositór
 | Q | Selvagens: girar (ou renovar) o mapa · X: voltar à busca |
 
 Ferramentas de teste (só na alpha): atalho T no PC, entradas **[TESTE] Kit** (libera todas as regiões,
-+bolas, +curas, +₽20.000), **[TESTE] Próximo desafio** / **[TESTE] Vencer tudo** (ginásios, Elite dos 4 e campeões, que liberam regiões, giros, lendários e busca específica) e **[TESTE] Ferir equipe** no menu. Desligue tudo com `POKESIM_DEV=0` no `.env`.
++bolas, +curas, +₽20.000), **[TESTE] Próximo desafio** / **[TESTE] Vencer tudo** (ginásios, Elite dos 4 e campeões, que liberam regiões, giros e lendários) e **[TESTE] Ferir equipe** no menu. Desligue tudo com `POKESIM_DEV=0` no `.env`.
 
 Observação: ★★★★ exige todos os IVs perfeitos, o que o sorteio aleatório quase nunca produz; por isso o
 alerta de destaque no mapa vale a partir de ★★★.

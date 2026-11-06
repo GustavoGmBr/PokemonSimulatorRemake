@@ -38,7 +38,8 @@ export function createTournamentService(db: Db, store: PokemonStore, battle: Bat
       money: now,
       tiers: ALL_TOURNAMENT_TIERS.map((tier) => ({
         id: tier.id, name: tier.name, description: tier.description, entry: tier.entry, cap: tier.cap, rounds: TOURNAMENT_ROUNDS,
-        prizeMoney: tier.prize.money, prizeItems: tier.prize.items.map((entry) => ({ item: entry.item, name: entry.item === 'random-ball' ? 'Poké Bola especial' : itemName(entry.item), min: entry.min, max: entry.max })),
+        prizeMoney: tier.prize.money, prizeItems: tier.prize.items.map((entry) => ({ item: entry.item, name: entry.item === 'random-ball' ? 'Poké Bola especial' : itemName(entry.item), min: entry.min, max: entry.max, ...(entry.chance === undefined ? {} : { chance: entry.chance }) })),
+        ...(tier.prize.randomItems ? { randomItems: { min: tier.prize.randomItems.min, max: tier.prize.randomItems.max } } : {}),
         essences: tier.prize.essences, minLevel: tier.minLevel, teamSize: [tier.minTeam, tier.maxTeam],
         wins: wins.get(tier.id) ?? 0, ...(tier.doubles ? { doubles: true } : {}),
       })),

@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.2', items: [
+    'Copa Prime (solo e duplas): 10–20 itens por título, entre Poké Bolas, curas, doces e Essências de IV. Master Ball e Pedra Brilhante têm 20% de chance cada e contam no total.',
+    'Removida a busca por Pokémon específico.',
+    'Amuleto Brilhante: o bônus exige todas as espécies da geração capturadas e ativa separadamente por geração, em selvagens e no mercado.',
+  ] },
   { version: '2.0.1', items: [
     'Corrigidas as imagens Mega e o download das formas alternativas, com outras vistas como alternativa quando necessário.',
     'Conferidas as 97 Mega Pedras: todas as formas Mega do catálogo têm sua pedra disponível na loja.',

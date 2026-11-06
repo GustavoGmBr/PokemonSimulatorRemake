@@ -219,8 +219,6 @@ export interface WildBoardView {
   /** mapa (habitat) desta procura */
   habitat: string;
   habitatName: string;
-  /** procura por espécie específica (todos os 10 são ela) */
-  targetSpeciesId: number | null;
   /** faixa de nível escolhida na procura */
   levelRange: [number, number];
 }
@@ -244,8 +242,6 @@ export interface WildRegionOption {
   mapSize: number;
   /** lendários podem aparecer (Elite dos 4 derrotada) */
   legendaries: boolean;
-  /** busca por Pokémon específico liberada (campeão derrotado) */
-  specific: boolean;
   /** pode escolher o mapa (habitat): os 8 ginásios da região vencidos */
   chooseHabitat: boolean;
 }
@@ -268,14 +264,14 @@ export interface WildState {
   money: number;
   /** preço de renovar o mapa sem giros */
   refreshCost: number;
+  /** Posse do amuleto; o bônus depende da geração. */
   shinyCharm: boolean;
+  shinyCharmGenerations: number[];
   catchingCharm: boolean;
 }
 
 export interface SearchWildRequest {
   region: RegionId | 'all';
-  /** busca específica: id da espécie (exige o campeão da região derrotado) */
-  speciesId?: number;
   /** escolher o mapa (exige os 8 ginásios da região) */
   habitat?: string;
   minLevel?: number;
@@ -624,7 +620,8 @@ export interface TournamentTierView {
   cap: number;
   rounds: number;
   prizeMoney: number;
-  prizeItems: { item: string; name: string; min: number; max: number }[];
+  prizeItems: { item: string; name: string; min: number; max: number; chance?: number }[];
+  randomItems?: { min: number; max: number };
   essences: number;
   minLevel: number;
   teamSize: [number, number];

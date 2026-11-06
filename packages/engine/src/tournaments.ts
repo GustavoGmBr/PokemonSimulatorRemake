@@ -2,8 +2,9 @@ import { rewardMoney } from './economy.ts';
 import type { Species } from './types.ts';
 import type { FoeBagItem } from './battle.ts';
 import { evolutionStage, isLegendary } from './wild.ts';
-import { IV_ESSENCES } from './transform.ts';
-import { pick, type Rng } from './rng.ts';
+import { HEAL_EFFECTS, STATUS_CURES } from './items.ts';
+import { EXP_CANDIES, RARE_CANDY, IV_ESSENCES } from './transform.ts';
+import { chance, pick, type Rng } from './rng.ts';
 import { REWARD_BALLS } from './challenges.ts';
 
 /** Torneios por categoria: 8 rodadas eliminatórias, com nível máximo para o seu time e inscrição em Pokédólares. */
@@ -15,7 +16,9 @@ export type TournamentTierId = SinglesTierId | `dupla-${SinglesTierId}`;
 export interface TournamentPrize {
   money: number;
   /** quantidade sorteada entre min e máx; `random-ball` vira uma Poké Bola especial sorteada */
-  items: { item: string; min: number; max: number }[];
+  items: { item: string; min: number; max: number; chance?: number }[];
+  /** Total de unidades sorteadas, incluindo os itens especiais. */
+  randomItems?: { min: number; max: number; pool: readonly string[] };
   /** Essências de IV sorteadas (cada uma de um tipo aleatório) */
   essences: number;
 }
@@ -37,6 +40,16 @@ export interface TournamentTier {
   base?: SinglesTierId;
 }
 
+/** Itens consumíveis da Copa Prime; Master Ball e Pedra Brilhante têm sorteios próprios. */
+export const PRIME_ITEM_POOL: readonly string[] = [...new Set([
+  'poke-ball', 'great-ball', 'ultra-ball', 'premier-ball',
+  'fast-ball', 'timer-ball', 'dusk-ball', 'dive-ball', 'net-ball', 'nest-ball',
+  'repeat-ball', 'heavy-ball', 'moon-ball', 'level-ball', 'love-ball', 'dream-ball',
+  'heal-ball', 'luxury-ball', 'friend-ball', 'sport-ball',
+  ...Object.keys(HEAL_EFFECTS), ...Object.keys(STATUS_CURES),
+  RARE_CANDY, ...Object.keys(EXP_CANDIES), ...Object.keys(IV_ESSENCES),
+])];
+
 /** Valores do jogo antigo (inscrição, prêmio, níveis e tamanho dos times). */
 export const TOURNAMENT_TIERS: readonly TournamentTier[] = [
   { id: 'muito-facil', name: 'Muito Fácil', description: 'Pokémon básicos, nível 2–10.', entry: 150, cap: 10, minLevel: 2, minTeam: 3, maxTeam: 3,
@@ -50,10 +63,12 @@ export const TOURNAMENT_TIERS: readonly TournamentTier[] = [
   { id: 'muito-dificil', name: 'Muito Difícil', description: 'Nível 70–99; lendários liberados.', entry: 10_000, cap: 99, minLevel: 70, minTeam: 6, maxTeam: 6,
     prize: { money: rewardMoney(8_000), essences: 3, items: [{ item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 3, max: 4 }, { item: 'rare-candy', min: 2, max: 3 }] } },
   { id: 'copa-prime', name: 'Copa Prime', description: 'Nível 100 e sem limites: a elite da elite.', entry: 25_000, cap: 100, minLevel: 100, minTeam: 6, maxTeam: 6,
-    prize: { money: rewardMoney(20_000), essences: 3, items: [{ item: 'master-ball', min: 0, max: 1 }, { item: 'ultra-ball', min: 4, max: 4 }, { item: 'exp-candy-gg', min: 4, max: 4 }, { item: 'rare-candy', min: 3, max: 4 }] } },
+    prize: { money: rewardMoney(20_000), essences: 0,
+      randomItems: { min: 10, max: 20, pool: PRIME_ITEM_POOL },
+      items: [{ item: 'master-ball', min: 1, max: 1, chance: 20 }, { item: 'shiny-stone', min: 1, max: 1, chance: 20 }] } },
 ];
 
-/** Copas em duplas: inscrição 2,5× maior; dinheiro 3×, itens 1,5× e uma Essência a mais. */
+/** Duplas: inscrição 2,5× e dinheiro 3×. Copa Prime mantém 10–20 itens; demais copas dão itens 1,5× e +1 Essência. */
 export const DOUBLES_TOURNAMENT_TIERS: readonly TournamentTier[] = TOURNAMENT_TIERS.map((tier) => ({
   ...tier,
   id: `dupla-${tier.id}` as TournamentTierId,
@@ -62,7 +77,7 @@ export const DOUBLES_TOURNAMENT_TIERS: readonly TournamentTier[] = TOURNAMENT_TI
   name: `Duplas · ${tier.name}`,
   description: `Em duplas (2×2). ${tier.description}`,
   entry: Math.round((tier.entry * 2.5) / 5) * 5,
-  prize: {
+  prize: tier.prize.randomItems ? { ...tier.prize, money: tier.prize.money * 3 } : {
     money: tier.prize.money * 3,
     essences: tier.prize.essences + 1,
     items: tier.prize.items.map((line) => ({ item: line.item, min: Math.ceil(line.min * 1.5), max: Math.ceil(line.max * 1.5) })),
@@ -128,17 +143,24 @@ export function resolvePrizeItem(item: string, rng: Rng): string {
   return item;
 }
 
-/** Sorteia os itens do prêmio: quantidades dentro da faixa de cada linha e as Essências. */
+/** Sorteia o prêmio; na Copa Prime o total de 10–20 inclui os dois bônus independentes. */
 export function rollPrizeItems(tier: TournamentTier, rng: Rng): { item: string; quantity: number }[] {
   const out: { item: string; quantity: number }[] = [];
   const add = (item: string, quantity: number) => {
     const found = out.find((entry) => entry.item === item);
     if (found) found.quantity += quantity; else out.push({ item, quantity });
   };
+  const random = tier.prize.randomItems;
+  const total = random ? random.min + rng.int(random.max - random.min + 1) : 0;
   for (const line of tier.prize.items) {
+    if (line.chance !== undefined && !chance(rng, line.chance)) continue;
     const quantity = line.min + rng.int(line.max - line.min + 1);
     if (quantity > 0) add(resolvePrizeItem(line.item, rng), quantity);
   }
   for (let i = 0; i < tier.prize.essences; i++) add(resolvePrizeItem('random-essence', rng), 1);
+  if (random) {
+    const bonuses = out.reduce((sum, entry) => sum + entry.quantity, 0);
+    for (let i = bonuses; i < total; i++) add(pick(rng, random.pool), 1);
+  }
   return out;
 }
