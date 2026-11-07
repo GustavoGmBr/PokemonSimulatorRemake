@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { STAT_KEYS, STAT_LABELS, isTrainingItem, type InventoryEntry, type MoveOptions, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
+import { STAT_KEYS, STAT_LABELS, isPokemonUseItem, SHINY_STONE, type InventoryEntry, type MoveOptions, type PokemonView, type SpeciesIndexEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { HpBar, Sprite, Stars, TypeBadge, XpBar } from './bits.tsx';
 import { Menu, type MenuItem } from './Menu.tsx';
@@ -56,7 +56,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
 
   const openItems = () => run(async () => {
     if (!saveId) return;
-    setStock((await api.getSave(saveId)).inventory.filter((entry) => isTrainingItem(entry.item) && entry.quantity > 0));
+    setStock((await api.getSave(saveId)).inventory.filter((entry) => isPokemonUseItem(entry.item) && entry.quantity > 0));
     setPanel('items');
     playSound('confirm');
   });
@@ -83,7 +83,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
     { id: '__back', label: 'Cancelar' },
   ];
   const itemItems: MenuItem[] = [
-    ...stock.map((entry): MenuItem => ({ id: entry.item, label: entry.displayName, extra: `×${entry.quantity}` })),
+    ...stock.map((entry): MenuItem => ({ id: entry.item, label: entry.displayName, extra: entry.item === SHINY_STONE && mon.shiny ? `×${entry.quantity} · já shiny` : `×${entry.quantity}`, disabled: entry.item === SHINY_STONE && mon.shiny })),
     { id: '__back', label: 'Voltar' },
   ];
   const confirmForm = typeof panel === 'object' && panel && 'confirmForm' in panel ? mon.forms.find((f) => f.name === panel.confirmForm) : undefined;
@@ -182,7 +182,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {canEvolve ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('evolve')}>Evoluir (E)</button> : null}
                   {canTransform ? <button type="button" className="gb-button gb-button--red" onClick={() => setPanel('forms')}>Transformar (T)</button> : null}
-                  <button type="button" className="gb-button" disabled={busy} onClick={() => void openItems()}>Doces e Essências</button>
+                  <button type="button" className="gb-button" disabled={busy} onClick={() => void openItems()}>Doces, IVs e Shiny</button>
                   {canLearn ? <button type="button" className="gb-button gb-button--blue" onClick={() => setPanel('learn')}>Novos golpes ({mon.pendingMoves.length}) (G)</button> : null}
                   <button type="button" className="gb-button" disabled={busy} onClick={() => void openSlots()}>Trocar golpes (F)</button>
                   {mon.moves.length > 1 ? <button type="button" className="gb-button" disabled={busy} onClick={() => { setPanel('order'); playSound('confirm'); }}>Ordenar golpes</button> : null}
@@ -227,8 +227,8 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
               ) : null}
               {panel === 'items' && saveId ? (
                 <>
-                  <p style={{ margin: '0 0 6px' }}>{stock.length === 0 ? 'Você não tem Doces nem Essências de IV.' : `Use em ${mon.name}. Essência: +1 IV (máx. 31). Doce: XP ou nível.`}</p>
-                  <Menu label="Doces e Essências" items={itemItems} active={!busy} onBack={() => setPanel(null)}
+                  <p style={{ margin: '0 0 6px' }}>{stock.length === 0 ? 'Você não tem Doces, Essências de IV nem Pedra Brilhante.' : `Use em ${mon.name}. Essência: +1 IV (máx. 31). Doce: XP ou nível. Pedra Brilhante: transforma em shiny.`}</p>
+                  <Menu label="Doces, IVs e Shiny" items={itemItems} active={!busy} onBack={() => setPanel(null)}
                     onSelect={(id) => {
                       if (id === '__back') { setPanel(null); return; }
                       void run(async () => {
@@ -236,7 +236,7 @@ export function PokemonSummary({ mon: initial, onBack, saveId, onChanged }: { mo
                         playSound('levelup');
                         setMon(result.pokemon); onChanged?.(result.pokemon);
                         setNote(result.message ?? `${mon.name} usou o item.`);
-                        setStock((await api.getSave(saveId)).inventory.filter((entry) => isTrainingItem(entry.item) && entry.quantity > 0));
+                        setStock((await api.getSave(saveId)).inventory.filter((entry) => isPokemonUseItem(entry.item) && entry.quantity > 0));
                       });
                     }}
                   />

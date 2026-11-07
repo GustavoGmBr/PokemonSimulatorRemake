@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
-import type { PokemonView, SaveDetail, TeamView, UseItemResult } from '@pokesim/engine';
+import type { PokemonView, SaveDetail, TeamView, UseItemResult, WildState } from '@pokesim/engine';
 import { openDatabase } from './db.ts';
 import { createApp } from './app.ts';
 
@@ -33,6 +33,58 @@ const give = (saveId: string, item: string, qty = 1) => db.prepare('INSERT INTO 
 const qty = (saveId: string, item: string) => (db.prepare('SELECT quantity FROM inventory WHERE save_id = ? AND item = ?').get(saveId, item) as { quantity: number } | undefined)?.quantity ?? 0;
 const species = (id: string, speciesId: number, level = 30) => db.prepare('UPDATE pokemon SET species_id = ?, level = ?, exp = ?, form = NULL WHERE id = ?').run(speciesId, level, level ** 3, id);
 const view = async (url: string, id: string) => (await call<PokemonView[]>('GET', `${url}/pokemon?limit=100`).then(async () => (await call<{ items: PokemonView[] }>('GET', `${url}/pokemon?limit=100`)).json.items.find((m) => m.id === id) as PokemonView));
+
+test('Pedra Brilhante transforma em shiny e consome uma unidade; repetir não gasta', async () => {
+  const { save, url, mon } = await setup();
+  give(save.id, 'shiny-stone', 2);
+  const used = await call<UseItemResult>('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: mon.id });
+  assert.equal(used.status, 201);
+  assert.equal(used.json.pokemon.shiny, true);
+  assert.equal(used.json.pokemon.speciesId, mon.speciesId);
+  assert.deepEqual(used.json.pokemon.ivs, mon.ivs);
+  assert.deepEqual(used.json.pokemon.moves, mon.moves);
+  assert.ok(used.json.pokemon.stats.hp > mon.stats.hp);
+  assert.equal(used.json.pokemon.currentHp, used.json.pokemon.stats.hp);
+  assert.equal(used.json.remaining, 1);
+  assert.match(used.json.message!, /agora é shiny/);
+  assert.equal((await view(url, mon.id)).shiny, true, 'mudança persiste no save');
+  const again = await call<{ error: string }>('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: mon.id });
+  assert.equal(again.status, 400);
+  assert.match(again.json.error, /já é shiny/);
+  assert.equal(qty(save.id, 'shiny-stone'), 1);
+});
+
+test('Pedra Brilhante valida posse e dono; funciona no PC e preserva forma e desmaio', async () => {
+  const { save, url, mon } = await setup();
+  assert.equal((await call('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: mon.id })).status, 400);
+  assert.equal((await view(url, mon.id)).shiny, false);
+  give(save.id, 'shiny-stone');
+  const other = await setup();
+  assert.equal((await call('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: other.mon.id })).status, 404);
+  assert.equal(qty(save.id, 'shiny-stone'), 1);
+  const boxed = addMon(save.id, 6, 60);
+  db.prepare("UPDATE pokemon SET form = 'charizard-mega-x', current_hp = 0 WHERE id = ?").run(boxed);
+  const used = await call<UseItemResult>('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: boxed });
+  assert.equal(used.status, 201);
+  assert.equal(used.json.pokemon.shiny, true);
+  assert.equal(used.json.pokemon.form, 'charizard-mega-x');
+  assert.equal(used.json.pokemon.location.kind, 'box');
+  assert.equal(used.json.pokemon.currentHp, 0);
+  assert.equal(qty(save.id, 'shiny-stone'), 0);
+});
+
+test('Pedra Brilhante não pode alterar o Pokémon durante uma batalha', async () => {
+  const { save, url, mon } = await setup();
+  give(save.id, 'shiny-stone');
+  const wild = await call<WildState>('POST', `${url}/wild/search`, { region: 'kanto' });
+  await call('POST', `${url}/wild/choose`, { slot: wild.json.board!.slots[0]!.slot });
+  assert.equal((await call('POST', `${url}/battle/start`)).status, 201);
+  const result = await call<{ error: string }>('POST', `${url}/items/use`, { item: 'shiny-stone', pokemonId: mon.id });
+  assert.equal(result.status, 400);
+  assert.match(result.json.error, /Termine a batalha/);
+  assert.equal(qty(save.id, 'shiny-stone'), 1);
+  assert.equal((await view(url, mon.id)).shiny, false);
+});
 function addMon(saveId: string, speciesId: number, level = 20): string {
   const id = randomUUID();
   const used = (db.prepare('SELECT COUNT(*) AS n FROM pokemon WHERE save_id = ? AND box = 5').get(saveId) as { n: number }).n;

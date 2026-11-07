@@ -185,7 +185,7 @@ const extraItems: Item[] = [
 const known = new Set(legacyItems.map((item) => item.name));
 const items: Item[] = [
   ...legacyItems.map((item) => ({ ...item, price: PRICE_OVERRIDES[item.name] ?? item.price,
-    description: item.name === 'shiny-charm' ? 'Aumenta as rolagens shiny somente nas gerações cuja Pokédex foi totalmente capturada. Cada geração é ativada separadamente; exige o amuleto na mochila.' : item.description,
+    description: item.name === 'shiny-stone' ? 'Transforma permanentemente o Pokémon escolhido em shiny. Consumida apenas na transformação; não gasta em Pokémon já shiny. Também permite evoluções compatíveis pelo perfil.' : item.name === 'shiny-charm' ? 'Aumenta as rolagens shiny somente nas gerações cuja Pokédex foi totalmente capturada. Cada geração é ativada separadamente; exige o amuleto na mochila.' : item.description,
   })),
   ...extraItems.filter((item) => !known.has(item.name)),
 ];

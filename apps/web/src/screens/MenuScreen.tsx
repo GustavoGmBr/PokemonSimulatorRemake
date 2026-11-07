@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HEAL_EFFECTS, isTrainingItem, type HistoryState, type PokemonView, type SaveDetail } from '@pokesim/engine';
+import { HEAL_EFFECTS, isPokemonUseItem, SHINY_STONE, type HistoryState, type PokemonView, type SaveDetail } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu, type MenuItem } from '../ui/Menu.tsx';
 import { DialogBox } from '../ui/DialogBox.tsx';
@@ -346,7 +346,7 @@ function TeamPanel({ team, inventory, paused, onHeal, onUseAll, active, onOpen, 
 }
 
 const ALL_TEAM = '__team__';
-const usable = (item: string): boolean => item in HEAL_EFFECTS || isTrainingItem(item);
+const usable = (item: string): boolean => item in HEAL_EFFECTS || isPokemonUseItem(item);
 
 const BAG_SECTIONS: { id: string; label: string; categories: string[] }[] = [
   { id: 'cura', label: 'Cura', categories: ['cura'] },
@@ -441,11 +441,12 @@ function BagPanel({ save, paused, onBack, onUse, onUseAll }: {
           active={!paused}
           onBack={() => setPicking(null)}
           items={[
-            ...(save.team.length > 1 ? [{ id: ALL_TEAM, label: '★ Toda a equipe', extra: `${save.team.length} POKÉMON` } as MenuItem] : []),
+            ...(save.team.length > 1 && picking !== SHINY_STONE ? [{ id: ALL_TEAM, label: '★ Toda a equipe', extra: `${save.team.length} POKÉMON` } as MenuItem] : []),
             ...save.team.map((mon): MenuItem => ({
               id: mon.id,
               label: `${mon.name} Nv${mon.level}`,
-              extra: mon.currentHp === 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`,
+              extra: picking === SHINY_STONE && mon.shiny ? 'já shiny' : mon.currentHp === 0 ? 'desmaiado' : `${mon.currentHp}/${mon.stats.hp}`,
+              disabled: picking === SHINY_STONE && mon.shiny,
             })),
           ]}
           onSelect={(id) => {
@@ -456,7 +457,7 @@ function BagPanel({ save, paused, onBack, onUse, onUseAll }: {
           }}
         />
       ) : null}
-      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>←/→ trocam a seção. Itens esmaecidos são usados em outros lugares (bolas na captura; pedras, Mega e G-Max no perfil do POKÉMON).</p> : null}
+      {!picking ? <p className="gb-hint" style={{ marginBottom: 0 }}>←/→ trocam a seção. Itens esmaecidos são usados em outros lugares (bolas na captura; pedras de evolução, Mega e G-Max no perfil). A Pedra Brilhante pode ser usada aqui para transformar um Pokémon em shiny.</p> : null}
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import {
-  EXP_CANDIES, IV_ESSENCES, IV_STAT_LABEL, RARE_CANDY, type Stats, MAX_STACK, PREMIER_BALL, PREMIER_EVERY, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
+  EXP_CANDIES, IV_ESSENCES, IV_STAT_LABEL, RARE_CANDY, SHINY_STONE, type Stats, MAX_STACK, PREMIER_BALL, PREMIER_EVERY, REGIONS, SHOP_CATEGORIES, UNIQUE_ITEMS, applyHealItem, championId, eliteId, gymId,
   type BuyResult, type DevKitResult, type DevProgressResult, type ShopEntry, type UseItemResult,
 } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
@@ -71,6 +71,10 @@ export function createItemService(db: Db, store: PokemonStore, inventory: Invent
       const itemName = typeof input.item === 'string' ? input.item : '';
       const pokemonId = typeof input.pokemonId === 'string' ? input.pokemonId : '';
       if (!data.itemsByName.has(itemName)) throw badRequest('Item desconhecido.');
+      if (itemName === SHINY_STONE) {
+        const pokemon = store.useShinyStone(saveId, pokemonId);
+        return { pokemon, healed: 0, remaining: inventory.quantity(saveId, itemName), message: `${pokemon.name} agora é shiny!` };
+      }
       if (itemName in IV_ESSENCES || itemName === RARE_CANDY || itemName in EXP_CANDIES) {
         if (inventory.quantity(saveId, itemName) < 1) throw badRequest('Você não tem esse item.');
         if (itemName in IV_ESSENCES) {

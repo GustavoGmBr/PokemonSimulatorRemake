@@ -1,4 +1,8 @@
-## Pokémon Simulator (remake) 2.0.2
+## Pokémon Simulator (remake) 2.0.3
+
+- Pedra Brilhante: pode ser usada na Mochila ou no perfil (Doces, IVs e Shiny) para transformar um Pokémon em shiny. Consome uma unidade apenas ao transformar; Pokémon já shiny não gastam o item. Funciona também no PC, preservando IVs, golpes e formas.
+
+## Anteriores: 2.0.2
 
 - Removida a busca por Pokémon específico. Amuleto Brilhante: exige a Pokédex totalmente capturada da geração (incluindo lendários e míticos); o bônus é ativado separadamente por geração, em selvagens e no mercado.
 

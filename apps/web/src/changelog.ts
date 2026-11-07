@@ -2,6 +2,10 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.0.3', items: [
+    'Pedra Brilhante: use pela Mochila ou em Doces, IVs e Shiny no perfil para transformar o Pokémon escolhido em shiny, inclusive no PC.',
+    'A pedra é consumida apenas ao transformar. Pokémon já shiny não gastam o item; IVs, golpes e formas são preservados.',
+  ] },
   { version: '2.0.2', items: [
     'Copa Prime (solo e duplas): 10–20 itens por título, entre Poké Bolas, curas, doces e Essências de IV. Master Ball e Pedra Brilhante têm 20% de chance cada e contam no total.',
     'Removida a busca por Pokémon específico.',

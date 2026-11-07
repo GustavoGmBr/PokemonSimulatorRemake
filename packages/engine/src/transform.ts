@@ -18,6 +18,8 @@ export const EXP_CANDIES: Readonly<Record<string, number>> = {
   'exp-candy-gg': 30000,
 };
 export const RARE_CANDY = 'rare-candy';
+/** Transforma permanentemente um Pokémon comum em shiny. */
+export const SHINY_STONE = 'shiny-stone';
 
 /** Essências de IV: +1 no atributo correspondente (máx. 31). */
 export const IV_ESSENCES: Readonly<Record<string, keyof Stats>> = {
@@ -30,6 +32,7 @@ export const IV_ESSENCES: Readonly<Record<string, keyof Stats>> = {
 };
 
 export const isTrainingItem = (item: string): boolean => item === RARE_CANDY || item in EXP_CANDIES || item in IV_ESSENCES;
+export const isPokemonUseItem = (item: string): boolean => isTrainingItem(item) || item === SHINY_STONE;
 
 export interface TransformChoice {
   name: string;

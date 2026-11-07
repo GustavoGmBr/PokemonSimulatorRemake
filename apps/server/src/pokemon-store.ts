@@ -1,4 +1,4 @@
-import { itemPrice } from '@pokesim/engine';
+import { itemPrice, SHINY_STONE } from '@pokesim/engine';
 import { randomUUID } from 'node:crypto';
 import {
   BOX_SIZE, MAX_BOX_INDEX, availableEvolutions, toMoveSlot, MAX_NICKNAME, TEAM_SIZE, TYPE_NAMES,
@@ -432,6 +432,22 @@ export function createPokemonStore(db: Db) {
         if (choice.item) this.invest(row.id, choice.item);
       });
       return rowToView(getRow(saveId, pokemonId));
+    },
+
+    /** Pedra Brilhante: torna shiny, atualiza os atributos e preserva forma, IVs e condição de desmaiado. */
+    useShinyStone(saveId: string, pokemonId: string): PokemonView {
+      const row = getRow(saveId, pokemonId);
+      if (row.shiny) throw badRequest('Esse Pokémon já é shiny; a Pedra Brilhante não foi gasta.');
+      if (db.prepare('SELECT 1 FROM battles WHERE save_id = ?').get(saveId)) throw badRequest('Termine a batalha antes de usar a Pedra Brilhante.');
+      return transaction(db, () => {
+        if (!inventory.take(saveId, SHINY_STONE)) throw badRequest('Você não tem Pedra Brilhante.');
+        const before = rowToView(row).stats.hp;
+        const after = rowToView({ ...row, shiny: 1 }).stats.hp;
+        const hp = row.current_hp > 0 ? Math.min(after, row.current_hp + Math.max(0, after - before)) : 0;
+        db.prepare('UPDATE pokemon SET shiny = 1, current_hp = ? WHERE id = ?').run(hp, row.id);
+        this.invest(row.id, SHINY_STONE);
+        return rowToView(getRow(saveId, pokemonId));
+      });
     },
 
     /** Essência de IV (+1, máx. 31). Se o IV já está no máximo, falha sem gastar o item. */

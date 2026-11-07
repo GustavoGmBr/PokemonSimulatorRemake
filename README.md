@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.2**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.0.3**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
 ## Jogar no Windows (sem instalar nada)
 
@@ -149,6 +149,9 @@ packages/
      sprite mudam.
    - ✅ **Essências de IV** (+1 no atributo, máx. 31; não gasta se já está no máximo) e **Doces** (Doce Raro +1 nível;
      EXP P/M/G/GG = 800 / 3.000 / 10.000 / 30.000 XP), pela Mochila ou por "Doces e Essências" no perfil.
+   - **Pedra Brilhante:** use pela **Mochila → Evolução → Pedra Brilhante** e escolha um Pokémon da equipe,
+     ou abra o perfil de um Pokémon da equipe/PC em **Doces, IVs e Shiny**. Transforma em shiny e consome
+     uma pedra; se já for shiny, não gasta o item.
    - ✅ **Equipes nomeadas:** menu **Equipes** guarda até 20 equipes de 6; montar troca equipe e PC sozinho.
    - ✅ **Pokécassino (alpha.10):** fichas a ₽ 5, sete jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
      Wheel of Fortune e Pula Piplup) e loja de prêmios (Master Bola, Pedra Brilhante, Doces, Essências). Dá para apostar
