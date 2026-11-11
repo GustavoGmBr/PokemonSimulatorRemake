@@ -91,6 +91,7 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
   const [over, setOver] = useState<string | null>(null);
   // seleção de vários (para vender, favoritar…)
   const [selecting, setSelecting] = useState(false);
+  const [destination, setDestination] = useState('');
   const [selected, setSelected] = useState<Map<string, PokemonView>>(new Map());
   const lastPicked = useRef<number | null>(null);
 
@@ -229,7 +230,7 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
   };
   const selectBox = () => setSelected((now) => {
     const next = new Map(now);
-    for (const mon of boxSlots) if (mon && !mon.favorite) next.set(mon.id, mon);
+    for (const mon of boxSlots) if (mon) next.set(mon.id, mon);
     return next;
   });
   const clearSelection = () => { setSelected(new Map()); lastPicked.current = null; };
@@ -256,6 +257,32 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
     setMessage(`${mons.length} Pokémon ${value ? 'favoritados' : 'sem favorito'}.`);
     clearSelection();
     await refreshAll();
+  });
+
+  const moveSelected = () => guarded(async () => {
+    const target = Number(destination);
+    if (!destination.trim() || !Number.isInteger(target) || target < 1 || target > MAX_BOX_INDEX + 1) {
+      setMessage('Informe o número da caixa de destino.');
+      return;
+    }
+    await api.moveToBox(saveId, [...selected.keys()], target - 1);
+    clearSelection();
+    setDestination('');
+    setZone('box');
+    setCursor(0);
+    setMessage(`Seleção enviada para a Caixa ${target}.`);
+    if (boxNo === target - 1) await reload();
+    else setBoxNo(target - 1);
+  });
+
+  const organizeBoxes = (order: 'dex' | 'name') => guarded(async () => {
+    await api.organizeBoxes(saveId, order);
+    clearSelection();
+    setZone('box');
+    setCursor(0);
+    setMessage(order === 'dex' ? 'Caixas organizadas por número da Pokédex.' : 'Caixas organizadas por nome da espécie.');
+    if (boxNo === 0) await reload();
+    else setBoxNo(0);
   });
 
   const goToBox = (next: number) => {
@@ -423,6 +450,14 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
           </span>
         </header>
 
+        {mode === 'main' ? (
+          <section className="gb-window gb-row" aria-label="Organizar todas as caixas" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <span className="gb-label">Organizar todas as caixas</span>
+            <button type="button" className="gb-button" disabled={busy || Boolean(carrying)} onClick={() => void organizeBoxes('dex')}>Nº Dex</button>
+            <button type="button" className="gb-button" disabled={busy || Boolean(carrying)} onClick={() => void organizeBoxes('name')}>A–Z</button>
+          </section>
+        ) : null}
+
         {mode === 'main' && (selecting || selected.size > 0) ? (
           <section className="gb-window gb-window--accent gb-selbar" aria-label="Seleção de Pokémon">
             <span className="gb-label">{selected.size} selecionado{selected.size === 1 ? '' : 's'}</span>
@@ -431,6 +466,8 @@ export function PcScreen({ saveId, onBack, onOpenSell }: Props) {
             <button type="button" className="gb-button" disabled={busy || selected.size === 0} onClick={() => void favoriteSelected(false)}>Tirar favorito</button>
             <button type="button" className="gb-button gb-button--red" disabled={busy || selected.size === 0} onClick={() => void sellSelected()}>Vender selecionados</button>
             <button type="button" className="gb-button" disabled={selected.size === 0} onClick={clearSelection}>Limpar</button>
+            <label>Caixa de destino <input className="gb-input" type="number" min={1} max={MAX_BOX_INDEX + 1} value={destination} onChange={(event) => setDestination(event.target.value)} style={{ width: 90 }} /></label>
+            <button type="button" className="gb-button" disabled={busy || !destination || selected.size === 0 || selected.size > BOX_SIZE} onClick={() => void moveSelected()}>Mover selecionados</button>
             <span className="gb-muted gb-selbar__hint">Clique para marcar · Shift marca um intervalo · Ctrl marca sem entrar no modo.</span>
           </section>
         ) : null}

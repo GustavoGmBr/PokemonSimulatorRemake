@@ -159,6 +159,36 @@ test('mover entre equipe e PC: depositar, sacar e trocar', async () => {
   assert.equal((await call('POST', `/api/saves/${save.id}/pokemon/nao-existe/move`, { to: { kind: 'box', box: 0, slot: 0 } })).status, 404);
 });
 
+test('PC organiza todas as caixas e move a seleção inteira em uma única operação', async () => {
+  const save = await newSave();
+  const url = `/api/saves/${save.id}`;
+  try {
+    await grant(save.id, 40);
+    const team = (await call<SaveDetail>('GET', url)).json.team.map((mon) => mon.id);
+    const readBox = async (index: number) => (await call<BoxView>('GET', `${url}/box/${index}`)).json.slots.filter((mon): mon is PokemonView => mon !== null);
+    const original = [...await readBox(0), ...await readBox(1)];
+    const selected = [original[0]!.id, original[30]!.id];
+    assert.equal((await call('POST', `${url}/pc/move`, { ids: [original[30]!.id], box: 0 })).status, 400);
+    assert.equal((await readBox(1))[0]?.id, original[30]!.id);
+    assert.equal((await call('POST', `${url}/pc/move`, { ids: team, box: 9 })).status, 400);
+    assert.equal((await call('POST', `${url}/pc/move`, { ids: selected, box: 9 })).status, 204);
+    assert.deepEqual((await readBox(9)).map((mon) => mon.id), selected);
+
+    assert.equal((await call('POST', `${url}/pc/organize`, { order: 'dex' })).status, 204);
+    const dex = [...await readBox(0), ...await readBox(1)];
+    assert.deepEqual(dex.map((mon) => mon.speciesId), original.map((mon) => mon.speciesId).sort((a, b) => a - b));
+    assert.equal((await readBox(9)).length, 0);
+
+    assert.equal((await call('POST', `${url}/pc/organize`, { order: 'name' })).status, 204);
+    const names = [...await readBox(0), ...await readBox(1)];
+    assert.deepEqual(names.map((mon) => mon.id).sort(), original.map((mon) => mon.id).sort());
+    assert.deepEqual(names.map((mon) => mon.speciesName), names.map((mon) => mon.speciesName).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })));
+    assert.deepEqual((await call<SaveDetail>('GET', url)).json.team.map((mon) => mon.id), team);
+  } finally {
+    await call('DELETE', url);
+  }
+});
+
 test('não deixa depositar o último Pokémon da equipe', async () => {
   const save = await newSave();
   const only = save.team[0] as PokemonView;
@@ -312,11 +342,9 @@ test('procurar: mapa com 3 selvagens, 3 giros e nada sem procura', async () => {
   const noMore = await call<{ error: string }>('POST', `/api/saves/${save.id}/wild/spin`);
   assert.equal(noMore.status, 400);
   assert.match(noMore.json.error, /giros/);
-  // sem giros: pagar ₽ 1.000 renova o mapa
-  const poor = await call<{ error: string }>('POST', `/api/saves/${save.id}/wild/spin`, { pay: true });
-  assert.equal(poor.status, 201);
-  assert.equal((poor.json as unknown as WildState).money, 2000);
-  assert.equal((poor.json as unknown as WildState).board?.spinsLeft, 0);
+  const paid = await call('POST', `/api/saves/${save.id}/wild/spin`, { pay: true });
+  assert.equal(paid.status, 400);
+  assert.equal((await call<WildState>('GET', `/api/saves/${save.id}/wild`)).json.money, 3000);
   // buscar de novo renova os giros
   assert.equal(((await call<WildState>('POST', `/api/saves/${save.id}/wild/search`, KANTO)).json.board?.spinsLeft), 3);
 });

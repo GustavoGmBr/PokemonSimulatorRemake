@@ -27,7 +27,7 @@ export function TournamentScreen({ saveId, onBack }: Props) {
   const load = () => api.tournaments(saveId).then(setState, (e: Error) => setError(e.message));
   useEffect(() => {
     void load();
-    api.battle(saveId).then((running) => { if (running) setBattle({ events: [], view: running }); }, () => undefined);
+    api.battle(saveId).then((running) => { if (running && !running.boss) setBattle({ events: [], view: running }); }, () => undefined);
     api.battle2(saveId).then((running) => { if (running) setBattle({ doubles: true, events: [], view: running }); }, () => undefined);
   }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 

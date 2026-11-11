@@ -60,7 +60,7 @@ export function WildScreen({ saveId, onBack }: Props) {
     alive.current = true;
     Promise.all([api.wild(saveId), api.battle(saveId)]).then(([next, running]) => {
       setState(next);
-      if (running) setBattle({ start: { events: [], view: running }, habitat: next.board?.habitat ?? 'forest' });
+      if (running && !running.boss) setBattle({ start: { events: [], view: running }, habitat: next.board?.habitat ?? 'forest' });
       else if (next.board) setMessage('Você voltou ao mapa da última procura.');
     }, (e: Error) => setError(e.message));
     void loadTeam();
@@ -131,10 +131,10 @@ export function WildScreen({ saveId, onBack }: Props) {
   });
   const spin = () => run(async () => {
     if (!board) return;
-    const pay = board.spinsLeft === 0;
-    const next = await api.wildSpin(saveId, pay);
+    if (board.spinsLeft === 0) return;
+    const next = await api.wildSpin(saveId);
     setState(next);
-    setMessage(pay ? `Mapa renovado por ${yen(next.refreshCost)}.` : `Giro! Restam ${next.board?.spinsLeft ?? 0}.`);
+    setMessage(`Giro! Restam ${next.board?.spinsLeft ?? 0}.`);
   });
   const leave = () => run(async () => {
     const next = await api.wildLeave(saveId);
@@ -170,7 +170,7 @@ export function WildScreen({ saveId, onBack }: Props) {
         }
         if (autoStop.current) { finish = 'Auto-batalha interrompida.'; break; }
         if ((next.board?.spinsLeft ?? 0) === 0) { finish = 'Auto-batalha concluída: os giros acabaram.'; break; }
-        setState(await api.wildSpin(saveId, false));
+        setState(await api.wildSpin(saveId));
       }
     } catch (e) {
       finish = (e as Error).message;
@@ -363,11 +363,6 @@ export function WildScreen({ saveId, onBack }: Props) {
                   Buscar um novo mapa
                 </button>
               )}
-              {board.spinsLeft === 0 ? (
-                <button type="button" className="gb-button gb-button--red" disabled={busy || state.money < state.refreshCost} onClick={() => void spin()}>
-                  Renovar mapa — {yen(state.refreshCost)} (Q)
-                </button>
-              ) : null}
             </div>
             {!auto ? (
               <div className="gb-autopick" role="group" aria-label="Pokémon da auto-batalha">

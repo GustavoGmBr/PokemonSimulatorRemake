@@ -24,3 +24,4 @@ export * from './ngplus.ts';
 export * from './battle2.ts';
 
 export * from './economy.ts';
+export * from './boss.ts';

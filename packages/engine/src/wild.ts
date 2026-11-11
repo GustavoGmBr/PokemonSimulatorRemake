@@ -5,7 +5,6 @@ export const BOARD_MIN_SIZE = 3;
 export const BOARD_MAX_SIZE = 15;
 export const BOARD_SPINS = 3;
 /** Preço para renovar o mapa quando os giros acabam. */
-export const REFRESH_COST = 1000;
 export const MIN_WILD_LEVEL = 1;
 export const MAX_WILD_LEVEL = 100;
 export const GYMS_PER_REGION = 8;

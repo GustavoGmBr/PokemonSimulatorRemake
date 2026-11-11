@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.0.3**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.1.0**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
 ## Jogar no Windows (sem instalar nada)
 
@@ -93,7 +93,7 @@ packages/
    - ✅ Selvagens e captura: busca por região (só Kanto no início; as outras abrem ao derrotar o campeão
      da anterior). Cada procura sorteia um mapa pixel GBA (8 habitats por tipo) com Pokémon soltos,
      brilhantes visíveis e "Nome · Nv · ★" em cima de cada um. Giros para trocar os 10: 3, e 5 / 8 / 12
-     após ginásio / Elite dos 4 / campeão da região; sem giros, renovar custa ₽ 1.000. Lendários só
+     após ginásio / Elite dos 4 / campeão da região; sem giros, busque um novo mapa. Lendários só
      depois da Elite dos 4 da região. Não há busca por espécie específica. Brilhante 1/4096;
      o Amuleto Brilhante dá +2 sorteios somente para espécies de gerações com a Pokédex totalmente capturada
      (incluindo lendários e míticos), e cada geração é ativada separadamente. Vale em mapas mistos e no mercado. Fórmula de captura por HP e
@@ -153,7 +153,7 @@ packages/
      ou abra o perfil de um Pokémon da equipe/PC em **Doces, IVs e Shiny**. Transforma em shiny e consome
      uma pedra; se já for shiny, não gasta o item.
    - ✅ **Equipes nomeadas:** menu **Equipes** guarda até 20 equipes de 6; montar troca equipe e PC sozinho.
-   - ✅ **Pokécassino (alpha.10):** fichas a ₽ 5, sete jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
+   - ✅ **Pokécassino (alpha.10):** fichas obtidas em missões, sete jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
      Wheel of Fortune e Pula Piplup) e loja de prêmios (Master Bola, Pedra Brilhante, Doces, Essências). Dá para apostar
      um **Pokémon** em vez de fichas: se ganhar, recebe o prêmio em ₽ e o mesmo valor em fichas; se perder, ele vai embora
      (favoritos e o seu último Pokémon ficam protegidos). Rodadas de Voltorb Flip, Pokejack e Pula Piplup ficam salvas.
@@ -209,6 +209,12 @@ Ferramentas de teste (só na alpha): atalho T no PC, entradas **[TESTE] Kit** (l
 
 Observação: ★★★★ exige todos os IVs perfeitos, o que o sorteio aleatório quase nunca produz; por isso o
 alerta de destaque no mapa vale a partir de ★★★.
+
+## Chefes
+
+O menu Chefes sorteia seis adversários a cada 10 minutos. As dificuldades de 1 a 6 estrelas são sorteadas individualmente e podem se repetir. Cada chefe pode ser enfrentado uma vez por rotação, com prazo de 10 minutos por luta. Todos os Pokémon da equipe precisam estar no nível do chefe ou acima. A equipe se recupera se todos desmaiarem e perde um minuto do prazo. A vitória rende itens da copa equivalente, dinheiro conforme o nível, tempo restante e derrotas da equipe, e uma tentativa de captura com a Poké Bola escolhida.
+
+O Shiny Charm soma 2 pontos percentuais à chance de shiny de um chefe quando a Pokédex da geração dele está completa.
 
 ## Pendências conhecidas
 

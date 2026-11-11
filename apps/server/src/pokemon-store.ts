@@ -609,6 +609,40 @@ export function createPokemonStore(db: Db) {
     },
 
     /** Move para a equipe ou para uma caixa. Se o destino está ocupado, os dois trocam de lugar. */
+    organizeBoxes(saveId: string, order: unknown): void {
+      if (order !== 'dex' && order !== 'name') throw badRequest('Escolha ordem por Pokédex ou nome.');
+      if (!db.prepare('SELECT 1 FROM saves WHERE id = ?').get(saveId)) throw notFound('Save não encontrado.');
+      transaction(db, () => {
+        const rows = db.prepare('SELECT id, species_id FROM pokemon WHERE save_id = ? AND box IS NOT NULL ORDER BY box, box_slot')
+          .all(saveId) as { id: string; species_id: number }[];
+        const name = (id: number) => data.speciesById.get(id)?.displayName ?? '';
+        rows.sort((a, b) => {
+          const alphabetical = order === 'name' ? name(a.species_id).localeCompare(name(b.species_id), 'pt-BR', { sensitivity: 'base' }) : 0;
+          return alphabetical || a.species_id - b.species_id;
+        });
+        for (const row of rows) writeLocation(row.id, null);
+        rows.forEach((row, index) => writeLocation(row.id, { kind: 'box', box: Math.floor(index / BOX_SIZE), slot: index % BOX_SIZE }));
+      });
+    },
+
+    moveToBox(saveId: string, ids: unknown, box: unknown): void {
+      if (typeof box !== 'number' || !isValidLocation({ kind: 'box', box, slot: 0 })) throw badRequest('Escolha uma caixa válida.');
+      if (!Array.isArray(ids) || !ids.length || ids.length > BOX_SIZE || ids.some((id) => typeof id !== 'string') || new Set(ids).size !== ids.length) {
+        throw badRequest('Selecione até 30 Pokémon diferentes.');
+      }
+      transaction(db, () => {
+        const rows = ids.map((id) => getRow(saveId, id));
+        const moving = rows.filter((row) => row.box !== box);
+        const leaving = moving.filter((row) => row.team_slot !== null).length;
+        if (leaving && leaving >= this.team(saveId).length) throw badRequest('Deixe pelo menos um Pokémon na equipe.');
+        const used = new Set((db.prepare('SELECT box_slot FROM pokemon WHERE save_id = ? AND box = ?').all(saveId, box) as { box_slot: number }[]).map((row) => row.box_slot));
+        const slots = Array.from({ length: BOX_SIZE }, (_, index) => index).filter((slot) => !used.has(slot));
+        if (moving.length > slots.length) throw badRequest('A caixa não tem vagas para todos os Pokémon selecionados.');
+        moving.forEach((row, index) => writeLocation(row.id, { kind: 'box', box, slot: slots[index]! }));
+        if (leaving) compactTeam(saveId);
+      });
+    },
+
     move(saveId: string, pokemonId: string, to: PokemonLocation): void {
       if (!to || typeof to !== 'object' || !isValidLocation(to)) throw badRequest('Destino inválido.');
       transaction(db, () => {

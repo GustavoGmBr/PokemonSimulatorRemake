@@ -262,8 +262,6 @@ export interface WildState {
   balls: BallOption[];
   regions: WildRegionOption[];
   money: number;
-  /** preço de renovar o mapa sem giros */
-  refreshCost: number;
   /** Posse do amuleto; o bônus depende da geração. */
   shinyCharm: boolean;
   shinyCharmGenerations: number[];
@@ -392,6 +390,7 @@ export interface BattleOutcome {
 }
 
 export interface BattleView {
+  boss?: { stars: number; deadline: number; wipes: number };
   /** treinador do outro lado (null = selvagem: dá para fugir e capturar) */
   trainer: { name: string; title: string; skill: number; bagLeft: number } | null;
   phase: BattlePhase;
@@ -404,6 +403,7 @@ export interface BattleView {
 }
 
 export type BattleActRequest =
+  | { kind: 'check-boss' }
   | { kind: 'move'; slot: number }
   | { kind: 'switch'; to: number }
   | { kind: 'run' }
@@ -414,6 +414,25 @@ export type BattleActRequest =
 export interface BattleTurnResult {
   events: BattleEvent[];
   view: BattleView;
+}
+
+export interface BossOffer {
+  slot: number;
+  stars: number;
+  speciesId: number;
+  name: string;
+  shiny: boolean;
+  level: number;
+  hpMultiplier: number;
+  status: 'available' | 'running' | 'lost' | 'capture' | 'spent';
+}
+
+export interface BossState {
+  period: number;
+  resetsAt: number;
+  teamMinLevel: number | null;
+  offers: BossOffer[];
+  pending: { period: number; slot: number; stars: number; speciesId: number; name: string; shiny: boolean; balls: BallOption[] }[];
 }
 
 /** Um golpe que o Pokémon pode aprender (nível já alcançado = grátis; TM = comprada uma vez por save). */
@@ -598,7 +617,6 @@ export type CasinoRoundView =
 export interface CasinoState {
   chips: number;
   money: number;
-  chipPrice: number;
   prizes: CasinoPrize[];
   round: CasinoRoundView | null;
 }

@@ -8,7 +8,7 @@ import { ALL_TOURNAMENT_TIERS } from './tournaments.ts';
 
 export const MISSION_DURATION_MS = 2 * 60 * 60 * 1000;
 export const MISSION_COUNT = 10;
-export const MISSION_COMPLETION_REWARD = { money: rewardMoney(5_000), chips: 500, items: [{ item: 'rare-candy', quantity: 1 }] } as const;
+export const MISSION_COMPLETION_REWARD = { money: rewardMoney(5_000), chips: 2_500, items: [{ item: 'rare-candy', quantity: 1 }] } as const;
 export const missionPeriod = (now = Date.now()): number => Math.floor(now / MISSION_DURATION_MS);
 
 export type MissionKind = 'capturar' | 'derrotar' | 'vencer_treinador' | 'vencer_torneio';
@@ -94,7 +94,7 @@ export function generateMissions({ saveId, period, unlockedRegions, gymsWon }: M
   }
   const essences = Object.keys(IV_ESSENCES);
   for (const mission of missions) {
-    mission.reward.chips = 10 + mission.index * 5;
+    mission.reward.chips = 50 + mission.index * 25;
     mission.reward.items.push({ item: essences[((bytes[12] as number) + mission.index) % essences.length] as string, quantity: 1 });
   }
   return missions;

@@ -8,7 +8,7 @@ import { PokemonSummary } from '../ui/PokemonSummary.tsx';
 import { TeamsPanel } from '../ui/TeamsPanel.tsx';
 import { useKeys } from '../ui/useKeys.ts';
 
-export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'market' | 'missions' | 'trainer' | 'options' | 'exit';
+export type MenuId = 'battle' | 'wild' | 'pokedex' | 'team' | 'pc' | 'bag' | 'teams' | 'shop' | 'casino' | 'tournament' | 'bosses' | 'market' | 'missions' | 'trainer' | 'options' | 'exit';
 type Panel = 'overview' | 'team' | 'summary' | 'bag' | 'teams' | 'trainer';
 
 const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
@@ -20,6 +20,7 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'pc', label: 'PC', info: 'Caixas ilimitadas: guarde, busque e organize seus POKÉMON.' },
   { id: 'bag', label: 'Mochila', info: 'Use poções, reviver e outros itens nos seus POKÉMON.' },
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
+  { id: 'bosses', label: 'Chefes', info: 'Enfrente chefes de 1 a 6 estrelas, com rotação a cada 10 minutos.' },
   { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
   { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
   { id: 'missions', label: 'Missões', info: 'Dez objetivos a cada 2 horas, com recompensas e bônus final.' },
@@ -42,12 +43,13 @@ interface Props {
   onOpenShop: () => void;
   onOpenBattle: () => void;
   onOpenCasino: () => void;
+  onOpenBosses: () => void;
   onOpenTournament: () => void;
   onOpenMissions: () => void;
   onOpenMarket: () => void;
 }
 
-export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenTournament, onOpenMissions, onOpenMarket }: Props) {
+export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPokedex, onOpenOptions, onOpenWild, onOpenShop, onOpenBattle, onOpenCasino, onOpenBosses, onOpenTournament, onOpenMissions, onOpenMarket }: Props) {
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<MenuId>(focus ?? 'team');
@@ -177,6 +179,7 @@ export function MenuScreen({ saveId, welcome, focus, onExit, onOpenPc, onOpenPok
     if (id === 'battle') return onOpenBattle();
     if (id === 'shop') return onOpenShop();
     if (id === 'casino') return onOpenCasino();
+    if (id === 'bosses') return onOpenBosses();
     if (id === 'tournament') return onOpenTournament();
     if (id === 'missions') return onOpenMissions();
     if (id === 'market') return onOpenMarket();

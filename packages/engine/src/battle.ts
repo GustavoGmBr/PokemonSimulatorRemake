@@ -112,6 +112,7 @@ export interface TrainerInfo {
 }
 
 export interface BattleState {
+  boss?: import('./boss.ts').BossFight;
   kind: 'wild' | 'trainer';
   trainer?: TrainerInfo | null;
   turn: number;

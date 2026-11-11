@@ -106,6 +106,11 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     })
     .get('/api/saves/:id/box/:n', ({ params }) => store.box(params.id as string, Number(params.n)))
     .get('/api/saves/:id/pokemon', ({ params, url }) => store.search(params.id as string, searchQuery(url)))
+    .post('/api/saves/:id/pc/organize', ({ params, body }) => store.organizeBoxes(params.id as string, (body as { order?: unknown } | null)?.order))
+    .post('/api/saves/:id/pc/move', ({ params, body }) => {
+      const input = body as { ids?: unknown; box?: unknown } | null;
+      store.moveToBox(params.id as string, input?.ids, input?.box);
+    })
     .post('/api/saves/:id/pokemon/:pid/move', ({ params, body }) => {
       store.move(params.id as string, params.pid as string, (body as { to?: never } | null)?.to as never);
     })
@@ -114,7 +119,16 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     .get('/api/saves/:id/pokedex', ({ params }) => store.pokedex(params.id as string))
     .get('/api/saves/:id/wild', ({ params }) => wild.state(params.id as string))
     .post('/api/saves/:id/wild/search', ({ params, body }) => wild.search(params.id as string, (body ?? {}) as { region?: unknown; speciesId?: unknown; habitat?: unknown; minLevel?: unknown; maxLevel?: unknown }))
-    .post('/api/saves/:id/wild/spin', ({ params, body }) => wild.spin(params.id as string, (body as { pay?: unknown } | null)?.pay === true))
+    .get('/api/saves/:id/bosses', ({ params }) => battle.bosses(params.id as string))
+    .post('/api/saves/:id/bosses/start', ({ params, body }) => {
+      const input = body as { slot?: unknown; period?: unknown } | null;
+      return battle.startBoss(params.id as string, input?.slot, input?.period);
+    })
+    .post('/api/saves/:id/bosses/capture', ({ params, body }) => {
+      const input = body as { slot?: unknown; period?: unknown; ball?: unknown } | null;
+      return battle.captureBoss(params.id as string, input?.period, input?.slot, input?.ball);
+    })
+    .post('/api/saves/:id/wild/spin', ({ params }) => wild.spin(params.id as string))
     .post('/api/saves/:id/wild/auto', ({ params, body }) => autoWild.run(params.id as string, (body as { lead?: unknown } | null)?.lead, (body as { solo?: unknown } | null)?.solo))
     .post('/api/saves/:id/wild/leave', ({ params }) => wild.leave(params.id as string))
     .post('/api/saves/:id/wild/choose', ({ params, body }) => wild.choose(params.id as string, (body as { slot?: unknown } | null)?.slot))
@@ -137,7 +151,6 @@ export function createApp({ db, assetsDir, webDist, devTools = false, backupsDir
     .delete('/api/saves/:id/teams/:tid', ({ params }) => teams.remove(params.id as string, params.tid as string))
     .post('/api/saves/:id/teams/:tid/apply', ({ params }) => teams.apply(params.id as string, params.tid as string))
     .get('/api/saves/:id/casino', ({ params }) => casino.state(params.id as string))
-    .post('/api/saves/:id/casino/chips', ({ params, body }) => casino.buyChips(params.id as string, (body ?? {}) as { amount?: unknown }))
     .post('/api/saves/:id/casino/prize', ({ params, body }) => casino.buyPrize(params.id as string, (body ?? {}) as { item?: unknown; quantity?: unknown }))
     .post('/api/saves/:id/casino/round/act', ({ params, body }) => casino.act(params.id as string, (body ?? {}) as { action?: unknown; index?: unknown }))
     .post('/api/saves/:id/casino/round/abandon', ({ params }) => casino.abandon(params.id as string))

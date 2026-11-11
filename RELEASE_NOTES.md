@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.0.3
+## Pokémon Simulator (remake) 2.1.0
+
+- PC organiza todas as caixas por número da Pokédex ou nome da espécie e move os Pokémon selecionados em lote para uma caixa com vagas suficientes.
+- Removidos o giro pago de selvagens e a compra de fichas. Missões rendem 5× mais fichas e os prêmios do cassino custam 90% menos.
+- Seis chefes com dificuldades de 1 a 6 estrelas sorteadas a cada 10 minutos, cronômetro individual, recuperação da equipe com penalidade de um minuto e uma tentativa de captura após a vitória. Todos os Pokémon da equipe precisam estar no nível do chefe ou acima.
+
+## Anteriores: 2.0.3
 
 - Pedra Brilhante: pode ser usada na Mochila ou no perfil (Doces, IVs e Shiny) para transformar um Pokémon em shiny. Consome uma unidade apenas ao transformar; Pokémon já shiny não gastam o item. Funciona também no PC, preservando IVs, golpes e formas.
 

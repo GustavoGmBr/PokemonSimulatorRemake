@@ -38,17 +38,15 @@ function addMon(saveId: string, speciesId: number, level = 20, favorite = 0): st
 }
 const monCount = (saveId: string) => (db.prepare('SELECT COUNT(*) AS n FROM pokemon WHERE save_id = ?').get(saveId) as { n: number }).n;
 
-test('compra de fichas e de prêmios', async () => {
+test('fichas não podem ser compradas; prêmios custam menos', async () => {
   const { save, url } = await setup(1000, 0);
-  const bought = await call<CasinoState>('POST', `${url}/chips`, { amount: 100 });
-  assert.equal(bought.status, 200);
-  assert.deepEqual(row(save.id), { money: 500, chips: 100 });
-  assert.equal((await call('POST', `${url}/chips`, { amount: 1000 })).status, 400);
-  assert.equal((await call('POST', `${url}/prize`, { item: 'iv-hp' })).status, 400); // 100 fichas < 1.000
+  assert.equal((await call('POST', `${url}/chips`, { amount: 100 })).status, 404);
+  assert.deepEqual(row(save.id), { money: 1000, chips: 0 });
+  assert.equal((await call('POST', `${url}/prize`, { item: 'iv-hp' })).status, 400);
   db.prepare('UPDATE saves SET chips = 5000 WHERE id = ?').run(save.id);
   const prize = await call<CasinoState>('POST', `${url}/prize`, { item: 'iv-hp', quantity: 2 });
   assert.equal(prize.status, 200);
-  assert.equal(row(save.id).chips, 3000);
+  assert.equal(row(save.id).chips, 4800);
   assert.equal(prize.json.prizes.find((p) => p.item === 'iv-hp')?.owned, 2);
   assert.equal((await call('POST', `${url}/prize`, { item: 'nao-existe' })).status, 400);
 });
@@ -83,7 +81,7 @@ test('rodadas: Voltorb Flip persiste, bloqueia outros jogos e encerra ao sacar',
   assert.equal(started.status, 200);
   assert.equal(row(save.id).chips, 900);
   assert.equal((await call('POST', `${url}/slots/play`, { bet: 10 })).status, 400);
-  assert.equal((await call('POST', `${url}/chips`, { amount: 1 })).status, 400);
+  assert.equal((await call('POST', `${url}/chips`, { amount: 1 })).status, 404);
   const state = await call<CasinoState>('GET', url);
   assert.equal(state.json.round?.game, 'voltorb');
   assert.equal((await call('POST', `${url}/round/act`, { action: 'cashout' })).status, 400); // nada virado

@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { shinyCharmGenerations } from './dex-progress.ts';
 import {
-  HABITATS, LEGENDARY_SLOT_CHANCE, REFRESH_COST, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
+  HABITATS, LEGENDARY_SLOT_CHANCE, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
   habitatById, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor, boardSizeFor,
   speciesInHabitat, statsOf, MIN_WILD_LEVEL, GYMS_PER_REGION, DEFAULT_MIN_LEVEL, levelCap, HEAL_BALL, unlockedRegionIds,   type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
   type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
@@ -235,7 +235,6 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       balls,
       regions,
       money: moneyOf(saveId),
-      refreshCost: REFRESH_COST,
       shinyCharm: (quantities.get('shiny-charm') ?? 0) > 0,
       shinyCharmGenerations: shinyCharmGenerations(db, saveId),
       catchingCharm: (quantities.get('catching-charm') ?? 0) > 0,
@@ -294,7 +293,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     },
 
     /** Gasta um giro (ou paga a renovação quando não há giros) e sorteia os 10 de novo, no mesmo mapa. */
-    spin(saveId: string, pay = false): WildState {
+    spin(saveId: string): WildState {
       assertSave(saveId);
       guardBattle(saveId);
       const board = readBoard(saveId);
@@ -302,14 +301,8 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       if (board.chosen !== null) throw badRequest('Fuja do encontro antes de girar.');
       const habitat = habitatById(board.habitat) ?? (HABITATS[0] as Habitat);
       return transaction(db, () => {
-        let spinsLeft = board.spinsLeft;
-        if (spinsLeft > 0) {
-          spinsLeft -= 1;
-        } else {
-          if (!pay) throw badRequest(`Acabaram os giros. Renovar o mapa custa ₽ ${REFRESH_COST.toLocaleString('pt-BR')}.`);
-          if (moneyOf(saveId) < REFRESH_COST) throw badRequest('Dinheiro insuficiente para renovar o mapa.');
-          db.prepare('UPDATE saves SET money = money - ?, updated_at = ? WHERE id = ?').run(REFRESH_COST, new Date().toISOString(), saveId);
-        }
+        if (board.spinsLeft === 0) throw badRequest('Acabaram os giros. Busque um novo mapa.');
+        const spinsLeft = board.spinsLeft - 1;
         writeBoard(saveId, { ...board, slots: generate(saveId, board.region, habitat, board.levels), spinsLeft, chosen: null, throws: 0 });
         return state(saveId);
       });

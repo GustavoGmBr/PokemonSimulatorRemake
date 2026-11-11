@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  rewardMoney, foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
+  BOSS_TIERS, BOSS_WIPE_PENALTY, rewardMoney, foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
   type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
@@ -16,11 +16,13 @@ import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 import type { WildService } from './wild-service.ts';
+import { createBossService } from './boss-service.ts';
 import type { Journal } from './journal.ts';
 
 /** Batalhas contra selvagens: guarda o estado, aplica ações e entrega XP, dinheiro e cura ao final. */
-export function createBattleService(db: Db, store: PokemonStore, inventory: Inventory, wild: WildService, journal: Journal, seedOf: () => number = () => randomInt(2 ** 31)) {
+export function createBattleService(db: Db, store: PokemonStore, inventory: Inventory, wild: WildService, journal: Journal, seedOf: () => number = () => randomInt(2 ** 31), now: () => number = Date.now) {
   const data = loadGameData();
+  const bosses = createBossService(db, store, inventory, journal, now);
   const ctxBase: BattleContext = {
     species: (id) => {
       const species = data.speciesById.get(id);
@@ -199,11 +201,12 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
         chance: state.phase === 'ended' ? null : captureChance(captureInput(saveId, state, item.name)),
       }));
     const trainer = state.kind === 'trainer' && state.trainer ? state.trainer : null;
-    const heals = data.items
+    const heals = state.boss ? [] : data.items
       .filter((item) => (item.name in HEAL_EFFECTS || item.name in STATUS_CURES) && (quantities.get(item.name) ?? 0) > 0)
       .map((item) => ({ item: item.name, displayName: item.displayName, quantity: quantities.get(item.name) ?? 0 }));
     const caughtBefore = (db.prepare('SELECT caught FROM pokedex WHERE save_id = ? AND species_id = ?').get(saveId, foe.speciesId) as { caught: number } | undefined)?.caught === 1;
     return {
+      ...(state.boss ? { boss: { stars: state.boss.stars, deadline: state.boss.deadline, wipes: state.boss.wipes } } : {}),
       trainer: trainer ? { name: trainer.name, title: trainer.title, skill: trainer.skill, bagLeft: foeItemsLeft(trainer) } : null,
       phase: state.phase,
       turn: state.turn,
@@ -286,6 +289,33 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
 
   function commit(saveId: string, state: BattleState, events: BattleEvent[], ball: string | null = null): BattleTurnResult {
     let outcome: BattleOutcome | null = null;
+    const boss = state.boss;
+    if (boss) {
+      if (state.result === 'lose' && boss.deadline > now()) {
+        boss.wipes++;
+        boss.deadline -= BOSS_WIPE_PENALTY;
+        if (boss.deadline > now()) {
+          for (const mon of state.player.team) {
+            mon.hp = mon.stats.hp;
+            mon.status = null;
+            mon.sleepTurns = 0;
+            mon.confusion = 0;
+            mon.flinch = false;
+            for (const stage of Object.keys(mon.stages) as (keyof typeof mon.stages)[]) mon.stages[stage] = 0;
+          }
+          state.player.active = 0;
+          state.phase = 'choose';
+          state.result = null;
+          events = events.filter((event) => event.k !== 'end');
+          events.push({ k: 'text', text: 'Equipe recuperada. Você perdeu 1 minuto e a batalha continua!' });
+        }
+      }
+      if (boss.deadline <= now() || state.phase === 'ended') {
+        state.phase = 'ended';
+        outcome = bosses.finish(saveId, boss, state.result === 'win', events);
+      } else save(saveId, state);
+      return { events, view: view(saveId, state, outcome) };
+    }
     if (state.phase === 'ended') outcome = finalize(saveId, state, events, ball);
     else save(saveId, state);
     return { events, view: view(saveId, state, outcome) };
@@ -329,10 +359,46 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
     /** Peças compartilhadas com o serviço de duplas. */
     shared: { playerTeam, settleTournament, monView, contextFor, extraGenerations, wonIds, hasBattle },
 
+    bosses(saveId: string) {
+      assertSave(saveId);
+      const active = load(saveId);
+      if (active?.boss && active.boss.deadline <= now()) transaction(db, () => commit(saveId, active, []));
+      return bosses.state(saveId);
+    },
+
+    startBoss(saveId: string, slot: unknown, period: unknown): BattleTurnResult {
+      assertSave(saveId);
+      const previous = load(saveId);
+      if (previous?.boss && previous.boss.deadline <= now()) transaction(db, () => commit(saveId, previous, []));
+      if (hasBattle(saveId)) throw badRequest('Já há uma batalha em andamento.');
+      return transaction(db, () => {
+        const fight = bosses.begin(saveId, slot, period);
+        const tier = BOSS_TIERS.find((entry) => entry.stars === fight.stars)!;
+        const species = ctxBase.species(fight.pokemon.speciesId);
+        const foe = combatantFrom(fight.pokemon, species, species.displayName);
+        foe.stats.hp *= tier.hpMultiplier;
+        foe.hp = foe.stats.hp;
+        const player = playerTeam(saveId, null);
+        for (const mon of player) mon.capped = true;
+        const trainer: TrainerInfo = { name: species.displayName, title: `Chefe ${'★'.repeat(tier.stars)}`, skill: 2, bag: [], lastSwitch: -9 };
+        const { state, events } = createBattle({ player, foe: [foe], seed: seedOf(), kind: 'trainer', trainer });
+        state.boss = fight;
+        store.markSeen(saveId, species.id);
+        save(saveId, state);
+        return { events, view: view(saveId, state, null) };
+      });
+    },
+
+    captureBoss: bosses.capture,
+
     /** A batalha em andamento (null se não há). */
     current(saveId: string): BattleView | null {
       assertSave(saveId);
       const state = load(saveId);
+      if (state?.boss && state.boss.deadline <= now()) {
+        transaction(db, () => commit(saveId, state, []));
+        return null;
+      }
       return state ? view(saveId, state, null) : null;
     },
 
@@ -471,11 +537,16 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       assertSave(saveId);
       const state = load(saveId);
       if (!state) throw badRequest(hasBattle(saveId) ? 'A batalha em andamento é em dupla.' : 'Não há batalha em andamento.');
+      if (state.boss && state.boss.deadline <= now()) return transaction(db, () => commit(saveId, state, []));
       const input = (request ?? {}) as Partial<BattleActRequest> & { [key: string]: unknown };
       const ctx = contextFor(saveId);
       try {
         return transaction(db, () => {
           switch (input.kind) {
+            case 'check-boss': {
+              if (!state.boss) throw badRequest('Não há um chefe ativo.');
+              return { events: [], view: view(saveId, state, null) };
+            }
             case 'move': {
               const result = chooseAction(state, { kind: 'move', slot: Number(input.slot) }, ctx);
               return commit(saveId, result.state, result.events);
@@ -507,6 +578,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
               return commit(saveId, result.state, result.events);
             }
             case 'item': {
+              if (state.boss) throw badRequest('Itens de cura não são permitidos contra chefes.');
               if (state.phase !== 'choose') throw badRequest('Escolha o próximo Pokémon primeiro.');
               const name = typeof input.item === 'string' ? input.item : '';
               const item = data.itemsByName.get(name);

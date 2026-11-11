@@ -203,6 +203,31 @@ const MIGRATIONS: string[] = [
   ALTER TABLE saves ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'normal';
   ALTER TABLE pokemon ADD COLUMN is_starter INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  CREATE TABLE boss_attempts (
+    save_id TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    period INTEGER NOT NULL,
+    stars INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    pokemon TEXT,
+    PRIMARY KEY (save_id, period, stars)
+  );
+  `,
+  `
+  ALTER TABLE boss_attempts RENAME TO boss_attempts_previous;
+  CREATE TABLE boss_attempts (
+    save_id TEXT NOT NULL REFERENCES saves(id) ON DELETE CASCADE,
+    period INTEGER NOT NULL,
+    slot INTEGER NOT NULL,
+    stars INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    pokemon TEXT,
+    PRIMARY KEY (save_id, period, slot)
+  );
+  INSERT INTO boss_attempts (save_id, period, slot, stars, status, pokemon)
+    SELECT save_id, period, stars - 1, stars, status, pokemon FROM boss_attempts_previous;
+  DROP TABLE boss_attempts_previous;
+  `,
 ];
 
 export type Db = DatabaseSync;

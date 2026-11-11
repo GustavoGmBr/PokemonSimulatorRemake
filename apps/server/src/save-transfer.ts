@@ -95,6 +95,9 @@ export function importSave(db: Db, payload: unknown): string {
       for (const row of rows) {
         if (!isRow(row)) throw badRequest(`Linha inválida na tabela ${name}.`);
         const entries = Object.entries(row).filter(([column]) => columns.has(column) && !(name === 'events' && column === 'id'));
+        if (name === 'boss_attempts' && row.slot === undefined && typeof row.stars === 'number') {
+          entries.push(['slot', row.stars - 1]);
+        }
         if (!entries.length) continue;
         if (name === 'saves') newSaveId = String(row.id);
         db.prepare(`INSERT INTO "${name}" (${entries.map(([c]) => `"${c}"`).join(', ')}) VALUES (${entries.map(() => '?').join(', ')})`)

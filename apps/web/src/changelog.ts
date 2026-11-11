@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.1.0', items: [
+    'Chefes com dificuldades sorteadas a cada 10 minutos. Toda a equipe precisa ter pelo menos o nível do chefe.',
+    'Organize as caixas do PC por número da Pokédex ou nome da espécie e mova Pokémon em lote.',
+    'Removidos o giro pago e a compra de fichas. Missões rendem 5× mais fichas e os prêmios do cassino custam 90% menos.',
+  ] },
   { version: '2.0.3', items: [
     'Pedra Brilhante: use pela Mochila ou em Doces, IVs e Shiny no perfil para transformar o Pokémon escolhido em shiny, inclusive no PC.',
     'A pedra é consumida apenas ao transformar. Pokémon já shiny não gastam o item; IVs, golpes e formas são preservados.',

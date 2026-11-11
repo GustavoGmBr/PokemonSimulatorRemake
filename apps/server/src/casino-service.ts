@@ -12,17 +12,17 @@ import { badRequest, notFound } from './errors.ts';
 import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 
-/** Prêmios que se compram com fichas (Pedra Brilhante e Essências seguem o jogo antigo; os demais são estimativas). */
+/** Preços dos prêmios em fichas. */
 export const CASINO_PRIZES: readonly { item: string; price: number }[] = [
-  { item: 'master-ball', price: 100_000 },
-  { item: 'shiny-stone', price: 350_000 },
-  { item: 'rare-candy', price: 5_000 },
-  { item: 'exp-candy-p', price: 2_000 },
-  { item: 'exp-candy-m', price: 7_000 },
-  { item: 'exp-candy-g', price: 22_000 },
-  { item: 'exp-candy-gg', price: 65_000 },
-  { item: 'iv-hp', price: 1_000 }, { item: 'iv-attack', price: 1_000 }, { item: 'iv-defense', price: 1_000 },
-  { item: 'iv-special-attack', price: 1_000 }, { item: 'iv-special-defense', price: 1_000 }, { item: 'iv-speed', price: 1_000 },
+  { item: 'master-ball', price: 10000 },
+  { item: 'shiny-stone', price: 35000 },
+  { item: 'rare-candy', price: 500 },
+  { item: 'exp-candy-p', price: 200 },
+  { item: 'exp-candy-m', price: 700 },
+  { item: 'exp-candy-g', price: 2200 },
+  { item: 'exp-candy-gg', price: 6500 },
+  { item: 'iv-hp', price: 100 }, { item: 'iv-attack', price: 100 }, { item: 'iv-defense', price: 100 },
+  { item: 'iv-special-attack', price: 100 }, { item: 'iv-special-defense', price: 100 }, { item: 'iv-speed', price: 100 },
 ];
 
 
@@ -168,7 +168,7 @@ export function createCasinoService(db: Db, store: PokemonStore, inventory: Inve
     const now = save(saveId);
     const round = loadRound(saveId);
     return {
-      chips: now.chips, money: now.money, chipPrice: CHIP_PRICE,
+      chips: now.chips, money: now.money,
       prizes: CASINO_PRIZES.map((prize): CasinoPrize => ({ item: prize.item, displayName: data.itemsByName.get(prize.item)?.displayName ?? prize.item, price: prize.price, owned: inventory.quantity(saveId, prize.item) })),
       round: round ? viewOf(round) : null,
     };
@@ -176,21 +176,6 @@ export function createCasinoService(db: Db, store: PokemonStore, inventory: Inve
 
   return {
     state,
-
-    /** Compra fichas com Pokédólares (5 ₽ cada). */
-    buyChips(saveId: string, input: { amount?: unknown }): CasinoState {
-      save(saveId);
-      assertNoRound(saveId);
-      const amount = Number(input.amount);
-      if (!Number.isInteger(amount) || amount < 1 || amount > 10_000_000) throw badRequest('Escolha quantas fichas comprar.');
-      const cost = amount * CHIP_PRICE;
-      transaction(db, () => {
-        const result = db.prepare('UPDATE saves SET money = money - ?, chips = chips + ?, updated_at = ? WHERE id = ? AND money >= ?')
-          .run(cost, amount, new Date().toISOString(), saveId, cost);
-        if (Number(result.changes) !== 1) throw badRequest(`Dinheiro insuficiente: ${amount.toLocaleString('pt-BR')} fichas custam ₽ ${cost.toLocaleString('pt-BR')}.`);
-      });
-      return state(saveId);
-    },
 
     /** Troca fichas por um prêmio (Master Bola, Pedra Brilhante, Doces, Essências). */
     buyPrize(saveId: string, input: { item?: unknown; quantity?: unknown }): CasinoState {

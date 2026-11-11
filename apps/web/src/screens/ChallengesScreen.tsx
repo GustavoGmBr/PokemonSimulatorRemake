@@ -33,7 +33,7 @@ export function ChallengesScreen({ saveId, onBack }: Props) {
   useEffect(() => {
     void load();
     // uma batalha interrompida (ao fechar a página) continua de onde parou
-    api.battle(saveId).then((running) => { if (running) setBattle({ events: [], view: running }); }, () => undefined);
+    api.battle(saveId).then((running) => { if (running && !running.boss) setBattle({ events: [], view: running }); }, () => undefined);
     api.battle2(saveId).then((running) => { if (running) setBattle({ doubles: true, events: [], view: running }); }, () => undefined);
   }, [saveId]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -1,5 +1,5 @@
 import type {
-  AutoWildResult, DoublesActRequest, DoublesTurnResult, DoublesView,
+  BossState, AutoWildResult, DoublesActRequest, DoublesTurnResult, DoublesView,
   BattleActRequest, HistoryState, MarketState, MissionClaimResult, MissionsState, PokemonView as MarketPokemon, CasinoActResult, CasinoResult, CasinoState, CasinoStakeInput, TournamentState, ChallengesState, TeamView, MoveOptions, BattleTurnResult, BattleView, BuyResult, DevKitResult, DevProgressResult, SearchWildRequest, ShopEntry, ThrowBallResult, UseItemResult, WildState,
   BoxView, CreateSaveRequest, DevGrantResult, HealthInfo, Item, Move, PokedexView, PokemonLocation, PokemonSearchResult,
   PokemonView, SaveDetail, SaveSummary, SearchPokemonQuery, Species, SpeciesIndexEntry, StarterRegion, TypeInfo,
@@ -43,6 +43,8 @@ export const api = {
   box: (id: string, box: number) => request<BoxView>('GET', `/api/saves/${encodeURIComponent(id)}/box/${box}`),
   search: (id: string, query: SearchPokemonQuery) =>
     request<PokemonSearchResult>('GET', `/api/saves/${encodeURIComponent(id)}/pokemon${queryString(query)}`),
+  organizeBoxes: (id: string, order: 'dex' | 'name') => request<void>('POST', `/api/saves/${encodeURIComponent(id)}/pc/organize`, { order }),
+  moveToBox: (id: string, ids: string[], box: number) => request<void>('POST', `/api/saves/${encodeURIComponent(id)}/pc/move`, { ids, box }),
   movePokemon: (id: string, pokemonId: string, to: PokemonLocation) =>
     request<void>('POST', `/api/saves/${encodeURIComponent(id)}/pokemon/${encodeURIComponent(pokemonId)}/move`, { to }),
   updatePokemon: (id: string, pokemonId: string, patch: UpdatePokemonRequest) =>
@@ -52,7 +54,10 @@ export const api = {
     request<DevGrantResult>('POST', `/api/saves/${encodeURIComponent(id)}/dev/grant`, { count }),
   wild: (id: string) => request<WildState>('GET', `/api/saves/${encodeURIComponent(id)}/wild`),
   wildSearch: (id: string, input: SearchWildRequest) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/search`, input),
-  wildSpin: (id: string, pay = false) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/spin`, { pay }),
+  bosses: (id: string) => request<BossState>('GET', `/api/saves/${encodeURIComponent(id)}/bosses`),
+  bossStart: (id: string, period: number, slot: number) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/bosses/start`, { period, slot }),
+  bossCapture: (id: string, period: number, slot: number, ball: string) => request<{ caught: boolean; name: string; state: BossState }>('POST', `/api/saves/${encodeURIComponent(id)}/bosses/capture`, { period, slot, ball }),
+  wildSpin: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/spin`),
   wildAuto: (id: string, lead?: string | null, solo = false) => request<AutoWildResult>('POST', `/api/saves/${encodeURIComponent(id)}/wild/auto`, lead ? { lead, solo } : undefined),
   wildLeave: (id: string) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/leave`),
   wildChoose: (id: string, slot: number) => request<WildState>('POST', `/api/saves/${encodeURIComponent(id)}/wild/choose`, { slot }),
@@ -67,7 +72,6 @@ export const api = {
   challengeStart: (id: string, challengeId: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/challenge`, { challengeId }),
   trainerStart: (id: string, difficulty: string) => request<BattleTurnResult>('POST', `/api/saves/${encodeURIComponent(id)}/battle/trainer`, { difficulty }),
   casino: (id: string) => request<CasinoState>('GET', `/api/saves/${encodeURIComponent(id)}/casino`),
-  casinoChips: (id: string, amount: number) => request<CasinoState>('POST', `/api/saves/${encodeURIComponent(id)}/casino/chips`, { amount }),
   casinoPrize: (id: string, item: string, quantity = 1) => request<CasinoState>('POST', `/api/saves/${encodeURIComponent(id)}/casino/prize`, { item, quantity }),
   casinoPlay: (id: string, game: string, body: CasinoStakeInput & Record<string, unknown>) =>
     request<CasinoResult>('POST', `/api/saves/${encodeURIComponent(id)}/casino/${game}/play`, body),

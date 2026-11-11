@@ -52,6 +52,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   const [healItem, setHealItem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [clock, setClock] = useState(Date.now);
   const [outcome, setOutcome] = useState<BattleOutcome | null>(null);
   const [xpShown, setXpShown] = useState(0);
 
@@ -275,7 +276,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     const first = start.view;
     // o modelo começa com o estado ANTES dos eventos: para a batalha nova, é o mesmo estado (HP cheio)
     model.current = { player: clone(first.player.team), foe: clone(first.foe.team), active: { player: first.player.active, foe: first.foe.active } };
-    if (start.events.length === 0) {
+    if (start.events.length === 0 && !first.boss) {
       setMons({
         player: clone(first.player.team[first.player.active] as BattleMonView),
         foe: clone(first.foe.team[first.foe.active] as BattleMonView),
@@ -306,6 +307,22 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
     }
   };
 
+  const expiryChecked = useRef<number | null>(null);
+  const boss = view.boss;
+  const secondsLeft = boss ? Math.max(0, Math.ceil((boss.deadline - clock) / 1000)) : 0;
+  useEffect(() => {
+    if (!boss || view.phase === 'ended') return;
+    const timer = window.setInterval(() => setClock(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [boss, view.phase]);
+
+  useEffect(() => {
+    if (boss && secondsLeft === 0 && !busy && mode !== 'playing' && view.phase !== 'ended' && expiryChecked.current !== boss.deadline) {
+      expiryChecked.current = boss.deadline;
+      void act({ kind: 'check-boss' });
+    }
+  }, [boss, secondsLeft, busy, mode, view.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Z durante a animação adianta o texto
   useKeys((key) => {
     if (key === 'confirm') skip.current?.();
@@ -325,7 +342,7 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
 
   const commandItems: MenuItem[] = [
     { id: 'fight', label: 'LUTAR' },
-    { id: 'bag', label: 'BOLSA' },
+    { id: 'bag', label: 'BOLSA', disabled: Boolean(view.boss) },
     { id: 'team', label: 'POKÉMON' },
     { id: 'run', label: 'FUGIR', disabled: Boolean(view.trainer) },
   ];
@@ -356,11 +373,16 @@ export function BattleScreen({ saveId, start, habitat, onExit }: Props) {
   return (
     <main className="gb-screen">
       <div className="gb-stage">
+        {boss ? <div className="gb-window gb-spread">
+          <strong>Chefe {'★'.repeat(boss.stars)}</strong>
+          <span>Tempo: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</span>
+          <span>Derrotas da equipe: {boss.wipes}</span>
+        </div> : null}
         <section className={`gb-battle ${habitatClass} ${shake}`} aria-label="Batalha">
           <div className="gb-battle__ground gb-battle__ground--foe" />
           <div className="gb-battle__ground gb-battle__ground--player" />
 
-          {view.trainer ? <div className="gb-battle__trainer"><TrainerSprite name={view.trainer.name} title={view.trainer.title} size={132} /></div> : null}
+          {view.trainer && !boss ? <div className="gb-battle__trainer"><TrainerSprite name={view.trainer.name} title={view.trainer.title} size={132} /></div> : null}
           {foe ? <InfoBox side="foe" mon={foe} /> : null}
           {player ? <InfoBox side="player" mon={player} xpGain={xpShown} /> : null}
 

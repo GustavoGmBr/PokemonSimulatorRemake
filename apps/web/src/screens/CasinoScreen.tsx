@@ -14,10 +14,9 @@ interface Props {
   onBack: () => void;
 }
 
-type Tab = CasinoGame | 'chips' | 'prizes';
+type Tab = CasinoGame | 'prizes';
 const TABS: { id: Tab; label: string }[] = [
   ...CASINO_GAMES.map((id) => ({ id: id as Tab, label: CASINO_NAMES[id] })),
-  { id: 'chips', label: 'Fichas' },
   { id: 'prizes', label: 'Prêmios' },
 ];
 const GAME_HELP: Record<CasinoGame, string> = {
@@ -98,7 +97,6 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const [rouletteNumber, setRouletteNumber] = useState(7);
   const [rouletteGroup, setRouletteGroup] = useState<RouletteGroup | ''>('');
   const [pick, setPick] = useState(0);
-  const [chipAmount, setChipAmount] = useState(100);
   const [auto, setAuto] = useState(false);
   const timer = useRef<number | null>(null);
 
@@ -227,25 +225,10 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   );
 
   let panel: ReactElement | null = null;
-  if (tab === 'chips') {
+  if (tab === 'prizes') {
     panel = (
       <div className="gb-stake">
-        <p style={{ margin: 0 }}>Fichas custam {formatMoney(state.chipPrice)} cada. Você tem {formatMoney(state.money)}.</p>
-        <div className="gb-row" style={{ gap: 6, alignItems: 'center' }}>
-          <label>Quantas <input type="number" min={1} value={chipAmount} onChange={(e) => setChipAmount(Math.max(1, Math.floor(Number(e.target.value) || 1)))} className="gb-input" style={{ width: 140 }} /></label>
-          {[100, 1000, 10000].map((n) => <button key={n} type="button" className="gb-button" onClick={() => setChipAmount(n)}>{n.toLocaleString('pt-BR')}</button>)}
-        </div>
-        <p className="gb-muted" style={{ margin: 0 }}>Custo: {formatMoney(chipAmount * state.chipPrice)}</p>
-        <button type="button" className="gb-button" disabled={busy || locked} onClick={() => {
-          setBusy(true);
-          api.casinoChips(saveId, chipAmount).then((next) => { apply(next); setMessage(`Você comprou ${chipAmount.toLocaleString('pt-BR')} fichas.`); playSound('confirm'); }, (e: Error) => { setMessage(e.message); playSound('error'); }).finally(() => setBusy(false));
-        }}>Comprar fichas</button>
-      </div>
-    );
-  } else if (tab === 'prizes') {
-    panel = (
-      <div className="gb-stake">
-        <p style={{ margin: 0 }}>Troque suas fichas por prêmios.</p>
+        <p style={{ margin: 0 }}>Ganhe fichas em Missões e troque por prêmios aqui.</p>
         <ul className="gb-prizes">
           {state.prizes.map((p) => (
             <li key={p.item}>
