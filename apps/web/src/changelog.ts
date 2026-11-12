@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.1.2', items: [
+    "Loja com cartões de produtos, carrinho responsivo e botões para adicionar ou remover 1×, 5× ou 10×. Também é possível digitar a quantidade a adicionar.",
+    "Pokécassino com visual renovado e dois novos jogos: Portas do Eevee e Duelo de Tipos.",
+    "Cada adversário shiny nocauteado em uma batalha vencida tem 1% de chance de render uma Pedra Brilhante.",
+  ] },
   { version: '2.1.1', items: [
     "Mapas sorteiam de 2 a 4 Pokémon no início. A faixa e os giros sobem por região concluída até 12 a 15 Pokémon e 15 giros.",
     "Chefes ganham de 15% a 100% de bônus em Ataque, Defesa, Ataque Especial, Defesa Especial e Velocidade durante a batalha.",

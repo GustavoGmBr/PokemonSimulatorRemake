@@ -13,6 +13,7 @@ import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 import type { Journal } from './journal.ts';
 import type { BattleService } from './battle-service.ts';
+import { grantShinyStoneDrop } from './shiny-stone-drop.ts';
 
 /** Batalhas em dupla (2×2) contra treinadores e em torneios. O motor está em `battle2.ts`; aqui ficam persistência, prêmios e a vista para a tela. */
 export function createDoublesService(db: Db, store: PokemonStore, inventory: Inventory, journal: Journal, battle: BattleService, seedOf: () => number = () => randomInt(2 ** 31)) {
@@ -91,6 +92,7 @@ export function createDoublesService(db: Db, store: PokemonStore, inventory: Inv
         rewards.push({ item: reward.item, name, quantity: reward.quantity });
         events.push({ k: 'text', text: `Você ganhou ${reward.quantity}× ${name}!` });
       }
+      grantShinyStoneDrop(saveId, state.foe.team, inventory, rewards, events);
       db.prepare('UPDATE saves SET money = money + ?, updated_at = ? WHERE id = ?').run(money, new Date().toISOString(), saveId);
       if (money > 0) events.push({ k: 'money', amount: money, text: `Você ganhou ₽ ${money.toLocaleString('pt-BR')}!` });
     }

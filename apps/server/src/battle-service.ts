@@ -17,6 +17,7 @@ import type { PokemonStore } from './pokemon-store.ts';
 import type { Inventory } from './inventory.ts';
 import type { WildService } from './wild-service.ts';
 import { createBossService } from './boss-service.ts';
+import { grantShinyStoneDrop } from './shiny-stone-drop.ts';
 import type { Journal } from './journal.ts';
 
 /** Batalhas contra selvagens: guarda o estado, aplica ações e entrega XP, dinheiro e cura ao final. */
@@ -263,6 +264,7 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
       }
     }
     if (result === 'win') {
+      grantShinyStoneDrop(saveId, state.foe.team, inventory, rewards, events);
       db.prepare('UPDATE saves SET money = money + ?, updated_at = ? WHERE id = ?').run(money, new Date().toISOString(), saveId);
       if (money > 0) events.push({ k: 'money', amount: money, text: `Você ganhou ₽ ${money.toLocaleString('pt-BR')}!` });
     }

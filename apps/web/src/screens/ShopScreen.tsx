@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ShopEntry } from '@pokesim/engine';
+import { MAX_STACK, UNIQUE_ITEMS, type ShopEntry } from '@pokesim/engine';
 import { api } from '../api.ts';
 import { Menu } from '../ui/Menu.tsx';
 import { BallIcon, ItemIcon, KeyHints, formatMoney } from '../ui/bits.tsx';
@@ -15,8 +15,8 @@ const TABS = [
   { id: 'ivs', label: 'IVs' },
   { id: 'buff', label: 'Amuletos' },
 ] as const;
-const MAX_STACK = 99;
-const UNIQUE = new Set(['shiny-charm', 'catching-charm', 'amulet-coin', 'lucky-egg']);
+const QUICK_QUANTITIES = [1, 5, 10] as const;
+const itemLimit = (entry: ShopEntry) => UNIQUE_ITEMS.has(entry.item) ? 1 : MAX_STACK;
 
 interface Props {
   saveId: string;
@@ -30,7 +30,8 @@ export function ShopScreen({ saveId, onBack }: Props) {
   const [tab, setTab] = useState(0);
   const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
-  const [message, setMessage] = useState('Bem-vindo à Loja! Z ou → põem no carrinho, ← tira.');
+  const [custom, setCustom] = useState<{ item: string; quantity: string } | null>(null);
+  const [message, setMessage] = useState('Escolha um produto para montar o carrinho.');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,10 +49,18 @@ export function ShopScreen({ saveId, onBack }: Props) {
   const count = lines.reduce((sum, line) => sum + line.qty, 0);
 
   const change = (entry: ShopEntry, delta: number) => {
-    const limit = UNIQUE.has(entry.item) ? 1 : MAX_STACK;
-    const next = Math.max(0, Math.min(limit - entry.owned, (cart[entry.item] ?? 0) + delta));
-    if (next === (cart[entry.item] ?? 0)) { playSound('error'); return; }
-    setCart({ ...cart, [entry.item]: next });
+    if (busy || confirming) return;
+    const currentQuantity = cart[entry.item] ?? 0;
+    const available = Math.max(0, itemLimit(entry) - entry.owned - currentQuantity);
+    if (!Number.isSafeInteger(delta) || delta > available || currentQuantity + delta < 0) {
+      setMessage(available > 0 ? `Você pode adicionar até ${available}× ${entry.displayName}.` : `${entry.displayName} chegou ao limite.`);
+      playSound('error');
+      return;
+    }
+    setCart({ ...cart, [entry.item]: currentQuantity + delta });
+    setMessage(delta > 0
+      ? `Adicionou ${delta}× ${entry.displayName} ao carrinho.`
+      : `Removeu ${-delta}× ${entry.displayName} do carrinho.`);
     playSound('move');
   };
 
@@ -90,7 +99,7 @@ export function ShopScreen({ saveId, onBack }: Props) {
       if (count > 0) { setCart({}); setMessage('Carrinho esvaziado.'); playSound('back'); }
       else { playSound('back'); onBack(); }
     }
-  }, !confirming && !busy && items !== null);
+  }, !confirming && !busy && !custom && items !== null);
 
   if (error) {
     return (
@@ -103,22 +112,21 @@ export function ShopScreen({ saveId, onBack }: Props) {
 
   return (
     <main className="gb-screen">
-      <div className="gb-stage">
+      <div className="gb-stage gb-shop">
         <header className="gb-shop-head">
           <div>
-            <h1 className="gb-title gb-mkt-title">🛍️ Loja</h1>
-            <p className="gb-mkt-sub">Bolas, curas, itens de evolução e amuletos.</p>
+            <h1 className="gb-title gb-mkt-title">Loja</h1>
           </div>
           <div className="gb-mkt-wallet"><span className="gb-muted">Seu dinheiro</span><b>{formatMoney(money)}</b></div>
         </header>
 
-        <div className="gb-row" style={{ alignItems: 'flex-start' }}>
-          <section className="gb-window gb-grow" aria-label="Produtos">
+        <div className="gb-shop-layout">
+          <section className="gb-window gb-shop-catalog" aria-label="Produtos">
             <div className="gb-shop-tabs" role="tablist">
               {TABS.map((t, i) => {
                 const inCart = (items ?? []).filter((it) => it.category === t.id).reduce((sum, it) => sum + (cart[it.item] ?? 0), 0);
                 return (
-                  <button key={t.id} type="button" role="tab" aria-selected={i === tab} className="gb-mkt-tab" onClick={() => { setTab(i); setIndex(0); }}>
+                  <button key={t.id} type="button" role="tab" aria-selected={i === tab} className="gb-mkt-tab" disabled={busy || confirming} onClick={() => { setCustom(null); setTab(i); setIndex(0); }}>
                     {t.label}{inCart > 0 ? <span className="gb-mkt-count">{inCart}</span> : null}
                   </button>
                 );
@@ -128,8 +136,13 @@ export function ShopScreen({ saveId, onBack }: Props) {
             <ul className="gb-shop-list" aria-label="Produtos" ref={listRef}>
               {visible.map((entry, i) => {
                 const qty = cart[entry.item] ?? 0;
-                const limit = UNIQUE.has(entry.item) ? 1 : MAX_STACK;
+                const limit = itemLimit(entry);
                 const maxed = entry.owned >= limit;
+                const available = Math.max(0, limit - entry.owned - qty);
+                const editing = custom?.item === entry.item;
+                const amount = editing ? Number(custom.quantity) : 0;
+                const validAmount = Number.isSafeInteger(amount) && amount >= 1 && amount <= available;
+                const locked = busy || confirming;
                 return (
                   <li key={entry.item}>
                     <div
@@ -137,20 +150,67 @@ export function ShopScreen({ saveId, onBack }: Props) {
                       aria-current={current?.item === entry.item}
                       onMouseEnter={() => setIndex(i)}
                     >
-                      <span className="gb-shop-item__icon" aria-hidden="true">
-                        {entry.category === 'captura' ? <BallIcon item={entry.item} /> : <ItemIcon item={entry.item} size={36} />}
-                      </span>
-                      <span className="gb-shop-item__text">
-                        <strong>{entry.displayName}</strong>
-                        <span className="gb-shop-item__desc">{entry.description}</span>
-                      </span>
-                      <span className="gb-shop-item__own" title="Você já tem">{maxed ? 'no máximo' : `tem ${entry.owned}`}</span>
-                      <span className="gb-mkt-price">{formatMoney(entry.price)}</span>
-                      <span className="gb-shop-stepper">
-                        <button type="button" className="gb-button" aria-label={`Tirar ${entry.displayName}`} disabled={qty === 0} onClick={() => { setIndex(i); change(entry, -1); }}>−</button>
-                        <b className="gb-cartqty">{qty}</b>
-                        <button type="button" className="gb-button" aria-label={`Pôr ${entry.displayName} no carrinho`} disabled={maxed || entry.owned + qty >= limit} onClick={() => { setIndex(i); change(entry, 1); }}>+</button>
-                      </span>
+                      <div className="gb-shop-item__header">
+                        <span className="gb-shop-item__icon" aria-hidden="true">
+                          {entry.category === 'captura' ? <BallIcon item={entry.item} /> : <ItemIcon item={entry.item} size={36} />}
+                        </span>
+                        <div className="gb-shop-item__text">
+                          <strong>{entry.displayName}</strong>
+                          <span className="gb-shop-item__price">{formatMoney(entry.price)} <small>/ un.</small></span>
+                        </div>
+                      </div>
+                      <p className="gb-shop-item__desc">{entry.description}</p>
+                      <div className="gb-shop-item__stock">
+                        <span>{maxed ? 'Limite na mochila' : `Na mochila: ${entry.owned}`}</span>
+                        <b>No carrinho: {qty}</b>
+                      </div>
+                      <div className="gb-shop-item__actions"
+                        onKeyDown={(event) => {
+                          if (event.target instanceof HTMLButtonElement && (event.key === 'Enter' || event.key === ' ')) event.stopPropagation();
+                        }}>
+                        <div className="gb-shop-quantities" role="group" aria-label={`Adicionar ${entry.displayName} ao carrinho`}>
+                          <span className="gb-shop-quantity-label">Adicionar</span>
+                          {QUICK_QUANTITIES.map((quantity) => (
+                            <button key={quantity} type="button" className="gb-button gb-shop-add" aria-label={`Adicionar ${quantity}× ${entry.displayName}`}
+                              disabled={locked || quantity > available} onClick={() => { setIndex(i); setCustom(null); change(entry, quantity); }}>
+                              +{quantity}×
+                            </button>
+                          ))}
+                          <button type="button" className="gb-button" aria-expanded={editing} aria-label={`Quantidade personalizada de ${entry.displayName}`}
+                            disabled={locked || available < 1} onClick={() => { setIndex(i); setCustom(editing ? null : { item: entry.item, quantity: '' }); }}>
+                            Outra
+                          </button>
+                        </div>
+                        <div className="gb-shop-quantities" role="group" aria-label={`Remover ${entry.displayName} do carrinho`}>
+                          <span className="gb-shop-quantity-label">Remover</span>
+                          {QUICK_QUANTITIES.map((quantity) => (
+                            <button key={quantity} type="button" className="gb-button gb-shop-remove" aria-label={`Remover ${quantity}× ${entry.displayName}`}
+                              disabled={locked || quantity > qty} onClick={() => { setIndex(i); change(entry, -quantity); }}>
+                              −{quantity}×
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {editing ? (
+                        <form className="gb-shop-quantities gb-shop-custom" onSubmit={(event) => {
+                          event.preventDefault();
+                          if (!validAmount || locked) return;
+                          change(entry, amount);
+                          setCustom(null);
+                        }} onKeyDown={(event) => {
+                          if (event.key === 'Escape') { event.preventDefault(); setCustom(null); }
+                        }}>
+                          <label>
+                            Quantidade
+                            <input className="gb-input" type="number" min={1} max={available} step={1} required autoFocus
+                              aria-label={`Quantidade de ${entry.displayName}`} value={custom.quantity} disabled={locked}
+                              onChange={(event) => setCustom({ item: entry.item, quantity: event.target.value })} />
+                          </label>
+                          <span className="gb-muted">Até {available} unidades</span>
+                          <button type="submit" className="gb-button" disabled={locked || !validAmount}>Adicionar</button>
+                          <button type="button" className="gb-button" onClick={() => setCustom(null)}>Cancelar</button>
+                        </form>
+                      ) : null}
                     </div>
                   </li>
                 );
@@ -159,13 +219,14 @@ export function ShopScreen({ saveId, onBack }: Props) {
           </section>
 
           <aside className="gb-shop-cart" aria-label="Carrinho">
-            <h2 className="gb-title" style={{ fontSize: 20, margin: '0 0 6px' }}>🧾 Carrinho</h2>
-            {lines.length === 0 ? <p className="gb-muted">Vazio. Use + nos produtos.</p> : (
+            <div className="gb-shop-cart__heading"><h2 className="gb-title">Carrinho</h2><span>{count} {count === 1 ? 'unidade' : 'unidades'}</span></div>
+            {lines.length === 0 ? <p className="gb-muted">Vazio. Escolha uma quantidade nos produtos.</p> : (
               <ul className="gb-shop-cart__lines">
                 {lines.map((line) => (
-                  <li key={line.entry.item} className="gb-spread">
-                    <span>{line.entry.displayName} ×{line.qty}</span>
-                    <span>{formatMoney(line.entry.price * line.qty)}</span>
+                  <li key={line.entry.item}>
+                    <ItemIcon item={line.entry.item} size={24} />
+                    <span>{line.entry.displayName} <b>×{line.qty}</b></span>
+                    <strong>{formatMoney(line.entry.price * line.qty)}</strong>
                   </li>
                 ))}
               </ul>
@@ -175,16 +236,16 @@ export function ShopScreen({ saveId, onBack }: Props) {
               <span style={{ color: total > money ? 'var(--red)' : undefined }}>{formatMoney(total)}</span>
             </div>
             <div className="gb-spread" style={{ fontSize: 18 }}>
-              <span className="gb-muted">Sobra</span><span className="gb-muted" style={{ color: money - total < 0 ? 'var(--red)' : undefined }}>{formatMoney(money - total)}</span>
+              <span className="gb-muted">Saldo após a compra</span><span className="gb-muted" style={{ color: money - total < 0 ? 'var(--red)' : undefined }}>{formatMoney(money - total)}</span>
             </div>
-            <button type="button" className="gb-button gb-button--red" style={{ marginTop: 10, width: '100%' }} disabled={count === 0 || total > money || busy} onClick={() => setConfirming(true)}>
+            <button type="button" className="gb-button gb-button--red" style={{ marginTop: 10, width: '100%' }} disabled={count === 0 || total > money || busy || confirming || Boolean(custom)} onClick={() => setConfirming(true)}>
               Comprar (T)
             </button>
-            {count > 0 ? <button type="button" className="gb-button" style={{ marginTop: 6, width: '100%' }} onClick={() => { setCart({}); setMessage('Carrinho esvaziado.'); }}>Esvaziar</button> : null}
+            {count > 0 ? <button type="button" className="gb-button" style={{ marginTop: 6, width: '100%' }} disabled={busy || confirming} onClick={() => { setCustom(null); setCart({}); setMessage('Carrinho esvaziado.'); }}>Esvaziar</button> : null}
             {confirming ? (
               <div style={{ marginTop: 10 }}>
                 <p style={{ margin: '0 0 6px' }}>Pagar {formatMoney(total)}?</p>
-                <Menu label="Confirmar compra" items={[{ id: 'yes', label: 'Sim' }, { id: 'no', label: 'Não' }]} onSelect={(id) => (id === 'yes' ? void pay() : setConfirming(false))} onBack={() => setConfirming(false)} />
+                <Menu label="Confirmar compra" active={!busy} items={[{ id: 'yes', label: 'Sim', disabled: busy }, { id: 'no', label: 'Não', disabled: busy }]} onSelect={(id) => (id === 'yes' ? void pay() : setConfirming(false))} onBack={() => setConfirming(false)} />
               </div>
             ) : null}
           </aside>

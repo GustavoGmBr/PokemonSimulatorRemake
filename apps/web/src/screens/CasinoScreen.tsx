@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
-  CASINO_GAMES, CASINO_NAMES, GROUP_SPECIES, RACE_LENGTH, RACE_RUNNERS, WHEEL_LAYOUT, SLOT_CELLS, SLOT_PAYS, DITTO_PAIR, DITTO_TRIPLE,
+  CASINO_GAMES, CASINO_NAMES, DOOR_COUNT, DOOR_PAYOUT, DUEL_TYPES, DUEL_PAYOUT, SLOT_LINES, GROUP_SPECIES, RACE_LENGTH, RACE_RUNNERS, WHEEL_LAYOUT, SLOT_CELLS, SLOT_PAYS, DITTO_PAIR, DITTO_TRIPLE,
   type CasinoActResult, type CasinoGame, type CasinoResult, type CasinoRoundView, type CasinoState, type PokemonView, type RouletteGroup,
 } from '@pokesim/engine';
 import { api } from '../api.ts';
@@ -26,8 +26,16 @@ const GAME_HELP: Record<CasinoGame, string> = {
   jack: 'Chegue a 21 sem estourar. A banca para em 17. Vitória 2×, 21 natural 3×, empate devolve.',
   race: 'Aposte em um dos 5 corredores. Acertou: 6×.',
   wheel: 'Gire a roda: 0×, 0,25×, 0,5×, 1×, 2×, 5× ou 10×.',
-  piplup: 'Salte até 7 vezes; cada salto rende mais, mas pode cair. Saque quando quiser.',
+  piplup: 'Salte até 7 vezes e saque antes de cair.',
+  doors: 'Eevee se esconde atrás de uma das três portas. Cada porta tem a mesma chance de ganhar.',
+  duel: 'Planta vence Água, Água vence Fogo e Fogo vence Planta. A banca sorteia seu tipo e o empate devolve a aposta.',
 };
+const GAME_SPRITES: Record<CasinoGame, number> = {
+  slots: 132, roulette: 25, voltorb: 100, jack: 52, race: 77, wheel: 175, piplup: 393, doors: 133, duel: 1,
+};
+const WHEEL_COLORS: Record<number, string> = { 0: '#2b344d', 0.25: '#65549b', 0.5: '#5287a8', 1: '#4ba888', 2: '#db8455', 5: '#cf5779', 10: '#ffce64' };
+const WHEEL_FACE = `conic-gradient(${WHEEL_LAYOUT.map((value, index) =>
+  `${WHEEL_COLORS[value]} ${index * 100 / WHEEL_LAYOUT.length}% ${(index + 1) * 100 / WHEEL_LAYOUT.length}%`).join(', ')})`;
 const roulettePicks: { id: string; label: string; bet: unknown }[] = [
   { id: 'red', label: 'Vermelho 2×', bet: { kind: 'color', value: 'red' } },
   { id: 'black', label: 'Preto 2×', bet: { kind: 'color', value: 'black' } },
@@ -43,10 +51,10 @@ const roulettePicks: { id: string; label: string; bet: unknown }[] = [
 const SLOT_SPECIES: Partial<Record<string, number>> = { pikachu: 25, mewtwo: 150, mew: 151, ditto: 132 };
 const MULT = (n: number) => `${String(n).replace('.', ',')}×`;
 
-function SlotCell({ symbol }: { symbol: string }) {
+function SlotCell({ symbol, winning = false }: { symbol: string; winning?: boolean }) {
   if (symbol === 'empty') return <div className="gb-slotcell gb-slotcell--empty" aria-label="vazio"><span className="gb-slotcell__none" /></div>;
   const species = SLOT_SPECIES[symbol];
-  return <div className="gb-slotcell">{species ? <Sprite speciesId={species} alt={symbol} size={48} /> : <BallIcon item={symbol} className="gb-slotball" />}</div>;
+  return <div className={`gb-slotcell${winning ? ' is-winning' : ''}`}>{species ? <Sprite speciesId={species} alt={symbol} size={48} /> : <BallIcon item={symbol} className="gb-slotball" />}</div>;
 }
 
 const SLOT_NAMES: Record<string, string> = {
@@ -89,7 +97,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const [mon, setMon] = useState<PokemonView | null>(null);
   const [round, setRound] = useState<CasinoRoundView | null>(null);
   const [last, setLast] = useState<CasinoResult | null>(null);
-  const [message, setMessage] = useState('Bem-vindo ao Pokécassino! Fichas custam ₽ 5 cada.');
+  const [message, setMessage] = useState('Escolha um jogo para começar.');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState<{ grid?: string[]; number?: number | null; frame?: number[]; wheel?: number | null; board?: number[] } | null>(null);
@@ -97,6 +105,8 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const [rouletteNumber, setRouletteNumber] = useState(7);
   const [rouletteGroup, setRouletteGroup] = useState<RouletteGroup | ''>('');
   const [pick, setPick] = useState(0);
+  const [door, setDoor] = useState(0);
+  const [duelPick, setDuelPick] = useState(0);
   const [auto, setAuto] = useState(false);
   const timer = useRef<number | null>(null);
 
@@ -121,11 +131,12 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const absorb = (chips: number, money: number) => setState((s) => (s ? { ...s, chips, money } : s));
 
   /** Anima por ~0,8 s e depois mostra o resultado de verdade. */
-  const animate = (tick: () => void, done: () => void) => {
+  const animate = (tick: (step: number) => void, done: () => void) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { done(); return; }
     let n = 0;
     if (timer.current) window.clearInterval(timer.current);
     timer.current = window.setInterval(() => {
-      tick();
+      tick(n);
       if (++n >= 8) { window.clearInterval(timer.current as number); timer.current = null; done(); }
     }, 100);
   };
@@ -157,11 +168,16 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     try {
       const result = await api.casinoPlay(saveId, game, { ...stakeBody(), ...extra });
       const d = result.detail;
+      if (d.game === 'doors' || d.game === 'duel') {
+        finish(result);
+        setBusy(false);
+        return;
+      }
       const rand = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)] as T;
-      animate(() => {
+      animate((step) => {
         if (d.game === 'slots') setShown({ grid: Array.from({ length: 9 }, () => rand(SLOT_CELLS)) });
         else if (d.game === 'roulette') setShown({ number: Math.floor(Math.random() * 37) });
-        else if (d.game === 'race') setShown({ frame: d.frames[Math.floor(Math.random() * d.frames.length)] });
+        else if (d.game === 'race') setShown({ frame: d.frames[Math.floor(step / 8 * d.frames.length)] });
         else if (d.game === 'wheel') setShown({ wheel: Math.floor(Math.random() * WHEEL_LAYOUT.length) });
       }, () => {
         if (d.game === 'slots') setShown({ grid: d.grid });
@@ -207,6 +223,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
   const locked = Boolean(round);
   const isGame = (CASINO_GAMES as readonly string[]).includes(tab);
   const game = tab as CasinoGame;
+  const choiceBlocked = busy || (mode === 'chips' ? state.chips < bet : mon === null);
 
   const stakeBox = (
     <div className="gb-stake">
@@ -244,9 +261,10 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     );
   } else if (tab === 'slots') {
     const grid = shown?.grid ?? (last?.detail.game === 'slots' ? last.detail.grid : null);
+    const winningCells = new Set(last?.detail.game === 'slots' ? last.detail.lines.flatMap(({ line }) => SLOT_LINES[line] ?? []) : []);
     panel = (
       <>
-        <div className="gb-slotgrid" aria-label="Caça-níqueis">{(grid ?? Array<string>(9).fill('poke-ball')).map((s, i) => <SlotCell key={i} symbol={s} />)}</div>
+        <div className="gb-slotgrid" aria-label="Caça-níqueis">{(grid ?? Array<string>(9).fill('poke-ball')).map((s, i) => <SlotCell key={i} symbol={s} winning={winningCells.has(i)} />)}</div>
         {last?.detail.game === 'slots' && last.detail.lines.length > 0 ? <p className="gb-muted" style={{ margin: 0 }}>{last.detail.lines.map((l) => `linha ${l.line + 1}: ${MULT(l.multiplier)}`).join(' · ')}</p> : null}
         {stakeBox}
         <div className="gb-row" style={{ gap: 6 }}>
@@ -261,7 +279,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     const n = shown?.number ?? null;
     panel = (
       <>
-        <div className={`gb-roulette-ball gb-roulette-ball--${n === null ? 'none' : n === 0 ? 'green' : isRed(n) ? 'red' : 'black'}`} aria-live="polite">{n ?? '?'}</div>
+        <div className="gb-roulette-table"><div className={`gb-roulette-ball gb-roulette-ball--${n === null ? 'none' : n === 0 ? 'green' : isRed(n) ? 'red' : 'black'}`} aria-live="polite">{n ?? '?'}</div></div>
         <div className="gb-chips">
           {roulettePicks.map((p) => <button key={p.id} type="button" className={`gb-tab${rouletteBet === p.id ? ' is-on' : ''}`} aria-pressed={rouletteBet === p.id} onClick={() => setRouletteBet(p.id)}>{p.label}</button>)}
           <button type="button" className={`gb-tab${rouletteBet === 'number' ? ' is-on' : ''}`} aria-pressed={rouletteBet === 'number'} onClick={() => setRouletteBet('number')}>Número 36×</button>
@@ -284,7 +302,7 @@ export function CasinoScreen({ saveId, onBack }: Props) {
         <div className="gb-track" aria-label="Pista">
           {RACE_RUNNERS.map((id, i) => (
             <div key={id} className={`gb-lane${winner === i ? ' is-win' : ''}`}>
-              <button type="button" className={`gb-lane__pick${pick === i ? ' is-on' : ''}`} aria-pressed={pick === i} onClick={() => setPick(i)}><Sprite speciesId={id} alt={`Corredor ${i + 1}`} size={40} /></button>
+              <button type="button" className={`gb-lane__pick${pick === i ? ' is-on' : ''}`} aria-pressed={pick === i} disabled={busy} onClick={() => setPick(i)}><Sprite speciesId={id} alt={`Corredor ${i + 1}`} size={40} /></button>
               <div className="gb-lane__road"><span style={{ left: `${Math.min(100, ((frame[i] ?? 0) / RACE_LENGTH) * 100)}%` }}><Sprite speciesId={id} alt="" size={32} /></span></div>
             </div>
           ))}
@@ -298,12 +316,57 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     const at = shown?.wheel ?? null;
     panel = (
       <>
-        <div className="gb-wheel" aria-label="Roda">
-          {WHEEL_LAYOUT.map((m, i) => <span key={i} className={`gb-wheel__cell gb-wheel__cell--${m >= 5 ? 'hi' : m >= 1 ? 'mid' : 'lo'}${at === i ? ' is-at' : ''}`} title={MULT(m)} />)}
+        <div className="gb-casino-wheel" aria-label="Roda da fortuna">
+          <div className="gb-casino-wheel__disk" style={{ background: WHEEL_FACE, transform: `rotate(${at === null ? 0 : -(at + 0.5) * 360 / WHEEL_LAYOUT.length}deg)` }} />
+          <span className="gb-casino-wheel__pointer" aria-hidden="true">▼</span>
+          <strong className="gb-casino-wheel__result">{at !== null ? MULT(WHEEL_LAYOUT[at] as number) : '—'}</strong>
         </div>
-        <p style={{ margin: 0, fontSize: 28 }}>{at !== null ? MULT(WHEEL_LAYOUT[at] as number) : '—'}</p>
         {stakeBox}
         <button type="button" className="gb-button" disabled={busy} onClick={() => void play('wheel')}>Girar a roda</button>
+      </>
+    );
+  } else if (tab === 'doors') {
+    const result = last?.detail.game === 'doors' ? last.detail : null;
+    panel = (
+      <>
+        <div className="gb-casino-choices" role="group" aria-label="Escolha uma porta">
+          {Array.from({ length: DOOR_COUNT }, (_, index) => (
+            <button key={index} type="button" className={`gb-casino-choice gb-casino-choice--door${result?.winner === index ? ' is-winning' : ''}`}
+              aria-pressed={door === index} disabled={busy} onClick={() => { setDoor(index); setLast(null); }}>
+              <span className="gb-casino-choice__art">{result?.winner === index ? <Sprite speciesId={133} alt="Eevee" size={64} /> : result ? '—' : '?'}</span>
+              <strong>Porta {index + 1}</strong>
+              {result?.winner === index ? <span>Porta premiada</span> : null}
+            </button>
+          ))}
+        </div>
+        {stakeBox}
+        <button type="button" className="gb-button" disabled={choiceBlocked} onClick={() => void play('doors', { pick: door })}>
+          Abrir porta {door + 1} · {MULT(DOOR_PAYOUT)}
+        </button>
+      </>
+    );
+  } else if (tab === 'duel') {
+    const result = last?.detail.game === 'duel' ? last.detail : null;
+    const opponent = result ? DUEL_TYPES[result.opponent] : null;
+    panel = (
+      <>
+        <div className="gb-casino-choices" role="group" aria-label="Escolha seu tipo">
+          {DUEL_TYPES.map((type, index) => (
+            <button key={type.name} type="button" className={`gb-casino-choice gb-casino-choice--type-${index}`}
+              aria-pressed={duelPick === index} disabled={busy} onClick={() => { setDuelPick(index); setLast(null); }}>
+              <Sprite speciesId={type.speciesId} alt="" size={64} />
+              <strong>{type.name}</strong>
+            </button>
+          ))}
+        </div>
+        {opponent && result ? <div className="gb-casino-opponent">
+          <Sprite speciesId={opponent.speciesId} alt="" size={48} />
+          <span>A banca escolheu {opponent.name}. <strong>{result.result === 'win' ? 'Vitória!' : result.result === 'draw' ? 'Empate' : 'Derrota'}</strong></span>
+        </div> : null}
+        {stakeBox}
+        <button type="button" className="gb-button" disabled={choiceBlocked} onClick={() => void play('duel', { pick: duelPick })}>
+          Duelar · Vitória {MULT(DUEL_PAYOUT)}
+        </button>
       </>
     );
   } else if (tab === 'voltorb') {
@@ -316,8 +379,8 @@ export function CasinoScreen({ saveId, onBack }: Props) {
             const value = board ? board[i] : revealed.get(i);
             const open = value !== undefined;
             return (
-              <button key={i} type="button" className={`gb-vcard${open ? (value === 0 ? ' is-bomb' : ' is-open') : ''}`} disabled={busy || !round || open} aria-label={`Carta ${i + 1}`} onClick={() => void act('flip', i)}>
-                {open ? (value === 0 ? '💥' : MULT(value as number)) : '?'}
+              <button key={i} type="button" className={`gb-vcard${open ? (value === 0 ? ' is-bomb' : ' is-open') : ''}`} disabled={busy || !round || open} aria-label={`Carta ${i + 1}${open ? value === 0 ? ', Voltorb' : `, ${MULT(value)}` : ''}`} onClick={() => void act('flip', i)}>
+                {open ? (value === 0 ? <Sprite speciesId={100} alt="Voltorb" size={34} /> : MULT(value as number)) : <span aria-hidden="true">◆</span>}
               </button>
             );
           })}
@@ -337,8 +400,8 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     const dealer = r ? r.dealer : d?.dealer ?? [];
     panel = (
       <>
-        <div><span className="gb-muted">Banca</span><div className="gb-cards">{dealer.map((c, i) => <CardView key={i} rank={c.rank} suit={c.suit} />)}{r ? <CardView hidden /> : null}</div></div>
-        <div><span className="gb-muted">Você{r ? ` · ${r.playerTotal}` : ''}</span><div className="gb-cards">{player.map((c, i) => <CardView key={i} rank={c.rank} suit={c.suit} />)}</div></div>
+        <div className="gb-casino-hand"><span>Banca</span><div className="gb-cards">{dealer.map((c, i) => <CardView key={i} rank={c.rank} suit={c.suit} />)}{r ? <CardView hidden /> : null}</div></div>
+        <div className="gb-casino-hand"><span>Você{r ? ` · ${r.playerTotal}` : ''}</span><div className="gb-cards">{player.map((c, i) => <CardView key={i} rank={c.rank} suit={c.suit} />)}</div></div>
         {r ? (
           <div className="gb-row">
             <button type="button" className="gb-button" disabled={busy} onClick={() => void act('hit')}>Pedir</button>
@@ -353,10 +416,13 @@ export function CasinoScreen({ saveId, onBack }: Props) {
     const jumps = r?.jumps ?? (last?.detail.game === 'piplup' ? last.detail.jumps : 0);
     panel = (
       <>
-        <div className="gb-pads" aria-label="Pedras">
-          {Array.from({ length: 7 }, (_, i) => <span key={i} className={`gb-pad${i < jumps ? ' is-done' : ''}`}>{i + 1}</span>)}
+        <div className="gb-pads" aria-label={`Piplup completou ${jumps} saltos`}>
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} className={`gb-pad${i <= jumps ? ' is-done' : ''}`}>
+              {i === jumps ? <Sprite speciesId={393} alt="Piplup" size={36} /> : i === 0 ? '↗' : i}
+            </span>
+          ))}
         </div>
-        <Sprite speciesId={393} alt="Piplup" size={64} />
         {r ? (
           <div className="gb-row" style={{ alignItems: 'center' }}>
             <span>Agora: {MULT(r.multiplier)} · próximo salto: {r.nextOdds}% de acertar, vale {MULT(r.nextMultiplier)}</span>
@@ -370,19 +436,24 @@ export function CasinoScreen({ saveId, onBack }: Props) {
 
   return (
     <main className="gb-screen">
-      <div className="gb-stage">
-        <header className="gb-window gb-spread" style={{ alignItems: 'center', padding: '10px 20px' }}>
+      <div className="gb-stage gb-casino">
+        <header className="gb-window gb-spread gb-casino-header" style={{ alignItems: 'center', padding: '10px 20px' }}>
           <h1 className="gb-title" style={{ fontSize: 26 }}>Pokécassino</h1>
           <span style={{ fontSize: 22 }}>🪙 {state.chips.toLocaleString('pt-BR')} · {formatMoney(state.money)}</span>
         </header>
         <section className="gb-window" aria-label="Jogos">
-          <div className="gb-tabs" role="tablist">
+          <div className="gb-casino-tabs" role="tablist" aria-label="Jogos do Pokécassino">
             {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className="gb-tab" disabled={locked && t.id !== tab} onClick={() => { setTab(t.id); setShown(null); setLast(null); }}>{t.label}</button>
+              <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className="gb-casino-tab" disabled={busy || (locked && t.id !== tab)} onClick={() => { setTab(t.id); setShown(null); setLast(null); }}>{t.id === 'prizes' ? <ItemIcon item="master-ball" size={32} /> : <Sprite speciesId={GAME_SPRITES[t.id]} alt="" size={32} />}<span>{t.label}</span></button>
             ))}
           </div>
-          {isGame ? <p className="gb-muted" style={{ margin: '0 0 8px' }}>{GAME_HELP[game]}</p> : null}
-          <div className="gb-casino-panel">{panel}</div>
+          <div className={`gb-casino-arena gb-casino-arena--${tab}`} role="tabpanel" aria-label={isGame ? CASINO_NAMES[game] : 'Prêmios'}>
+            <header className="gb-casino-arena__header">
+              <h2 className="gb-title">{isGame ? CASINO_NAMES[game] : 'Prêmios'}</h2>
+              {isGame ? <p>{GAME_HELP[game]}</p> : null}
+            </header>
+            <div className="gb-casino-panel" aria-busy={busy}>{panel}</div>
+          </div>
           {locked ? (
             <button type="button" className="gb-button gb-button--red" style={{ marginTop: 8 }} disabled={busy} onClick={() => {
               setBusy(true);

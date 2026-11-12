@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.1.1**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.1.2**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
 ## Jogar no Windows (sem instalar nada)
 
@@ -152,8 +152,8 @@ packages/
      ou abra o perfil de um Pokémon da equipe/PC em **Doces, IVs e Shiny**. Transforma em shiny e consome
      uma pedra; se já for shiny, não gasta o item.
    - ✅ **Equipes nomeadas:** menu **Equipes** guarda até 20 equipes de 6; montar troca equipe e PC sozinho.
-   - ✅ **Pokécassino (alpha.10):** fichas obtidas em missões, sete jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
-     Wheel of Fortune e Pula Piplup) e loja de prêmios (Master Bola, Pedra Brilhante, Doces, Essências). Dá para apostar
+   - ✅ **Pokécassino (alpha.10):** fichas obtidas em missões, nove jogos (Caça-níqueis, Roleta, Voltorb Flip, Pokejack, Pokémon Race,
+     Wheel of Fortune, Pula Piplup, Portas do Eevee e Duelo de Tipos) e loja de prêmios (Master Bola, Pedra Brilhante, Doces, Essências). Dá para apostar
      um **Pokémon** em vez de fichas: se ganhar, recebe o prêmio em ₽ e o mesmo valor em fichas; se perder, ele vai embora
      (favoritos e o seu último Pokémon ficam protegidos). Rodadas de Voltorb Flip, Pokejack e Pula Piplup ficam salvas.
    - ✅ **Torneios por categoria:** Muito Fácil, Fácil, Intermediário, Difícil, Muito Difícil e Copa Prime. Oito rodadas

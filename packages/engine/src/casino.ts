@@ -1,21 +1,44 @@
 import type { Rng } from './rng.ts';
 
 /**
- * Pokécassino: regras puras dos sete jogos (os números vêm do jogo antigo).
+ * Pokécassino: regras puras dos jogos.
  * Todo multiplicador é o retorno TOTAL, entrada incluída: apostar 10 e receber 2× devolve 20.
  */
 
-export const CASINO_GAMES = ['slots', 'roulette', 'voltorb', 'jack', 'race', 'wheel', 'piplup'] as const;
+export const CASINO_GAMES = ['slots', 'roulette', 'voltorb', 'jack', 'race', 'wheel', 'piplup', 'doors', 'duel'] as const;
 export type CasinoGame = (typeof CASINO_GAMES)[number];
 export const CASINO_NAMES: Record<CasinoGame, string> = {
   slots: 'Caça-níqueis', roulette: 'Roleta', voltorb: 'Voltorb Flip', jack: 'Pokejack', race: 'Pokémon Race', wheel: 'Wheel of Fortune', piplup: 'Pula Piplup',
+  doors: 'Portas do Eevee', duel: 'Duelo de Tipos',
 };
-/** Quanto custa uma ficha em Pokédólares. */
+/** Conversão usada no prêmio das apostas com Pokémon. */
 export const CHIP_PRICE = 5;
 export const MAX_BET = 1_000_000;
 
 /** Jogos de várias etapas: a rodada fica salva até acabar. */
 export const ROUND_GAMES: readonly CasinoGame[] = ['voltorb', 'jack', 'piplup'];
+
+export const DOOR_COUNT = 3;
+export const DOOR_PAYOUT = 2.8;
+export const DUEL_PAYOUT = 1.8;
+export const DUEL_TYPES = [
+  { name: 'Planta', speciesId: 1 },
+  { name: 'Fogo', speciesId: 4 },
+  { name: 'Água', speciesId: 7 },
+] as const;
+
+export function openCasinoDoor(pick: number, rng: Rng) {
+  const winner = rng.int(DOOR_COUNT);
+  return { winner, multiplier: pick === winner ? DOOR_PAYOUT : 0 };
+}
+
+export function playTypeDuel(pick: number, rng: Rng) {
+  const opponent = rng.int(DUEL_TYPES.length);
+  // Planta vence Água, Fogo vence Planta, Água vence Fogo.
+  const defeatedType = (pick + DUEL_TYPES.length - 1) % DUEL_TYPES.length;
+  const result = pick === opponent ? 'draw' : opponent === defeatedType ? 'win' : 'lose';
+  return { opponent, result, multiplier: result === 'win' ? DUEL_PAYOUT : result === 'draw' ? 1 : 0 } as const;
+}
 
 const shuffle = <T,>(list: T[], rng: Rng): T[] => {
   const copy = [...list];

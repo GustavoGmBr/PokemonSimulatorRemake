@@ -7,6 +7,7 @@ import {
 import { loadGameData } from '@pokesim/data';
 import { transaction, type Db } from './db.ts';
 import { shinyCharmGenerations } from './dex-progress.ts';
+import { grantShinyStoneDrop } from './shiny-stone-drop.ts';
 import { badRequest, notFound } from './errors.ts';
 import type { Inventory } from './inventory.ts';
 import type { Journal } from './journal.ts';
@@ -128,6 +129,7 @@ export function createBossService(db: Db, store: PokemonStore, inventory: Invent
           inventory.add(saveId, prize.item, prize.quantity);
           rewards.push({ ...prize, name: data.itemsByName.get(prize.item)?.displayName ?? prize.item });
         }
+        grantShinyStoneDrop(saveId, [{ shiny: fight.pokemon.shiny, hp: 0 }], inventory, rewards, events);
         events.push({ k: 'text', text: 'Chefe derrotado! Escolha uma Poké Bola na tela de Chefes para tentar a captura.' });
       }
       if (!victory && remaining <= 0) events.push({ k: 'text', text: 'O tempo do desafio acabou!' });

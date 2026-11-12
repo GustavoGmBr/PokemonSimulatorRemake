@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  CASINO_NAMES, CHIP_PRICE, MAX_BET, PIPLUP_ODDS, PIPLUP_PAYS, RACE_PAYOUT, RACE_RUNNERS, ROUND_GAMES, VOLTORB_MAX_PICKS, VOLTORB_SIZE,
+  CASINO_NAMES, CHIP_PRICE, DOOR_COUNT, DUEL_TYPES, openCasinoDoor, playTypeDuel, MAX_BET, PIPLUP_ODDS, PIPLUP_PAYS, RACE_PAYOUT, RACE_RUNNERS, ROUND_GAMES, VOLTORB_MAX_PICKS, VOLTORB_SIZE,
   colorOf, dealJack, groupOf, handValue, ivQuality, jackDouble, jackHit, jackMultiplier, newVoltorb, parseRouletteBet, piplupJump, piplupMultiplier,
   isLegendary, pokemonPrize, saleValue, rngFrom, roulettePayout, runRace, spinRoulette, spinSlots, spinWheel, finishJack, voltorbMultiplier,
   type CasinoActResult, type CasinoDetail, type CasinoGame, type CasinoPrize, type CasinoResult, type CasinoRoundView, type CasinoStakeInput,
@@ -195,7 +195,7 @@ export function createCasinoService(db: Db, store: PokemonStore, inventory: Inve
       return state(saveId);
     },
 
-    /** Jogos de uma jogada só: caça-níqueis, roleta, corrida e roda. */
+    /** Resolve uma aposta de uma jogada. */
     play(saveId: string, game: string, body: Record<string, unknown>): CasinoResult {
       save(saveId);
       assertNoRound(saveId);
@@ -203,6 +203,21 @@ export function createCasinoService(db: Db, store: PokemonStore, inventory: Inve
       return transaction(db, () => {
         const input = body as CasinoStakeInput;
         switch (game) {
+          case 'doors':
+          case 'duel': {
+            const pick = body.pick;
+            const choices = game === 'doors' ? DOOR_COUNT : DUEL_TYPES.length;
+            if (typeof pick !== 'number' || !Number.isInteger(pick) || pick < 0 || pick >= choices) {
+              throw badRequest(game === 'doors' ? 'Escolha uma porta.' : 'Escolha um tipo.');
+            }
+            const stake = takeStake(saveId, input);
+            if (game === 'doors') {
+              const { winner, multiplier } = openCasinoDoor(pick, rng);
+              return result(saveId, game, settle(saveId, stake, multiplier), { game, pick, winner });
+            }
+            const { opponent, result: duel, multiplier } = playTypeDuel(pick, rng);
+            return result(saveId, game, settle(saveId, stake, multiplier), { game, pick, opponent, result: duel });
+          }
           case 'slots': {
             const stake = takeStake(saveId, input);
             const spin = spinSlots(rng);

@@ -55,6 +55,7 @@ test('jogos de uma jogada: fichas ficam consistentes e aposta inválida é recus
   const { save, url } = await setup(0, 10_000);
   const bets: Array<[string, Record<string, unknown>]> = [
     ['slots', { bet: 10 }], ['roulette', { bet: 10, bet_on: { kind: 'color', value: 'red' } }], ['race', { bet: 10, pick: 2 }], ['wheel', { bet: 10 }],
+    ['doors', { bet: 10, pick: 1 }], ['duel', { bet: 10, pick: 0 }],
   ];
   for (const [game, body] of bets) {
     for (let i = 0; i < 5; i++) {
@@ -63,12 +64,22 @@ test('jogos de uma jogada: fichas ficam consistentes e aposta inválida é recus
       assert.equal(res.status, 200, `${game}: ${JSON.stringify(res.json)}`);
       assert.equal(res.json.chips, before - 10 + res.json.stake.payout);
       assert.equal(res.json.chips, row(save.id).chips);
+      if (res.json.detail.game === 'doors') {
+        assert.equal(res.json.stake.payout, res.json.detail.winner === 1 ? 28 : 0);
+      } else if (res.json.detail.game === 'duel') {
+        const expected = [10, 0, 18][res.json.detail.opponent];
+        assert.equal(res.json.stake.payout, expected);
+      }
     }
   }
   assert.equal((await call('POST', `${url}/slots/play`, { bet: 0 })).status, 400);
   assert.equal((await call('POST', `${url}/slots/play`, { bet: 999_999_999 })).status, 400);
   assert.equal((await call('POST', `${url}/roulette/play`, { bet: 10, bet_on: { kind: 'color', value: 'xyz' } })).status, 400);
   assert.equal((await call('POST', `${url}/race/play`, { bet: 10, pick: 9 })).status, 400);
+  const beforeInvalid = row(save.id);
+  assert.equal((await call('POST', `${url}/doors/play`, { bet: 10, pick: 3 })).status, 400);
+  assert.equal((await call('POST', `${url}/duel/play`, { bet: 10, pick: null })).status, 400);
+  assert.deepEqual(row(save.id), beforeInvalid);
   assert.equal((await call('POST', `${url}/voltorb/play`, { bet: 10 })).status, 400);
   assert.equal((await call('POST', `${url}/xadrez/play`, { bet: 10 })).status, 400);
   db.prepare('UPDATE saves SET chips = 5 WHERE id = ?').run(save.id);

@@ -22,7 +22,7 @@ const MENU: { id: MenuId; label: string; info: string; phase?: string }[] = [
   { id: 'shop', label: 'Loja', info: 'Compre POKÉ BOLAS, poções e mais com carrinho.' },
   { id: 'bosses', label: 'Chefes', info: 'Enfrente chefes de 1 a 6 estrelas, com rotação a cada 10 minutos.' },
   { id: 'tournament', label: 'Torneios', info: 'Oito rodadas eliminatórias por categoria, com prêmios.' },
-  { id: 'casino', label: 'Pokécassino', info: 'Fichas, 7 jogos, aposta de POKÉMON e prêmios.' },
+  { id: 'casino', label: 'Pokécassino', info: 'Nove jogos, apostas com fichas ou Pokémon e prêmios.' },
   { id: 'missions', label: 'Missões', info: 'Dez objetivos a cada 2 horas, com recompensas e bônus final.' },
   { id: 'market', label: 'Mercado', info: 'Compre POKÉMON (renova a cada hora) e venda os da sua coleção.' },
   { id: 'trainer', label: 'Treinador', info: 'Seu cartão de treinador.' },

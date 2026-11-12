@@ -672,6 +672,31 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-pad.is-done { background: var(--green); }
 @media (max-width: 560px) { .gb-vgrid { grid-template-columns: repeat(6, 1fr); } .gb-slotgrid { grid-template-columns: repeat(3, 56px); } }
 
+
+.gb-casino-header { background: #252147; color: #fff2bc; border-color: #c89b45; }
+.gb-casino-header .gb-title { color: inherit; }
+.gb-casino-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 6px; margin-bottom: 12px; }
+.gb-casino-tab { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 42px; padding: 4px; border: 2px solid #514775; background: #e9e4f5; color: #252147; font: inherit; cursor: pointer; }
+.gb-casino-tab[aria-selected='true'] { background: #ffe296; border-color: #916425; }
+.gb-casino-tab:disabled { opacity: .55; cursor: default; }
+.gb-casino-arena { padding: 12px; border: 3px solid #514775; background: #f3eff8; color: #252147; }
+.gb-casino-arena__header { margin-bottom: 10px; padding: 8px; background: #ded6ef; }
+.gb-casino-arena__header :is(h2, p) { margin: 0; }
+.gb-casino-wheel { width: min(180px, 100%); aspect-ratio: 1; position: relative; display: grid; place-items: center; margin-block: 8px; }
+.gb-casino-wheel__disk { position: absolute; inset: 0; border: 4px solid #252147; border-radius: 50%; transition: transform .45s ease-out; }
+.gb-casino-wheel__pointer { position: absolute; top: -10px; color: #252147; font-size: 28px; }
+.gb-casino-wheel__result { position: relative; padding: 4px 10px; background: #fff2bc; border: 2px solid #252147; }
+.gb-casino-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.gb-casino-choice { display: grid; place-items: center; gap: 4px; min-width: 84px; padding: 6px; border: 3px solid #514775; background: #e9e4f5; color: #252147; font: inherit; cursor: pointer; }
+.gb-casino-choice--door { background: #f5ddbd; }
+.gb-casino-choice--type-0 { background: #f9d4c5; }
+.gb-casino-choice--type-1 { background: #cfe9ff; }
+.gb-casino-choice--type-2 { background: #d9ebc7; }
+.gb-casino-choice.is-winning { border-color: #8a650d; background: #ffe296; }
+.gb-casino-choice__art { display: grid; place-items: center; width: 64px; height: 64px; font-size: 28px; }
+.gb-casino-opponent, .gb-casino-hand { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { .gb-casino-wheel__disk { transition: none; } }
+
 /* ---------- itens (PokéAPI) ---------- */
 .gb-iconrow { display: inline-flex; align-items: center; gap: 8px; }
 .gb-itemicon { image-rendering: pixelated; object-fit: contain; flex: none; }
@@ -905,22 +930,45 @@ html[data-contrast='high'] .gb-menu__item[aria-current='true'] *, html[data-cont
 .gb-mkt-card__body .gb-mkt-card__meta:first-of-type { align-items: flex-start; }
 
 /* ---------- loja ---------- */
-.gb-shop-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border: 4px solid var(--ink); background: linear-gradient(135deg, #f8d848, #f09838); }
-.gb-shop-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.gb-shop-list { list-style: none; margin: 0; padding: 2px; display: flex; flex-direction: column; gap: 8px; max-height: 58vh; overflow-y: auto; }
-.gb-shop-item { display: grid; grid-template-columns: 56px 1fr 86px 118px 124px; gap: 12px; align-items: center; padding: 8px 10px; border: 3px solid var(--ink); background: var(--paper); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25); }
-.gb-shop-item[aria-current='true'] { border-color: var(--red); background: #fff8dc; }
-.gb-shop-item.is-in-cart { background: #e8f4d8; }
-.gb-shop-item.is-maxed { opacity: 0.6; }
-.gb-shop-item__icon { display: grid; place-items: center; width: 56px; height: 56px; border: 3px solid var(--ink); background: radial-gradient(circle, #fff 0 40%, var(--paper-2) 41%); }
-.gb-shop-item__text { display: flex; flex-direction: column; min-width: 0; }
-.gb-shop-item__text strong { font-size: 22px; }
-.gb-shop-item__desc { font-size: 15px; color: var(--night); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.gb-shop-item__own { font-size: 15px; padding: 0 4px; text-align: center; border: 2px solid var(--ink); background: var(--paper-2); white-space: nowrap; }
-.gb-shop-stepper { display: inline-flex; align-items: center; gap: 6px; }
-.gb-shop-stepper .gb-button { padding: 2px 10px; min-width: 0; }
-.gb-shop-stepper .gb-cartqty { min-width: 2.5ch; text-align: center; font-size: 22px; }
-.gb-shop-cart { align-self: flex-start; width: 340px; max-width: 100%; padding: 14px; border: 4px solid var(--ink); background: #fffef0; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3); position: sticky; top: 8px; }
-.gb-shop-cart__lines { list-style: none; margin: 0; padding: 0; font-size: 20px; border-bottom: 2px dashed var(--rim); }
-.gb-shop-cart__total { border-top: 2px solid var(--rim); margin-top: 8px; padding-top: 6px; font-size: 24px; }
-@media (max-width: 900px) { .gb-shop-item { grid-template-columns: 56px 1fr auto; } .gb-shop-item__own { display: none; } }
+.gb-shop { container-type: inline-size; }
+.gb-shop-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; border: 4px solid var(--ink); background: #245650; color: #fff1ba; }
+.gb-shop-head .gb-title { color: inherit; }
+.gb-shop-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(235px, 29%); gap: 12px; align-items: start; }
+.gb-shop-catalog { min-width: 0; }
+.gb-shop-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.gb-shop-tabs .gb-mkt-tab { padding-inline: 12px; }
+.gb-shop-list { list-style: none; margin: 0; padding: 2px 5px 5px 2px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 282px), 1fr)); gap: 10px; max-height: min(62vh, 680px); overflow-y: auto; }
+.gb-shop-item { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 10px; border: 3px solid var(--ink); background: #fff8e7; color: #252d25; box-shadow: 3px 3px 0 #252d2540; }
+.gb-shop-item.is-in-cart { background: #f0f7e6; }
+.gb-shop-item[aria-current='true'] { border-color: #347367; box-shadow: 3px 3px 0 #347367; }
+.gb-shop-item__header { display: flex; align-items: center; gap: 10px; }
+.gb-shop-item__icon { flex: none; display: grid; place-items: center; width: 50px; height: 50px; border: 2px solid #347367; background: radial-gradient(circle, #fffdf3 0 47%, #dceadf 48%); }
+.gb-shop-item__text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.gb-shop-item__text strong { font-size: 22px; line-height: 1; }
+.gb-shop-item__price { align-self: flex-start; margin-top: 4px; padding: 0 5px; background: #f9e59f; font-size: 18px; }
+.gb-shop-item__price small { font-size: 14px; }
+.gb-shop-item__desc { flex: 1; margin: 0; font-size: 16px; line-height: 1.1; }
+.gb-shop-item__stock { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px; padding: 2px 6px; background: #e1ece0; font-size: 16px; }
+.gb-shop-item.is-maxed .gb-shop-item__stock { background: #efe2c8; }
+.gb-shop-item__actions { display: grid; gap: 5px; }
+.gb-shop-quantities { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.gb-shop-quantity-label { flex: 0 0 61px; font-size: 16px; }
+.gb-shop-quantities .gb-button { min-width: 0; padding: 2px 5px; font-size: 16px; }
+.gb-shop-quantities .gb-shop-add:not(:disabled) { background: #c8eacb; color: #153a2b; }
+.gb-shop-quantities .gb-shop-remove:not(:disabled) { background: #f2d3c9; color: #5c302a; }
+.gb-shop-custom { padding-top: 6px; border-top: 2px solid #aabcb0; }
+.gb-shop-custom label { display: inline-flex; align-items: center; gap: 5px; }
+.gb-shop-custom input { width: 8ch; }
+.gb-shop-cart { min-width: 0; padding: 12px; border: 4px solid var(--ink); background: #fff8e7; color: #252d25; box-shadow: 4px 4px 0 #252d254d; position: sticky; top: 8px; }
+.gb-shop-cart__heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 0 0 8px; border-bottom: 2px solid #347367; }
+.gb-shop-cart__heading .gb-title { margin: 0; }
+.gb-shop-cart__heading span { padding: 1px 5px; background: #e1ece0; }
+.gb-shop-cart__lines { list-style: none; margin: 0; padding: 0; max-height: 32vh; overflow-y: auto; }
+.gb-shop-cart__lines li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 5px; padding: 5px 0; border-bottom: 1px dashed #aabcb0; font-size: 17px; }
+.gb-shop-cart__lines li span { overflow-wrap: anywhere; }
+.gb-shop-cart__total { border-top: 2px solid #347367; margin-top: 8px; padding-top: 6px; font-size: 24px; }
+@container (max-width: 670px) {
+  .gb-shop-layout { grid-template-columns: minmax(0, 1fr); }
+  .gb-shop-list { max-height: 52vh; }
+  .gb-shop-cart { position: static; }
+}

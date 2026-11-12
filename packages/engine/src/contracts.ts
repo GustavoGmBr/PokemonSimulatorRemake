@@ -592,6 +592,8 @@ export interface CasinoStakeResult {
 }
 
 export type CasinoDetail =
+  | { game: 'doors'; pick: number; winner: number }
+  | { game: 'duel'; pick: number; opponent: number; result: 'win' | 'draw' | 'lose' }
   | { game: 'slots'; grid: SlotCell[]; lines: SlotLine[] }
   | { game: 'roulette'; number: number; color: RouletteColor; group: RouletteGroup }
   | { game: 'race'; frames: number[][]; winner: number; pick: number }
