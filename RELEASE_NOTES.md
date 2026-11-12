@@ -1,4 +1,10 @@
-## Pokémon Simulator (remake) 2.1.0
+## Pokémon Simulator (remake) 2.1.1
+
+- Mapas sorteiam de 2 a 4 Pokémon no início. A faixa e os giros sobem por região concluída até 12 a 15 Pokémon e 15 giros.
+- Chefes ganham de 15% a 100% de bônus em Ataque, Defesa, Ataque Especial, Defesa Especial e Velocidade durante a batalha.
+- Corrigido o deslocamento dos sprites sob efeitos de status. Sprites menores e selos azul, roxo e dourado destacam Pokémon de 3 estrelas, 4 estrelas e shiny no mapa.
+
+## Anteriores: 2.1.0
 
 - PC organiza todas as caixas por número da Pokédex ou nome da espécie e move os Pokémon selecionados em lote para uma caixa com vagas suficientes.
 - Removidos o giro pago de selvagens e a compra de fichas. Missões rendem 5× mais fichas e os prêmios do cassino custam 90% menos.

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadGameData } from './index.ts';
 import {
-  HABITATS, applyHealItem, habitatOfType, levelCap, regionProgress, spinsFor, boardSizeFor, unlockedRegionIds,
+  HABITATS, applyHealItem, habitatOfType, levelCap, regionProgress, wildMapProgress, rollWildMapSize, unlockedRegionIds,
   attemptCapture, ballMultiplier, captureChance, captureValue, evolutionStage, isWildEligible, maxStageForBadges,
   rollShiny, seededRng, shakeThreshold, wildLevelRange, type BallContext,
 } from '@pokesim/engine';
@@ -120,21 +120,19 @@ test('itens de cura', () => {
   assert.equal(applyHealItem('poke-ball', 5, 81).ok, false);
 });
 
-test('progresso: regiões abrem pelo campeão e os giros crescem com os desafios', () => {
+test('progresso: população e giros aumentam por região concluída', () => {
   assert.deepEqual(unlockedRegionIds([]), ['kanto']);
   assert.deepEqual(unlockedRegionIds(['kanto:champion']), ['kanto', 'johto']);
   assert.deepEqual(unlockedRegionIds(['johto:champion']), ['kanto'], 'não pula regiões');
-  assert.equal(spinsFor(regionProgress([], 'kanto')), 3);
-  assert.equal(spinsFor(regionProgress(['kanto:gym1'], 'kanto')), 5);
-  assert.equal(spinsFor(regionProgress(['kanto:gym1', 'kanto:elite1', 'kanto:elite2', 'kanto:elite3', 'kanto:elite4'], 'kanto')), 8);
-  assert.equal(spinsFor(regionProgress(['kanto:champion'], 'kanto')), 12);
-  assert.equal(spinsFor(regionProgress(['kanto:champion'], 'johto')), 3);
-  // Pokémon no mapa: 3 de base, +1 por ginásio/Elite, 15 com o campeão
-  assert.equal(boardSizeFor(regionProgress([], 'kanto')), 3);
-  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2'], 'kanto')), 5);
-  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2', 'kanto:gym3', 'kanto:gym4', 'kanto:gym5', 'kanto:gym6', 'kanto:gym7', 'kanto:gym8'], 'kanto')), 11);
-  assert.equal(boardSizeFor(regionProgress(['kanto:gym1', 'kanto:gym2', 'kanto:gym3', 'kanto:gym4', 'kanto:gym5', 'kanto:gym6', 'kanto:gym7', 'kanto:gym8', 'kanto:elite1', 'kanto:elite2', 'kanto:elite3', 'kanto:elite4'], 'kanto')), 14);
-  assert.equal(boardSizeFor(regionProgress(['kanto:champion'], 'kanto')), 15);
+  assert.deepEqual(wildMapProgress([]), { mapSizeRange: [2, 4], spins: 3 });
+  assert.deepEqual(wildMapProgress(['kanto:gym1', 'kanto:elite4']), wildMapProgress([]));
+  assert.deepEqual(wildMapProgress(['kanto:champion']), { mapSizeRange: [3, 5], spins: 4 });
+  assert.deepEqual(wildMapProgress(['unova:champion']), wildMapProgress([]));
+  assert.deepEqual(wildMapProgress(['unova:champion', 'unova2:champion']), wildMapProgress(['kanto:champion']));
+  const champions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'unova2', 'kalos', 'alola', 'galar', 'paldea'].map((region) => region + ':champion');
+  assert.deepEqual(wildMapProgress(champions), { mapSizeRange: [12, 15], spins: 15 });
+  assert.equal(rollWildMapSize([2, 4], { int: () => 0 }), 2);
+  assert.equal(rollWildMapSize([12, 15], { int: (max) => max - 1 }), 15);
 });
 
 test('limites de nível por progresso', () => {

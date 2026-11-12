@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { shinyCharmGenerations } from './dex-progress.ts';
 import {
   HABITATS, LEGENDARY_SLOT_CHANCE, REGIONS, SHINY_CHARM_EXTRA_ROLLS, attemptCapture, captureChance, createPokemon,
-  habitatById, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, spinsFor, boardSizeFor,
+  habitatById, isLegendary, isWildEligible, ivQuality, regionOfSpecies, regionProgress, rngFrom, rollShiny, wildMapProgress, rollWildMapSize,
   speciesInHabitat, statsOf, MIN_WILD_LEVEL, GYMS_PER_REGION, DEFAULT_MIN_LEVEL, levelCap, HEAL_BALL, unlockedRegionIds,   type BallOption, type CaptureInput, type Habitat, type PokemonInstance, type Rng, type Species,
   type ThrowBallResult, type WildBoardView, type WildRegionOption, type WildSlotView, type WildState,
 } from '@pokesim/engine';
@@ -59,6 +59,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
   }
 
   function regionOptions(ids: string[]): WildRegionOption[] {
+    const mapProgress = wildMapProgress(ids);
     const unlocked = unlockedRegionIds(ids);
     const list: WildRegionOption[] = REGIONS.map((region) => {
       const progress = regionProgress(ids, region.id);
@@ -66,11 +67,11 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
         id: region.id, name: region.name, generation: region.generation, unlocked: unlocked.includes(region.id),
         gyms: progress.gyms, eliteMembers: progress.eliteMembers, elite: progress.elite, champion: progress.champion,
         levelCap: levelCap(progress),
-        spins: spinsFor(progress), mapSize: boardSizeFor(progress), legendaries: progress.elite,
+        ...mapProgress, legendaries: progress.elite,
         chooseHabitat: progress.gyms >= GYMS_PER_REGION,
       };
     });
-    // "Todas as gerações": junta as regiões liberadas; o limite e os giros seguem a mais recente
+    // "Todas as gerações": junta as regiões liberadas; o limite de nível segue a mais recente
     const latest = list.filter((region) => region.unlocked).at(-1) as WildRegionOption;
     const all: WildRegionOption = {
       ...latest, id: 'all', name: 'Todas as gerações', generation: 0, unlocked: true,
@@ -111,12 +112,12 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
     });
   }
 
-  /** Sorteia os Pokémon do mapa (3 a 15, conforme os desafios da região). */
+  /** Sorteia a quantidade e os Pokémon conforme o progresso do save. */
   function generate(saveId: string, region: string, habitat: Habitat, range: [number, number]): PokemonInstance[] {
     const ids = challenges(saveId);
     const unlocked = unlockedRegionIds(ids);
     const badges = gymCount(ids);
-    const size = regionOptions(ids).find((option) => option.id === region)?.mapSize ?? 3;
+    const size = rollWildMapSize(wildMapProgress(ids).mapSizeRange, rng);
     const boosted = new Set(shinyCharmGenerations(db, saveId));
     const { common, rare } = pools(scopeOf(region, unlocked), unlocked, badges, habitat, ids);
     if (common.length === 0 && rare.length === 0) throw badRequest('Nenhum POKÉMON disponível neste mapa.');
@@ -221,7 +222,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       view = {
         slots: board.slots.flatMap((pokemon, index) => (pokemon ? [slotView(index, pokemon, caught)] : [])),
         spinsLeft: board.spinsLeft,
-        spinsTotal: regions.find((region) => region.id === board.region)?.spins ?? 3,
+        spinsTotal: Math.max(board.spinsLeft, wildMapProgress(ids).spins),
         region: board.region as WildBoardView['region'],
         regionName: regions.find((region) => region.id === board.region)?.name ?? board.region,
         habitat: habitat.id,
@@ -292,7 +293,7 @@ export function createWildService(db: Db, store: PokemonStore, inventory: Invent
       return state(saveId);
     },
 
-    /** Gasta um giro (ou paga a renovação quando não há giros) e sorteia os 10 de novo, no mesmo mapa. */
+    /** Gasta um giro e sorteia a quantidade e as espécies no mesmo habitat. */
     spin(saveId: string): WildState {
       assertSave(saveId);
       guardBattle(saveId);

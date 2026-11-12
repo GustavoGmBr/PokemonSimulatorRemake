@@ -317,14 +317,14 @@ async function kit(saveId: string): Promise<void> {
   assert.equal((await call('POST', `/api/saves/${saveId}/dev/kit`)).status, 201);
 }
 
-test('procurar: mapa com 3 selvagens, 3 giros e nada sem procura', async () => {
+test('procurar: mapa com 2 a 4 selvagens, 3 giros e nada sem procura', async () => {
   const save = await newSave();
   const idle = (await call<WildState>('GET', `/api/saves/${save.id}/wild`)).json;
   assert.equal(idle.board, null);
   assert.deepEqual(idle.balls.map((b) => [b.item, b.quantity]), [['poke-ball', 10]]);
 
   const first = (await call<WildState>('POST', `/api/saves/${save.id}/wild/search`, KANTO)).json;
-  assert.equal(first.board?.slots.length, 3);
+  assert.ok(first.board && first.board.slots.length >= 2 && first.board.slots.length <= 4);
   assert.equal(first.board?.spinsLeft, 3);
   assert.equal(first.board?.regionName, 'Kanto');
   assert.ok(first.board?.habitat);
@@ -338,6 +338,7 @@ test('procurar: mapa com 3 selvagens, 3 giros e nada sem procura', async () => {
   for (let left = 2; left >= 0; left--) {
     const spun = (await call<WildState>('POST', `/api/saves/${save.id}/wild/spin`)).json;
     assert.equal(spun.board?.spinsLeft, left);
+    assert.ok(spun.board && spun.board.slots.length >= 2 && spun.board.slots.length <= 4);
   }
   const noMore = await call<{ error: string }>('POST', `/api/saves/${save.id}/wild/spin`);
   assert.equal(noMore.status, 400);
@@ -355,14 +356,14 @@ test('escolher: encontro, fugir, e regras de ordem', async () => {
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' })).status, 400);
   await call('POST', `/api/saves/${save.id}/wild/search`, KANTO);
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/choose`, { slot: 10 })).status, 400);
-  const chosen = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 2 })).json;
-  assert.equal(chosen.chosen, 2);
+  const chosen = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 1 })).json;
+  assert.equal(chosen.chosen, 1);
   const ball = chosen.balls[0];
   assert.ok(ball && ball.chance !== null && ball.chance > 0 && ball.chance < 1);
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/spin`)).status, 400, 'não gira durante o encontro');
 
   const dex = (await call<PokedexView>('GET', `/api/saves/${save.id}/pokedex`)).json;
-  const speciesId = chosen.board?.slots[2]?.speciesId ?? 0;
+  const speciesId = chosen.board?.slots[1]?.speciesId ?? 0;
   assert.ok(dex.states[speciesId - 1] ?? 0 >= 1, 'a espécie escolhida vira vista');
 
   const fled = (await call<WildState>('POST', `/api/saves/${save.id}/wild/flee`)).json;
@@ -374,15 +375,15 @@ test('lançar bola: gasta a bola, errar mantém o encontro e a Master Ball captu
   const save = await newSave();
   await kit(save.id);
   await call('POST', `/api/saves/${save.id}/wild/search`, KANTO);
-  const before = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 2 })).json;
-  const target = before.board?.slots[2];
+  const before = (await call<WildState>('POST', `/api/saves/${save.id}/wild/choose`, { slot: 1 })).json;
+  const target = before.board?.slots[1];
   assert.ok(target);
   assert.equal((await call('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'rare-candy' })).status, 400);
 
   const thrown = (await call<ThrowBallResult>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'poke-ball' })).json;
   assert.ok([0, 1, 2, 3].includes(thrown.shakes));
   assert.equal(thrown.state.balls.find((b) => b.item === 'poke-ball')?.quantity, 19);
-  if (!thrown.caught) assert.equal(thrown.state.chosen, 2);
+  if (!thrown.caught) assert.equal(thrown.state.chosen, 1);
 
   const master = (await call<ThrowBallResult>('POST', `/api/saves/${save.id}/wild/throw`, { ball: 'master-ball' }));
   if (thrown.caught) {
@@ -395,7 +396,7 @@ test('lançar bola: gasta a bola, errar mantém o encontro e a Master Ball captu
     assert.equal(master.json.pokemon?.level, target.level);
     assert.equal(master.json.pokemon?.shiny, target.shiny);
     assert.equal(master.json.pokemon?.ball, 'master-ball');
-    assert.equal(master.json.state.board?.slots.length, 2, 'só o capturado sai do mapa');
+    assert.equal(master.json.state.board?.slots.length, before.board!.slots.length - 1, 'só o capturado sai do mapa');
   }
   const mine = (await call<PokemonSearchResult>('GET', `/api/saves/${save.id}/pokemon?limit=100`)).json;
   assert.equal(mine.total, 2);
@@ -433,24 +434,24 @@ test('regiões: só Kanto no início; progresso libera regiões, giros e lendár
   const stages = [...seen].filter((id) => [6, 9, 3, 149].includes(id));
   assert.deepEqual(stages, [], 'sem insígnias, só o 1º estágio');
 
-  // giros por desafio: ginásio 5, elite 8, campeão 12
+  // giros aumentam apenas ao concluir a região
   const progress = async () => (await call<{ granted: string | null }>('POST', `${base}/dev/progress`)).json.granted;
   assert.equal(await progress(), 'kanto:gym1');
-  assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 5);
+  assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 3);
   for (let i = 0; i < 7; i++) await progress();
   for (const n of [1, 2, 3]) {
     assert.equal(await progress(), `kanto:elite${n}`);
-    assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 5, 'Elite incompleta não conta');
+    assert.equal(reg((await call<WildState>('GET', `${base}/wild`)).json, 'kanto')?.spins, 3, 'Elite incompleta não conta');
   }
   assert.equal(await progress(), 'kanto:elite4');
   const afterElite = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.equal(reg(afterElite, 'kanto')?.spins, 8);
+  assert.equal(reg(afterElite, 'kanto')?.spins, 3);
   assert.ok(reg(afterElite, 'kanto')?.legendaries);
   assert.ok(!reg(afterElite, 'johto')?.unlocked, 'Johto ainda fechada');
   assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId: 25 })).status, 400);
   assert.equal(await progress(), 'kanto:champion');
   const afterChampion = (await call<WildState>('GET', `${base}/wild`)).json;
-  assert.equal(reg(afterChampion, 'kanto')?.spins, 12);
+  assert.equal(reg(afterChampion, 'kanto')?.spins, 4);
   assert.ok(reg(afterChampion, 'johto')?.unlocked, 'Johto abriu');
   assert.ok(!reg(afterChampion, 'hoenn')?.unlocked);
 
@@ -459,8 +460,8 @@ test('regiões: só Kanto no início; progresso libera regiões, giros e lendár
     assert.equal((await call('POST', `${base}/wild/search`, { region: 'kanto', speciesId })).status, 400);
   }
   const random = (await call<WildState>('POST', `${base}/wild/search`, KANTO)).json.board;
-  assert.equal(random?.slots.length, 15);
-  assert.equal(random?.spinsLeft, 12);
+  assert.ok(random && random.slots.length >= 3 && random.slots.length <= 5);
+  assert.equal(random?.spinsLeft, 4);
 
   // sair do mapa
   const left = (await call<WildState>('POST', `${base}/wild/leave`)).json;

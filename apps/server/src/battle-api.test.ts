@@ -61,6 +61,7 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   db.prepare('UPDATE pokemon SET level = 30, exp = 27000, current_hp = 9999 WHERE save_id = ?').run(save.id);
   db.prepare("INSERT INTO badges (save_id, challenge_id, won_at) VALUES (?, 'kanto:champion', '2026-01-01')").run(save.id); // libera o nível 100 em Kanto
   await startFight(url);
+  const initialSize = (await call<WildState>('GET', `${url}/wild`)).json.board!.slots.length;
   let view = (await call<BattleView>('GET', `${url}/battle`)).json;
   let final: BattleTurnResult | null = null;
   for (let i = 0; i < 40 && !final; i++) {
@@ -85,7 +86,7 @@ test('batalha: lutar até o fim dá XP e dinheiro (ou derrota), cura a equipe e 
   const wild = (await call<WildState>('GET', `${url}/wild`)).json;
   assert.ok(wild.board, 'vitória mantém o mapa');
   assert.equal(wild.chosen, null);
-  assert.equal(wild.board?.slots.length, 14, 'só o derrotado sai do mapa (15 no início, com o campeão de Kanto vencido)');
+  assert.equal(wild.board?.slots.length, initialSize - 1, 'só o derrotado sai do mapa');
   assert.ok(!wild.board?.slots.some((slot) => slot.slot === 0), 'a vaga 0 ficou vazia, as outras não mudam de lugar');
 });
 
@@ -169,8 +170,8 @@ test('golpes pendentes: aprender trocando ou descartar', async () => {
 
 test('mapa limpo: derrotar/capturar todos deixa o mapa vazio até girar', async () => {
   const { url } = await setup();
-  await call('POST', `${url}/wild/search`, { region: 'kanto', minLevel: 2, maxLevel: 4 });
-  for (const slot of [0, 1, 2]) {
+  const { json } = await call<WildState>('POST', `${url}/wild/search`, { region: 'kanto', minLevel: 2, maxLevel: 4 });
+  for (const { slot } of json.board!.slots) {
     await call('POST', `${url}/wild/choose`, { slot });
     const r = await call<BattleTurnResult>('POST', `${url}/battle/start`);
     assert.equal(r.status, 201);
@@ -180,7 +181,7 @@ test('mapa limpo: derrotar/capturar todos deixa o mapa vazio até girar', async 
   const wild = (await call<WildState>('GET', `${url}/wild`)).json;
   assert.equal(wild.board?.slots.length, 0);
   const spun = (await call<WildState>('POST', `${url}/wild/spin`, {})).json;
-  assert.equal(spun.board?.slots.length, 3, 'girar traz novos Pokémon');
+  assert.ok(spun.board && spun.board.slots.length >= 2 && spun.board.slots.length <= 4, 'girar traz novos Pokémon');
 });
 
 test('golpes: lista permitidos, troca por nível (grátis) e TM comprada no Pokémon', async () => {

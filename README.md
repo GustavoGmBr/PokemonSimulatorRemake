@@ -4,7 +4,7 @@ Remake do Pokémon Simulator, feito do zero em **TypeScript** e com visual **Ret
 Single-player, offline e com saves locais em SQLite. Projeto de fã, sem vínculo com
 Nintendo, Game Freak ou The Pokémon Company.
 
-> Versão atual: **2.1.0**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
+> Versão atual: **2.1.1**, batalhas (1×1 e em dupla), Novo Ciclo e progressão, Pokécassino, torneios, missões, mercado, histórico e distribuição para Windows (executável, sprites e atualização automática); mapa pixel a seguir. Veja o [plano de fases](#fases).
 
 ## Jogar no Windows (sem instalar nada)
 
@@ -92,8 +92,8 @@ packages/
    - ✅ Acabamento: tela de Opções (velocidade do texto, volume), tempo de jogo, fontes offline.
    - ✅ Selvagens e captura: busca por região (só Kanto no início; as outras abrem ao derrotar o campeão
      da anterior). Cada procura sorteia um mapa pixel GBA (8 habitats por tipo) com Pokémon soltos,
-     brilhantes visíveis e "Nome · Nv · ★" em cima de cada um. Giros para trocar os 10: 3, e 5 / 8 / 12
-     após ginásio / Elite dos 4 / campeão da região; sem giros, busque um novo mapa. Lendários só
+     brilhantes visíveis e "Nome · Nv · ★" em cima de cada um. Cada mapa ou giro sorteia de 2 a 4 Pokémon no início, com 3 giros.
+     A faixa e os giros crescem com as regiões concluídas, até 12 a 15 Pokémon e 15 giros. Sem giros, busque um novo mapa. Lendários só
      depois da Elite dos 4 da região. Não há busca por espécie específica. Brilhante 1/4096;
      o Amuleto Brilhante dá +2 sorteios somente para espécies de gerações com a Pokédex totalmente capturada
      (incluindo lendários e míticos), e cada geração é ativada separadamente. Vale em mapas mistos e no mercado. Fórmula de captura por HP e
@@ -102,8 +102,7 @@ packages/
      procura, de 1 até o limite liberado (padrão: do 2 ao limite) e, com os 8 ginásios da região vencidos,
      também o mapa (habitat). **Limite de nível:** 10 antes do 1º ginásio; 16, 22, 28, 34, 40, 46, 52 e 58
      após cada ginásio; 70, 82, 94 e 100 após cada membro da Elite dos 4; 100 após o campeão. A opção
-     **Todas as gerações** mistura as regiões liberadas e segue giros, lendários e limite da região mais
-     recente liberada. Iniciais: só os da 1ª geração por enquanto.
+     **Todas as gerações** mistura as regiões liberadas e usa o limite de nível da região mais recente. Iniciais: só os da 1ª geração por enquanto.
    - ✅ Itens e loja: poções e revives na Mochila, loja com carrinho e todos os itens do jogo antigo:
      Poké Bolas (as 16 especiais com os mesmos multiplicadores; Bola Premier de brinde a cada 10 Poké
      Bolas), curas, pedras de evolução, Mega (97), Primal, Essências de IV (₽ 5.000; o uso vem com a

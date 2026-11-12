@@ -1,10 +1,6 @@
 import type { EvolutionNode, Species, TypeName } from './types.ts';
 import { REGIONS, type Region } from './regions.ts';
 
-export const BOARD_MIN_SIZE = 3;
-export const BOARD_MAX_SIZE = 15;
-export const BOARD_SPINS = 3;
-/** Preço para renovar o mapa quando os giros acabam. */
 export const MIN_WILD_LEVEL = 1;
 export const MAX_WILD_LEVEL = 100;
 export const GYMS_PER_REGION = 8;
@@ -46,15 +42,22 @@ export function unlockedRegionIds(challengeIds: readonly string[]): string[] {
   return unlocked;
 }
 
-/** Pokémon no mapa: 3 de base, +1 por ginásio e por membro da Elite dos 4 (até 14); 15 ao derrotar o campeão. */
-export function boardSizeFor(progress: RegionProgress): number {
-  if (progress.champion) return BOARD_MAX_SIZE;
-  return Math.min(BOARD_MAX_SIZE - 1, BOARD_MIN_SIZE + progress.gyms + progress.eliteMembers);
+/** População e giros escalam com as regiões concluídas em todo o save. */
+export function wildMapProgress(challengeIds: readonly string[]) {
+  const won = new Set(challengeIds);
+  const completed = REGIONS.filter(({ id }) =>
+    won.has(championId(id)) && (id !== 'unova' || won.has(championId('unova2')))).length;
+  const progress = completed / REGIONS.length;
+  return {
+    mapSizeRange: [2 + Math.round(10 * progress), 4 + Math.round(11 * progress)] as [number, number],
+    spins: 3 + Math.round(12 * progress),
+  };
 }
 
-/** Giros por mapa: 3 de base; 5 com um ginásio da região, 8 com a Elite dos 4, 12 com o campeão. */
-export function spinsFor(progress: RegionProgress): number {
-  return progress.champion ? 12 : progress.elite ? 8 : progress.gyms > 0 ? 5 : BOARD_SPINS;
+/** Sorteia a população incluindo os dois extremos da faixa. */
+export function rollWildMapSize(range: readonly [number, number], rng: import('./rng.ts').Rng): number {
+  const [min, max] = range;
+  return min + rng.int(max - min + 1);
 }
 
 /** Nível máximo liberado: 10 antes do 1º ginásio, sobe a cada ginásio, membro da Elite e campeão. */

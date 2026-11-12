@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
-  BOSS_TIERS, BOSS_WIPE_PENALTY, rewardMoney, foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
+  BOSS_TIERS, BOSS_WIPE_PENALTY, STAT_KEYS, rewardMoney, foeItemsLeft, NG_LEVEL, buildNgChallenges, isNgId, ngLeaderBag, ngRewards, ngUnlocked, ngRequiredIds,
   type NgChallenge, type NgChallengeView, type NgPlusState,
   DIFFICULTIES, HEAL_EFFECTS, STATUS_CURES, applyStatusCure, REGIONS, TRAINER_DIFFICULTIES, activeOf, amuletCoinMultiplier, applyHealItem, attemptCapture, captureChance, challengeLockReason,
   challengeUnlocked, chooseAction, combatantFrom, createBattle, createPokemon, effectiveness, expForLevel, failedThrow, finishCapture, leaderBag, leaderSkill,
@@ -376,7 +376,11 @@ export function createBattleService(db: Db, store: PokemonStore, inventory: Inve
         const tier = BOSS_TIERS.find((entry) => entry.stars === fight.stars)!;
         const species = ctxBase.species(fight.pokemon.speciesId);
         const foe = combatantFrom(fight.pokemon, species, species.displayName);
-        foe.stats.hp *= tier.hpMultiplier;
+        for (const stat of STAT_KEYS) {
+          foe.stats[stat] = stat === 'hp'
+            ? foe.stats.hp * tier.hpMultiplier
+            : Math.floor(foe.stats[stat] * (100 + tier.statBonusPercent) / 100);
+        }
         foe.hp = foe.stats.hp;
         const player = playerTeam(saveId, null);
         for (const mon of player) mon.capped = true;

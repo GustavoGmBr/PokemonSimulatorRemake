@@ -2,6 +2,11 @@
 export interface ChangelogEntry { version: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '2.1.1', items: [
+    "Mapas sorteiam de 2 a 4 Pokémon no início. A faixa e os giros sobem por região concluída até 12 a 15 Pokémon e 15 giros.",
+    "Chefes ganham de 15% a 100% de bônus em Ataque, Defesa, Ataque Especial, Defesa Especial e Velocidade durante a batalha.",
+    "Corrigido o deslocamento dos sprites sob efeitos de status. Sprites menores e selos azul, roxo e dourado destacam Pokémon de 3 estrelas, 4 estrelas e shiny no mapa.",
+  ] },
   { version: '2.1.0', items: [
     'Chefes com dificuldades sorteadas a cada 10 minutos. Toda a equipe precisa ter pelo menos o nível do chefe.',
     'Organize as caixas do PC por número da Pokédex ou nome da espécie e mova Pokémon em lote.',

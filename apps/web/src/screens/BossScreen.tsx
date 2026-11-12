@@ -89,7 +89,7 @@ export function BossScreen({ saveId, onBack }: { saveId: string; onBack: () => v
                     <div>
                       <div aria-label={`${offer.stars} estrelas`}>{'★'.repeat(offer.stars)}</div>
                       <strong>{offer.shiny ? '✦ ' : ''}{offer.name}</strong>
-                      <div>Nv. {offer.level} · HP ×{offer.hpMultiplier}</div>
+                      <div>Nv. {offer.level} · HP ×{offer.hpMultiplier} · Outros atributos +{offer.statBonusPercent}%</div>
                       <button type="button" className="gb-button" disabled={busy || seconds === 0 || offer.status !== 'available' || levelBlocked} onClick={() => void run(async () => {
                         setBattle(await api.bossStart(saveId, state.period, offer.slot));
                       })}>{offer.status === 'available' && levelBlocked ? `Equipe precisa de Nv. ${offer.level}+` : STATUS[offer.status]}</button>

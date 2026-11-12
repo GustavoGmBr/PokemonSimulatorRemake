@@ -6,12 +6,12 @@ export const BOSS_DURATION = 10 * 60_000;
 export const BOSS_WIPE_PENALTY = 60_000;
 
 export const BOSS_TIERS = [
-  { stars: 1, level: 40, hpMultiplier: 5, minIv: 0, maxIv: 100, shinyDenominator: 4096, prizes: 'muito-facil' },
-  { stars: 2, level: 50, hpMultiplier: 8, minIv: 40, maxIv: 60, shinyDenominator: 3686, prizes: 'facil' },
-  { stars: 3, level: 65, hpMultiplier: 12, minIv: 50, maxIv: 70, shinyDenominator: 3072, prizes: 'intermediario' },
-  { stars: 4, level: 75, hpMultiplier: 15, minIv: 60, maxIv: 80, shinyDenominator: 2260, prizes: 'dificil' },
-  { stars: 5, level: 90, hpMultiplier: 20, minIv: 75, maxIv: 90, shinyDenominator: 1365, prizes: 'muito-dificil' },
-  { stars: 6, level: 100, hpMultiplier: 30, minIv: 90, maxIv: 100, shinyDenominator: 512, prizes: 'copa-prime' },
+  { stars: 1, level: 40, hpMultiplier: 5, statBonusPercent: 15, minIv: 0, maxIv: 100, shinyDenominator: 4096, prizes: 'muito-facil' },
+  { stars: 2, level: 50, hpMultiplier: 8, statBonusPercent: 25, minIv: 40, maxIv: 60, shinyDenominator: 3686, prizes: 'facil' },
+  { stars: 3, level: 65, hpMultiplier: 12, statBonusPercent: 40, minIv: 50, maxIv: 70, shinyDenominator: 3072, prizes: 'intermediario' },
+  { stars: 4, level: 75, hpMultiplier: 15, statBonusPercent: 55, minIv: 60, maxIv: 80, shinyDenominator: 2260, prizes: 'dificil' },
+  { stars: 5, level: 90, hpMultiplier: 20, statBonusPercent: 75, minIv: 75, maxIv: 90, shinyDenominator: 1365, prizes: 'muito-dificil' },
+  { stars: 6, level: 100, hpMultiplier: 30, statBonusPercent: 100, minIv: 90, maxIv: 100, shinyDenominator: 512, prizes: 'copa-prime' },
 ] as const;
 
 export type BossTier = typeof BOSS_TIERS[number];

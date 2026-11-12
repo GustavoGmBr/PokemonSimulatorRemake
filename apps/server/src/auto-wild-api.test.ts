@@ -51,7 +51,7 @@ test('auto-batalha limpa o mapa inteiro, ganha dinheiro e depois dá para girar'
   assert.ok(json.report.money > 0);
   assert.equal((await call<SaveDetail>('GET', url)).json.money, money + json.report.money);
   const spun = (await call<WildState>('POST', `${url}/wild/spin`, {})).json;
-  assert.equal(spun.board!.slots.length, size);
+  assert.ok(spun.board!.slots.length >= 2 && spun.board!.slots.length <= 4);
 });
 
 test('auto-batalha para sem lutar quando há shiny ou 4★ no mapa', async () => {

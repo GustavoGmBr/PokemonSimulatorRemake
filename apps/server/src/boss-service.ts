@@ -77,7 +77,7 @@ export function createBossService(db: Db, store: PokemonStore, inventory: Invent
         const mon = row?.pokemon ? JSON.parse(row.pokemon) as PokemonInstance : rolled.pokemon;
         return {
           slot, stars: tier.stars, speciesId: mon.speciesId, name: speciesOf(mon).displayName, shiny: mon.shiny,
-          level: tier.level, hpMultiplier: tier.hpMultiplier, status: row?.status ?? 'available',
+          level: tier.level, hpMultiplier: tier.hpMultiplier, statBonusPercent: tier.statBonusPercent, status: row?.status ?? 'available',
         };
       }),
       pending: rows.filter((row) => row.status === 'capture' && row.pokemon).map((row) => {

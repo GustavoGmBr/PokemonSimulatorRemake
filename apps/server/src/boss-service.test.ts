@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BOSS_DURATION, BOSS_TIERS, BOSS_WIPE_PENALTY, bossPool, rollBossIvs, seededRng, type BattleState } from '@pokesim/engine';
+import { BOSS_DURATION, BOSS_TIERS, BOSS_WIPE_PENALTY, bossPool, rollBossIvs, seededRng, statsOf, STAT_KEYS, type BattleState } from '@pokesim/engine';
 import { loadGameData } from '@pokesim/data';
 import { createBattleService } from './battle-service.ts';
 import { openDatabase } from './db.ts';
@@ -67,6 +67,14 @@ test('batalha de chefe persiste, desconta uma derrota, paga a vitória uma vez e
     db.prepare('UPDATE pokemon SET level = ? WHERE save_id = ? AND team_slot IS NOT NULL').run(first.level, save.id);
     const start = battle.startBoss(save.id, first.slot, rotation.period);
     assert.equal(start.view.boss?.deadline, now + BOSS_DURATION);
+    const stored = db.prepare('SELECT state FROM battles WHERE save_id = ?').get(save.id) as { state: string };
+    const fight = JSON.parse(stored.state) as BattleState;
+    const original = fight.boss!.pokemon;
+    const normal = statsOf(original, loadGameData().speciesById.get(original.speciesId)!);
+    for (const stat of STAT_KEYS) {
+      const expected = stat === 'hp' ? normal.hp * first.hpMultiplier : Math.floor(normal[stat] * (100 + first.statBonusPercent) / 100);
+      assert.equal(fight.foe.team[0]!.stats[stat], expected, stat);
+    }
     assert.equal(start.view.heals.length, 0);
     assert.equal(start.view.balls.length, 0);
     assert.throws(() => battle.act(save.id, { kind: 'item', item: 'potion', target: 0 }), /Itens de cura/);
@@ -125,7 +133,8 @@ test('batalha de chefe persiste, desconta uma derrota, paga a vitória uma vez e
     assert.equal(inventory.quantity(save.id, 'master-ball'), 1);
     assert.throws(() => resumed.captureBoss(save.id, rotation.period, first.slot, 'master-ball'), /tentativa/);
     assert.equal(inventory.quantity(save.id, 'master-ball'), 1);
-    assert.ok(store.team(save.id).some((mon) => mon.level === first.level && mon.speciesId === first.speciesId));
+    const captured = store.team(save.id).find((mon) => mon.level === first.level && mon.speciesId === first.speciesId && mon.ball === 'master-ball');
+    assert.deepEqual(captured?.stats, normal);
 
     assert.equal(resumed.bosses(save.id).pending.length, 0);
   } finally {

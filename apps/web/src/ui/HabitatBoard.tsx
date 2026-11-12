@@ -30,14 +30,15 @@ export function HabitatBoard({ habitat, slots, cursor, alertStars, disabled, onH
         <canvas ref={canvas} className="gb-map__canvas" aria-hidden="true" />
         {slots.map((slot) => {
           const [x, y] = spawns[slot.slot] ?? [COLS / 2, ROWS / 2];
-          const mark = slot.shiny ? 'shiny' : slot.ivStars >= alertStars ? 'stars' : null;
+          const highIv = slot.ivStars >= alertStars;
+          const featured = slot.shiny || highIv;
           return (
             <button
               key={slot.slot}
               type="button"
-              className={`gb-wild${mark ? ` gb-wild--${mark}` : ''}`}
+              className={`gb-wild${slot.shiny ? ' gb-wild--shiny' : ''}${highIv ? ' gb-wild--stars' : ''}${slot.ivStars === 4 ? ' gb-wild--perfect' : ''}`}
               style={{
-                left: `${(x / COLS) * 100}%`, top: `${(y / ROWS) * 100}%`, zIndex: Math.round(y * 10),
+                left: `${(x / COLS) * 100}%`, top: `${(y / ROWS) * 100}%`, zIndex: Math.round(y * 10) + (featured ? 200 : 0),
                 ['--dur' as string]: `${7 + ((slot.slot * 37) % 50) / 10}s`,
                 ['--delay' as string]: `-${((slot.slot * 53) % 70) / 10}s`,
                 ['--dx' as string]: slot.slot % 2 === 0 ? 1 : -1,
@@ -51,10 +52,16 @@ export function HabitatBoard({ habitat, slots, cursor, alertStars, disabled, onH
             >
               <span className="gb-wild__body">
                 <span className="gb-wild__tag">
-                  <b>{slot.shiny ? '✦ ' : ''}{slot.name}</b>
-                  <span>Nv{slot.level} · <span className="gb-stars">{stars(slot.ivStars)}</span></span>
+                  {featured ? (
+                    <span className="gb-wild__badges" aria-hidden="true">
+                      {slot.shiny ? <span className="gb-wild__badge gb-wild__badge--shiny">✦ Shiny</span> : null}
+                      {highIv ? <span className="gb-wild__badge gb-wild__badge--iv">{slot.ivStars}★</span> : null}
+                    </span>
+                  ) : null}
+                  <b>{slot.name}</b>
+                  <span>Nv{slot.level}{highIv ? null : <> · <span className="gb-stars">{stars(slot.ivStars)}</span></>}</span>
                 </span>
-                <span className="gb-wild__walk"><Sprite speciesId={slot.speciesId} shiny={slot.shiny} alt="" size={96} /></span>
+                <span className="gb-wild__walk"><Sprite speciesId={slot.speciesId} shiny={slot.shiny} alt="" size={64} /></span>
               </span>
             </button>
           );

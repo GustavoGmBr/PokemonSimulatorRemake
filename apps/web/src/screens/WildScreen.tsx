@@ -281,18 +281,18 @@ export function WildScreen({ saveId, onBack }: Props) {
               <section className="gb-window" aria-label="Detalhes da região">
                 <h2 className="gb-title" style={{ fontSize: 22, marginBottom: 4 }}>{selected.id === 'all' ? selected.name : `${selected.name} · Geração ${selected.generation}`}</h2>
                 {selected.unlocked ? (
-                  <p style={{ margin: '0 0 8px' }}>Cada mapa mostra de 3 a 15 POKÉMON soltos (mais a cada ginásio, Elite dos 4 e campeão). Clique no que quiser enfrentar.</p>
+                  <p style={{ margin: '0 0 8px' }}>A quantidade de Pokémon é sorteada a cada mapa ou giro. Conclua regiões para aumentar a faixa e ganhar mais giros.</p>
                 ) : (
                   <p className="gb-region-lock" style={{ margin: '0 0 8px' }}>
                     🔒 Bloqueada. Derrote o campeão de {previous?.name ?? 'Kanto'} para liberar.
                   </p>
                 )}
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
-                  {selected.id === 'all' ? <li className="gb-muted">Mistura as regiões liberadas; giros, lendários e limite de nível seguem a região mais recente.</li> : null}
+                  {selected.id === 'all' ? <li className="gb-muted">Mistura as regiões liberadas. O limite de nível segue a região mais recente.</li> : null}
                   <li>Ginásios: <b>{selected.gyms}/8</b> · Elite dos 4: <b>{selected.eliteMembers}/4</b> · Campeão: <b>{selected.champion ? '✓' : '—'}</b></li>
                   <li>Nível máximo liberado: <b>{selected.levelCap}</b></li>
-                  <li>Pokémon no mapa: <b>{selected.mapSize}</b> <span className="gb-muted">(3 + 1 por ginásio e membro da Elite · campeão 15)</span></li>
-                  <li>Giros por mapa: <b>{selected.spins}</b> <span className="gb-muted">(ginásio 5 · Elite dos 4 8 · campeão 12)</span></li>
+                  <li>Pokémon no mapa: <b>{selected.mapSizeRange.join("–")}</b></li>
+                  <li>Giros por mapa: <b>{selected.spins}</b></li>
                   <li>Lendários: <b>{selected.legendaries ? 'liberados' : 'derrote a Elite dos 4'}</b></li>
                   <li>Amuleto Brilhante: <b>{!state.shinyCharm ? 'não adquirido' : selected.id === 'all' ? (state.shinyCharmGenerations.length ? `ativo nas gerações ${state.shinyCharmGenerations.join(', ')}` : 'complete a Pokédex de uma geração') : state.shinyCharmGenerations.includes(selected.generation) ? 'ativo · Pokédex completa' : 'complete a Pokédex desta geração'}</b></li>
                 </ul>

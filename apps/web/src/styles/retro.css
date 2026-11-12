@@ -432,7 +432,7 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit;
 }
-.gb-wild img, .gb-wild .gb-sprite-missing { width: 11cqw !important; height: 11cqw !important; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35)); }
+.gb-wild img, .gb-wild .gb-sprite-missing { width: 7.5cqw !important; height: 7.5cqw !important; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35)); }
 .gb-wild__tag {
   display: flex; flex-direction: column; align-items: center; line-height: 1.05;
   background: rgba(16, 20, 40, 0.86); color: #fff; border: 2px solid #fff; padding: 1px 6px;
@@ -444,11 +444,21 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 .gb-wild[aria-current='true']::after {
   content: '▼'; position: absolute; top: -1.3em; color: var(--yellow); font-size: clamp(10px, 1.6cqw, 18px); text-shadow: 0 1px 0 #000;
 }
-.gb-wild--shiny img { filter: drop-shadow(0 0 6px #ffe14a) drop-shadow(0 0 2px #fff); animation: gb-glow 1s steps(2) infinite; }
-.gb-wild--shiny .gb-wild__tag { border-color: var(--yellow); background: rgba(90, 64, 0, 0.92); }
-.gb-wild--stars img { filter: drop-shadow(0 0 6px #5ab4ff) drop-shadow(0 0 2px #fff); }
-.gb-wild--stars .gb-wild__tag { border-color: #5ab4ff; }
-@media (prefers-reduced-motion: reduce) { .gb-wild--shiny img { animation: none; } }
+.gb-wild:is(:hover, :focus-visible, [aria-current='true']) { z-index: 1000 !important; }
+.gb-wild--stars { --iv-accent: #88d8ff; --spotlight: var(--iv-accent); }
+.gb-wild--perfect { --iv-accent: #e6adff; }
+.gb-wild--shiny { --spotlight: #ffe262; }
+.gb-wild:is(.gb-wild--stars, .gb-wild--shiny) img {
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 8px var(--spotlight));
+}
+.gb-wild:is(.gb-wild--stars, .gb-wild--shiny) .gb-wild__tag {
+  border-color: var(--spotlight);
+  box-shadow: 0 0 0 2px #13162a, 0 0 9px var(--spotlight);
+}
+.gb-wild__badges { display: flex; justify-content: center; gap: 3px; margin-bottom: 2px; }
+.gb-wild__badge { padding: 1px 4px; color: #191526; font-family: var(--font-title); font-weight: 700; }
+.gb-wild__badge--iv { background: var(--iv-accent); }
+.gb-wild__badge--shiny { background: #ffe262; }
 .gb-region-lock { color: var(--muted); }
 .gb-species-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 10px; }
 .gb-species-pick { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; background: var(--paper); border: 3px solid var(--ink); cursor: pointer; font: inherit; color: inherit; text-transform: uppercase; font-size: 15px; }
@@ -687,7 +697,6 @@ button.gb-mon--empty[aria-current='true'] { opacity: 1; }
 
 /* Animações de batalha: dano, crítico e auras de status */
 .gb-popup--dmg { color: var(--red); } .gb-popup--crit { color: #fff; background: var(--red); }
-.gb-aura { position: relative; }
 .gb-aura--burn { animation: gb-aura-glow 900ms steps(4) infinite; --a: #f08030; }
 .gb-aura--poison { animation: gb-aura-glow 1400ms steps(4) infinite; --a: #a040a0; }
 .gb-aura--paralysis { animation: gb-aura-zap 700ms steps(2) infinite; --a: #f8d030; }

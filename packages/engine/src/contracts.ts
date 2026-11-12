@@ -238,8 +238,8 @@ export interface WildRegionOption {
   levelCap: number;
   /** giros de cada mapa nesta região */
   spins: number;
-  /** Pokémon soltos no mapa (3 a 15, conforme os desafios da região) */
-  mapSize: number;
+  /** Faixa de Pokémon sorteados a cada mapa ou giro. */
+  mapSizeRange: [min: number, max: number];
   /** lendários podem aparecer (Elite dos 4 derrotada) */
   legendaries: boolean;
   /** pode escolher o mapa (habitat): os 8 ginásios da região vencidos */
@@ -424,6 +424,7 @@ export interface BossOffer {
   shiny: boolean;
   level: number;
   hpMultiplier: number;
+  statBonusPercent: number;
   status: 'available' | 'running' | 'lost' | 'capture' | 'spent';
 }
 
